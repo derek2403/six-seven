@@ -2,9 +2,19 @@
 
 import { Geist, Geist_Mono } from "next/font/google";
 import { ConnectButton, useCurrentAccount, useSignAndExecuteTransaction, useSuiClient, useSuiClientQuery } from "@mysten/dapp-kit";
-import { Transaction } from "@mysten/sui/transactions";
 import { USDC_CONFIG, VAULT_CONFIG } from "../lib/config";
 import { useState, useEffect } from "react";
+import { formatBalance, parseAmount } from "../lib/format";
+import { buildMint1000UsdcTransaction, USDC_COIN_TYPE } from "../lib/usdc";
+import {
+    buildDepositTransaction,
+    buildWithdrawTransaction,
+    buildWithdrawAllTransaction,
+    parseVaultStats,
+    VAULT_ID,
+    type VaultStats,
+    type CoinData
+} from "../lib/vault";
 
 const geistSans = Geist({
     variable: "--font-geist-sans",
@@ -23,7 +33,7 @@ export default function TokenPage() {
         >
             <main className="flex w-full max-w-4xl flex-col items-center gap-8">
                 <h1 className="text-3xl font-bold text-black dark:text-white">
-                    Mock USDC & Vault Testing
+                    Mock USDC &amp; Vault Testing
                 </h1>
                 <p className="text-zinc-600 dark:text-zinc-400 text-center">
                     Test minting USDC tokens and vault deposit/withdraw functions
@@ -47,14 +57,14 @@ function TokenActions() {
     const [txStatus, setTxStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
     const [depositAmount, setDepositAmount] = useState('100');
     const [withdrawAmount, setWithdrawAmount] = useState('50');
-    const [vaultStats, setVaultStats] = useState<{ balance: string; deposited: string; withdrawable: string } | null>(null);
+    const [vaultStats, setVaultStats] = useState<VaultStats | null>(null);
 
     // Query USDC balance for the connected wallet
     const { data: balanceData, refetch: refetchBalance } = useSuiClientQuery(
         'getBalance',
         {
             owner: account?.address ?? '',
-            coinType: USDC_CONFIG.USDC_TYPE,
+            coinType: USDC_COIN_TYPE,
         },
         {
             enabled: !!account?.address,
@@ -66,7 +76,7 @@ function TokenActions() {
         'getCoins',
         {
             owner: account?.address ?? '',
-            coinType: USDC_CONFIG.USDC_TYPE,
+            coinType: USDC_COIN_TYPE,
         },
         {
             enabled: !!account?.address,
@@ -77,7 +87,7 @@ function TokenActions() {
     const { data: vaultData, refetch: refetchVault } = useSuiClientQuery(
         'getObject',
         {
-            id: VAULT_CONFIG.VAULT_ID,
+            id: VAULT_ID,
             options: {
                 showContent: true,
             },
@@ -89,28 +99,9 @@ function TokenActions() {
 
     // Parse vault stats when vault data changes
     useEffect(() => {
-        if (vaultData?.data?.content && 'fields' in vaultData.data.content) {
-            const fields = vaultData.data.content.fields as {
-                balance: string;
-                total_deposited: string;
-                total_withdrawn: string;
-            };
-            setVaultStats({
-                balance: fields.balance || '0',
-                deposited: fields.total_deposited || '0',
-                withdrawable: String(BigInt(fields.total_deposited || '0') - BigInt(fields.total_withdrawn || '0')),
-            });
-        }
+        const stats = parseVaultStats(vaultData as Parameters<typeof parseVaultStats>[0]);
+        setVaultStats(stats);
     }, [vaultData]);
-
-    // Format balance with decimals
-    const formatBalance = (balance: string) => {
-        const num = BigInt(balance);
-        const decimals = BigInt(10 ** USDC_CONFIG.DECIMALS);
-        const whole = num / decimals;
-        const fraction = num % decimals;
-        return `${whole}.${fraction.toString().padStart(USDC_CONFIG.DECIMALS, '0')}`;
-    };
 
     // Refetch all data
     const refetchAll = async () => {
@@ -125,14 +116,7 @@ function TokenActions() {
         setTxStatus(null);
 
         try {
-            const tx = new Transaction();
-
-            tx.moveCall({
-                target: `${USDC_CONFIG.PACKAGE_ID}::${USDC_CONFIG.MODULE_NAME}::mint_1000_usdc`,
-                arguments: [
-                    tx.object(USDC_CONFIG.TREASURY_CAP_ID),
-                ],
-            });
+            const tx = buildMint1000UsdcTransaction();
 
             signAndExecute(
                 { transaction: tx },
@@ -168,7 +152,7 @@ function TokenActions() {
     const handleDeposit = async () => {
         if (!account || !coinsData?.data) return;
 
-        const amountToDeposit = BigInt(parseFloat(depositAmount) * (10 ** USDC_CONFIG.DECIMALS));
+        const amountToDeposit = parseAmount(depositAmount);
         if (amountToDeposit <= 0) {
             setTxStatus({ type: 'error', message: 'Please enter a valid deposit amount' });
             return;
@@ -178,42 +162,18 @@ function TokenActions() {
         setTxStatus(null);
 
         try {
-            const tx = new Transaction();
+            const coins: CoinData[] = coinsData.data.map(c => ({
+                coinObjectId: c.coinObjectId,
+                balance: c.balance,
+            }));
 
-            // Get all USDC coins and merge them if needed
-            const coins = coinsData.data;
-            if (coins.length === 0) {
+            const tx = buildDepositTransaction(coins, amountToDeposit);
+
+            if (!tx) {
                 setTxStatus({ type: 'error', message: 'No USDC coins found in wallet' });
                 setIsLoading(false);
                 return;
             }
-
-            // If we have multiple coins, merge them first
-            let coinToUse;
-            if (coins.length === 1) {
-                coinToUse = tx.object(coins[0].coinObjectId);
-            } else {
-                // Merge all coins into the first one
-                const [firstCoin, ...restCoins] = coins;
-                coinToUse = tx.object(firstCoin.coinObjectId);
-                if (restCoins.length > 0) {
-                    tx.mergeCoins(
-                        coinToUse,
-                        restCoins.map(c => tx.object(c.coinObjectId))
-                    );
-                }
-            }
-
-            // Split the exact amount we want to deposit
-            const [depositCoin] = tx.splitCoins(coinToUse, [tx.pure.u64(amountToDeposit)]);
-
-            tx.moveCall({
-                target: `${VAULT_CONFIG.PACKAGE_ID}::${VAULT_CONFIG.MODULE_NAME}::deposit`,
-                arguments: [
-                    tx.object(VAULT_CONFIG.VAULT_ID),
-                    depositCoin,
-                ],
-            });
 
             signAndExecute(
                 { transaction: tx },
@@ -249,7 +209,7 @@ function TokenActions() {
     const handleWithdraw = async () => {
         if (!account) return;
 
-        const amountToWithdraw = BigInt(parseFloat(withdrawAmount) * (10 ** USDC_CONFIG.DECIMALS));
+        const amountToWithdraw = parseAmount(withdrawAmount);
         if (amountToWithdraw <= 0) {
             setTxStatus({ type: 'error', message: 'Please enter a valid withdraw amount' });
             return;
@@ -259,15 +219,7 @@ function TokenActions() {
         setTxStatus(null);
 
         try {
-            const tx = new Transaction();
-
-            tx.moveCall({
-                target: `${VAULT_CONFIG.PACKAGE_ID}::${VAULT_CONFIG.MODULE_NAME}::withdraw`,
-                arguments: [
-                    tx.object(VAULT_CONFIG.VAULT_ID),
-                    tx.pure.u64(amountToWithdraw),
-                ],
-            });
+            const tx = buildWithdrawTransaction(amountToWithdraw);
 
             signAndExecute(
                 { transaction: tx },
@@ -307,14 +259,7 @@ function TokenActions() {
         setTxStatus(null);
 
         try {
-            const tx = new Transaction();
-
-            tx.moveCall({
-                target: `${VAULT_CONFIG.PACKAGE_ID}::${VAULT_CONFIG.MODULE_NAME}::withdraw_all`,
-                arguments: [
-                    tx.object(VAULT_CONFIG.VAULT_ID),
-                ],
-            });
+            const tx = buildWithdrawAllTransaction();
 
             signAndExecute(
                 { transaction: tx },
