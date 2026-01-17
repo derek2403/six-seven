@@ -2,8 +2,15 @@
 
 import { cn } from "../lib/utils";
 import { AnimatedList } from "./AnimatedList";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import dynamic from 'next/dynamic';
+
+// Dynamic import to avoid SSR issues with THREE.js
+const GradientGridDistortion = dynamic(() => import('./GradientGridDistortion'), {
+    ssr: false,
+    loading: () => <div className="w-full h-full bg-[#93BFEF]" />
+});
 
 export interface Item {
     name: string;
@@ -47,14 +54,21 @@ const Notification = ({ name, description, icon, color, time }: Item) => {
     )
 }
 
-// Lock icon component - outline style
-const LockIcon = () => (
-    <svg width="80" height="80" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="4" y="10" width="16" height="12" rx="2" fill="none" stroke="#1A5799" strokeWidth="1.5" />
-        <path d="M8 10V6C8 3.79086 9.79086 2 12 2C14.2091 2 16 3.79086 16 6V10" stroke="#1A5799" strokeWidth="1.5" strokeLinecap="round" />
-        <circle cx="12" cy="15" r="1.5" fill="#1A5799" />
-        <path d="M12 16.5V18" stroke="#1A5799" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
+// Lock GIF component - plays at 2.5x speed
+const LockGif = () => (
+    <div className="relative">
+        <img
+            src="/lock.gif"
+            alt="Lock"
+            width={120}
+            height={120}
+            className="object-contain"
+            style={{
+                // Using filter to enhance visibility on the colorful background
+                filter: 'drop-shadow(0 0 10px rgba(0, 0, 0, 0.3))'
+            }}
+        />
+    </div>
 );
 
 // Arrow path: down from bottom-center of box, curve left, then back down
@@ -199,7 +213,7 @@ export function AnimatedListDemo({
                     className
                 )}
                 style={{
-                    backgroundColor: showLock ? "#93BFEF" : "rgba(255,255,255,0.8)"
+                    backgroundColor: showLock ? "transparent" : "rgba(255,255,255,0.8)"
                 }}
             >
                 {/* Trace outline animation */}
@@ -226,13 +240,33 @@ export function AnimatedListDemo({
                 {/* Lock icon overlay */}
                 <AnimatePresence>
                     {showLock && (
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.5 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none"
-                        >
-                            <LockIcon />
-                        </motion.div>
+                        <>
+                            {/* Grid Distortion Background */}
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 0.5 }}
+                                className="absolute inset-0 z-15 rounded-3xl overflow-hidden"
+                            >
+                                <GradientGridDistortion
+                                    grid={10}
+                                    mouse={0.12}
+                                    strength={0.18}
+                                    relaxation={0.85}
+                                />
+                            </motion.div>
+
+                            {/* Lock GIF overlay */}
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.5 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: 0.8, duration: 0.4 }}
+                                className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none"
+                            >
+                                <LockGif />
+                            </motion.div>
+                        </>
                     )}
                 </AnimatePresence>
 
