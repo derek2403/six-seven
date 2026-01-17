@@ -237,6 +237,30 @@ const WorldTableRow = ({ world, colors }: { world: any, colors: string[] }) => {
     );
 };
 
+const HeatmapColorLegend = () => {
+    return (
+        <div className="flex flex-col items-center ml-8">
+            <div className="flex items-start gap-2">
+                {/* Labels on the left */}
+                <div className="flex flex-col justify-between h-[280px] text-right">
+                    <span className="text-[11px] font-bold text-gray-500">100</span>
+                    <span className="text-[11px] font-bold text-gray-500">75</span>
+                    <span className="text-[11px] font-bold text-gray-500">50</span>
+                    <span className="text-[11px] font-bold text-gray-500">25</span>
+                    <span className="text-[11px] font-bold text-gray-500">0</span>
+                </div>
+                {/* Gradient bar */}
+                <div
+                    className="w-6 h-[280px] rounded-lg shadow-sm border border-gray-200"
+                    style={{
+                        background: `linear-gradient(to bottom, #0c4a6e, #0284c7, #38bdf8, #7dd3fc, #e0f2fe)`
+                    }}
+                />
+            </div>
+        </div>
+    );
+};
+
 const ConfusionMatrix = ({ selectedMarkets }: { selectedMarkets: Record<string, boolean> }) => {
     const activeMarkets = COMBINED_MARKETS.filter(m => selectedMarkets[m.id]);
 
@@ -272,9 +296,6 @@ const ConfusionMatrix = ({ selectedMarkets }: { selectedMarkets: Record<string, 
     const mTopName = MARKET_NAMES[`value${mTop.id.slice(1)}`];
     const mLeftName = MARKET_NAMES[`value${mLeft.id.slice(1)}`];
 
-    const mTopColor = mTop.id === "m1" ? "#60a5fa" : mTop.id === "m2" ? "#2563eb" : "#facc15";
-    const mLeftColor = mLeft.id === "m1" ? "#60a5fa" : mLeft.id === "m2" ? "#2563eb" : "#facc15";
-
     const topIdx = parseInt(mTop.id.slice(1)) - 1;
     const leftIdx = parseInt(mLeft.id.slice(1)) - 1;
 
@@ -289,50 +310,68 @@ const ConfusionMatrix = ({ selectedMarkets }: { selectedMarkets: Record<string, 
         { state: "111", prob: 0.3 },
     ];
 
-    const matrix: any = { "11": 0, "10": 0, "01": 0, "00": 0 };
+    const matrix: Record<string, number> = { "11": 0, "10": 0, "01": 0, "00": 0 };
     worlds.forEach(w => {
         const sTop = w.state[topIdx];
         const sLeft = w.state[leftIdx];
         matrix[`${sTop}${sLeft}`] += w.prob;
     });
 
+    // Find min and max for color scaling
+    const probValues = Object.values(matrix);
+    const minProb = Math.min(...probValues);
+    const maxProb = Math.max(...probValues);
 
-    const DiagonalCell = ({ prob, tVal, lVal, lColor, tColor }: { prob: number, tVal: string, lVal: string, lColor: string, tColor: string }) => {
-        const isYesYes = tVal === 'YES' && lVal === 'YES';
-        const isNoNo = tVal === 'NO' && lVal === 'NO';
-        const isDiagonal = isYesYes || isNoNo;
+    // Function to get heatmap color based on probability
+    const getHeatmapColor = (prob: number) => {
+        // Normalize probability to 0-1 range
+        const normalized = maxProb === minProb ? 0.5 : (prob - minProb) / (maxProb - minProb);
 
-        // Intensity from probability (opacity)
-        const probOpacity = 0.08 + (prob / 100) * 0.92;
+        // Color stops from light to dark blue
+        const colors = [
+            { r: 224, g: 242, b: 254 }, // #e0f2fe - lightest
+            { r: 125, g: 211, b: 252 }, // #7dd3fc
+            { r: 56, g: 189, b: 248 },  // #38bdf8
+            { r: 2, g: 132, b: 199 },   // #0284c7
+            { r: 12, g: 74, b: 110 },   // #0c4a6e - darkest
+        ];
 
-        // Per-outcome brightness for gradient colors (YES = 100%, NO = 50%)
-        const finalLColor = lVal === 'YES' ? lColor : `color-mix(in srgb, ${lColor}, black 50%)`;
-        const finalTColor = tVal === 'YES' ? tColor : `color-mix(in srgb, ${tColor}, black 50%)`;
+        // Interpolate between color stops
+        const idx = normalized * (colors.length - 1);
+        const lowerIdx = Math.floor(idx);
+        const upperIdx = Math.ceil(idx);
+        const t = idx - lowerIdx;
+
+        const r = Math.round(colors[lowerIdx].r + (colors[upperIdx].r - colors[lowerIdx].r) * t);
+        const g = Math.round(colors[lowerIdx].g + (colors[upperIdx].g - colors[lowerIdx].g) * t);
+        const b = Math.round(colors[lowerIdx].b + (colors[upperIdx].b - colors[lowerIdx].b) * t);
+
+        return `rgb(${r}, ${g}, ${b})`;
+    };
+
+    const HeatmapCell = ({ prob, topLabel, leftLabel }: { prob: number, topLabel: string, leftLabel: string }) => {
+        const bgColor = getHeatmapColor(prob);
+        // Determine text color based on brightness
+        const normalized = maxProb === minProb ? 0.5 : (prob - minProb) / (maxProb - minProb);
+        const textColor = normalized > 0.5 ? 'white' : '#1e3a5f';
 
         return (
-            <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-sm group/cell transition-all duration-500 hover:shadow-md hover:scale-[1.01] bg-gray-50/50">
-                {/* Smooth Mixed Gradient Background */}
-                <div
-                    className="absolute inset-0 transition-opacity duration-1000"
-                    style={{
-                        background: `linear-gradient(135deg, ${finalLColor}, ${finalTColor})`,
-                        opacity: probOpacity,
-                        filter: `saturate(${isDiagonal ? 1.6 : 1})`
-                    }}
-                />
-
-                {/* Subtle White Glow on Hover */}
-                <div className="absolute inset-0 bg-white/5 opacity-0 group-hover/cell:opacity-100 transition-opacity pointer-events-none" />
-
-                {/* Probability Overlay - Always Black Text */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center z-10 px-2 text-center">
-                    <span className="text-2xl font-black text-gray-900">
-                        {prob.toFixed(1)}%
-                    </span>
-                    <span className="text-[10px] font-bold uppercase text-gray-600 tracking-[0.15em]">
-                        {lVal} / {tVal}
-                    </span>
-                </div>
+            <div
+                className="relative w-full h-full flex flex-col items-center justify-center transition-all duration-300 hover:scale-[1.02] hover:shadow-lg cursor-pointer group"
+                style={{ backgroundColor: bgColor }}
+            >
+                <span
+                    className="text-xl font-bold transition-all duration-200 group-hover:scale-110"
+                    style={{ color: textColor }}
+                >
+                    {prob.toFixed(1)}%
+                </span>
+                <span
+                    className="text-[10px] font-medium uppercase tracking-wider mt-1 opacity-80"
+                    style={{ color: textColor }}
+                >
+                    {leftLabel}/{topLabel}
+                </span>
             </div>
         );
     };
@@ -354,79 +393,85 @@ const ConfusionMatrix = ({ selectedMarkets }: { selectedMarkets: Record<string, 
     };
 
     return (
-        <div className="w-full max-w-[900px] mx-auto mt-4 px-4 pb-20 select-none flex flex-col items-center">
-            {/* Top Market Name - Centered over everything */}
-            <div className="mb-6 flex items-center gap-4">
-                <h3 className="text-[13px] font-black text-gray-900 uppercase tracking-[0.25em]">
-                    {mTopName}
+        <div className="w-full max-w-[900px] mx-auto mt-4 px-4 pb-20 select-none">
+            {/* Title Section */}
+            <div className="text-center mb-8">
+                <h3 className="text-sm font-semibold text-gray-700 mb-1">
+                    Joint Probability Heatmap
                 </h3>
-                <div className="flex items-center gap-3 text-gray-400">
-                    <ArrowUpDown
-                        className="size-4 cursor-pointer hover:text-blue-500 transition-colors"
-                        onClick={handleSwap}
-                    />
-                    <Shuffle
-                        className={`size-4 transition-colors ${activeMarkets.length > 2 ? 'cursor-pointer hover:text-blue-500' : 'opacity-20'}`}
-                        onClick={handleShuffleTop}
-                    />
-                </div>
+                <p className="text-xs text-gray-400">
+                    {mTopName} vs {mLeftName}
+                </p>
             </div>
 
-            {/* Matrix Area - Designed to center the grid exactly */}
-            <div className="relative flex items-center justify-center" style={{ width: '100%' }}>
-
-                {/* Left Side Group - Correct orientation (Horizontal) */}
-                <div className="absolute right-[calc(50%+204px)] flex items-center gap-4 h-[360px] top-[40px]">
-                    <div className="flex items-center gap-4 whitespace-nowrap">
-                        <h3 className="text-[13px] font-black text-gray-900 uppercase tracking-[0.25em]">
-                            {mLeftName}
-                        </h3>
-                        <div className="flex items-center gap-3 text-gray-400">
+            {/* Main Heatmap Container */}
+            <div className="flex items-center justify-center gap-4">
+                {/* Left Y-axis Label */}
+                <div className="flex flex-col items-center justify-center h-[280px] mr-2">
+                    <div
+                        className="text-xs font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap flex items-center gap-2"
+                        style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
+                    >
+                        {mLeftName}
+                        <div className="flex gap-1">
                             <ArrowUpDown
-                                className="size-4 cursor-pointer hover:text-blue-500 transition-colors"
+                                className="size-3 cursor-pointer hover:text-blue-500 transition-colors"
                                 onClick={handleSwap}
                             />
                             <Shuffle
-                                className={`size-4 transition-colors ${activeMarkets.length > 2 ? 'cursor-pointer hover:text-blue-500' : 'opacity-20'}`}
+                                className={`size-3 transition-colors ${activeMarkets.length > 2 ? 'cursor-pointer hover:text-blue-500' : 'opacity-20'}`}
                                 onClick={handleShuffleLeft}
                             />
                         </div>
                     </div>
-
-                    {/* Left YES/NO Row Labels - Colored based on market */}
-                    <div className="grid grid-rows-2 gap-4 h-full">
-                        <div className="flex items-center justify-center">
-                            <span className="text-[13px] font-black tracking-[0.25em]" style={{ color: mLeftColor }}>YES</span>
-                        </div>
-                        <div className="flex items-center justify-center">
-                            <span className="text-[13px] font-black tracking-[0.25em]" style={{ color: `color-mix(in srgb, ${mLeftColor}, black 50%)` }}>NO</span>
-                        </div>
-                    </div>
                 </div>
 
-                {/* Right Side Group - To keep it balanced if needed, but here we just want the grid centered */}
-                <div className="flex flex-col items-center">
-                    {/* Top YES/NO Column Labels - Colored based on market */}
-                    <div className="grid grid-cols-2 mb-6" style={{ width: '360px' }}>
-                        <div className="flex justify-center">
-                            <span className="text-[13px] font-black tracking-[0.25em]" style={{ color: mTopColor }}>YES</span>
-                        </div>
-                        <div className="flex justify-center">
-                            <span className="text-[13px] font-black tracking-[0.25em]" style={{ color: `color-mix(in srgb, ${mTopColor}, black 50%)` }}>NO</span>
-                        </div>
+                {/* Y-axis Labels */}
+                <div className="flex flex-col justify-around h-[280px] mr-3">
+                    <span className="text-[11px] font-semibold text-gray-600 py-[60px]">Yes</span>
+                    <span className="text-[11px] font-semibold text-gray-600 py-[60px]">No</span>
+                </div>
+
+                {/* Heatmap Grid */}
+                <div className="flex flex-col">
+                    {/* X-axis Label */}
+                    <div className="text-center mb-3 flex items-center justify-center gap-2">
+                        <span className="text-xs font-bold text-gray-600 uppercase tracking-wider">
+                            {mTopName}
+                        </span>
+                        <ArrowUpDown
+                            className="size-3 cursor-pointer hover:text-blue-500 transition-colors text-gray-400"
+                            onClick={handleSwap}
+                        />
+                        <Shuffle
+                            className={`size-3 transition-colors text-gray-400 ${activeMarkets.length > 2 ? 'cursor-pointer hover:text-blue-500' : 'opacity-20'}`}
+                            onClick={handleShuffleTop}
+                        />
+                    </div>
+
+                    {/* X-axis Labels */}
+                    <div className="flex justify-around mb-2" style={{ width: '360px' }}>
+                        <span className="text-[11px] font-semibold text-gray-600 w-[170px] text-center">Yes</span>
+                        <span className="text-[11px] font-semibold text-gray-600 w-[170px] text-center">No</span>
                     </div>
 
                     {/* 2x2 Grid */}
-                    <div className="grid grid-cols-2 grid-rows-2 gap-4 overflow-visible" style={{ width: '360px', height: '360px' }}>
-                        <DiagonalCell prob={matrix["11"]} tVal="YES" lVal="YES" lColor={mLeftColor} tColor={mTopColor} />
-                        <DiagonalCell prob={matrix["10"]} tVal="NO" lVal="YES" lColor={mLeftColor} tColor={mTopColor} />
-                        <DiagonalCell prob={matrix["01"]} tVal="YES" lVal="NO" lColor={mLeftColor} tColor={mTopColor} />
-                        <DiagonalCell prob={matrix["00"]} tVal="NO" lVal="NO" lColor={mLeftColor} tColor={mTopColor} />
+                    <div
+                        className="grid grid-cols-2 grid-rows-2 gap-1 rounded-lg overflow-hidden shadow-md border border-gray-200"
+                        style={{ width: '360px', height: '280px' }}
+                    >
+                        <HeatmapCell prob={matrix["11"]} topLabel="Yes" leftLabel="Yes" />
+                        <HeatmapCell prob={matrix["01"]} topLabel="No" leftLabel="Yes" />
+                        <HeatmapCell prob={matrix["10"]} topLabel="Yes" leftLabel="No" />
+                        <HeatmapCell prob={matrix["00"]} topLabel="No" leftLabel="No" />
                     </div>
                 </div>
+
+                {/* Color Legend */}
+                <HeatmapColorLegend />
             </div>
 
-            <p className="text-[11px] text-gray-400 mt-20 text-center italic font-medium">
+            <p className="text-[11px] text-gray-400 mt-12 text-center italic font-medium">
                 Probabilities derived from the joint-outcome AMM world table.
             </p>
         </div>
