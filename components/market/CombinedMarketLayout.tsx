@@ -6,8 +6,21 @@ import { MarketTimeFilter } from "@/components/market/MarketTimeFilter";
 import { MarketLegend } from "@/components/market/MarketLegend";
 import { MarketCombinedChart } from "@/components/market/MarketCombinedChart";
 import { TradeCard } from "@/components/market/TradeCard";
+import { COMBINED_MARKETS } from "@/lib/mock/combined-markets";
 
 export function CombinedMarketLayout() {
+    const [selectedMarkets, setSelectedMarkets] = React.useState<Record<string, boolean>>(
+        Object.fromEntries(COMBINED_MARKETS.map(m => [m.id, true]))
+    );
+    const [view, setView] = React.useState("Default");
+
+    const toggleMarket = (id: string) => {
+        setSelectedMarkets(prev => ({
+            ...prev,
+            [id]: !prev[id]
+        }));
+    };
+
     return (
         <div className="min-h-screen w-full bg-white">
             <div className="max-w-[1400px] mx-auto px-4 md:px-6 pt-6 pb-12 w-full">
@@ -15,21 +28,35 @@ export function CombinedMarketLayout() {
                     {/* Left Side: Chart and Headers */}
                     <div className="min-w-0 w-full overflow-hidden">
                         {/* 1. Combined Market List (Header + List Items) */}
-                        <CombinedMarketList />
+                        <CombinedMarketList
+                            selectedMarkets={selectedMarkets}
+                            onToggleMarket={toggleMarket}
+                        />
 
                         {/* 2. Radio Button / Time Filter */}
                         <div className="mt-8">
-                            <MarketTimeFilter />
+                            <MarketTimeFilter
+                                selectedMarkets={selectedMarkets}
+                                view={view}
+                                onViewChange={setView}
+                            />
                         </div>
 
                         {/* 3. Legend */}
                         <div className="mt-10">
-                            <MarketLegend />
+                            <MarketLegend
+                                selectedMarkets={selectedMarkets}
+                                view={view}
+                                onViewChange={setView}
+                            />
                         </div>
 
                         {/* 4. Graph */}
                         <div className="mt-6">
-                            <MarketCombinedChart />
+                            <MarketCombinedChart
+                                selectedMarkets={selectedMarkets}
+                                view={view}
+                            />
                         </div>
                     </div>
 

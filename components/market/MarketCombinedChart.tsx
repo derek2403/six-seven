@@ -4,6 +4,8 @@ import React from "react";
 import { Line, LineChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
 import { Trophy, Clock, Settings, SlidersHorizontal, ChevronDown, Shuffle, ArrowUpDown } from "lucide-react";
 import { COMBINED_CHART_DATA, COMBINED_MARKETS } from "@/lib/mock/combined-markets";
+import Market3DView from "./Market3DView";
+
 
 const MARKET_NAMES: Record<string, string> = {
     value1: "Khamenei out",
@@ -299,10 +301,10 @@ const ConfusionMatrix = ({ selectedMarkets }: { selectedMarkets: Record<string, 
         const isYesYes = tVal === 'YES' && lVal === 'YES';
         const isNoNo = tVal === 'NO' && lVal === 'NO';
         const isDiagonal = isYesYes || isNoNo;
-        
+
         // Intensity from probability (opacity)
         const probOpacity = 0.08 + (prob / 100) * 0.92;
-        
+
         // Per-outcome brightness for gradient colors (YES = 100%, NO = 50%)
         const finalLColor = lVal === 'YES' ? lColor : `color-mix(in srgb, ${lColor}, black 50%)`;
         const finalTColor = tVal === 'YES' ? tColor : `color-mix(in srgb, ${tColor}, black 50%)`;
@@ -310,9 +312,9 @@ const ConfusionMatrix = ({ selectedMarkets }: { selectedMarkets: Record<string, 
         return (
             <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-sm group/cell transition-all duration-500 hover:shadow-md hover:scale-[1.01] bg-gray-50/50">
                 {/* Smooth Mixed Gradient Background */}
-                <div 
+                <div
                     className="absolute inset-0 transition-opacity duration-1000"
-                    style={{ 
+                    style={{
                         background: `linear-gradient(135deg, ${finalLColor}, ${finalTColor})`,
                         opacity: probOpacity,
                         filter: `saturate(${isDiagonal ? 1.6 : 1})`
@@ -448,7 +450,9 @@ export function MarketCombinedChart({ selectedMarkets, view }: MarketCombinedCha
 
     const availableFilters = ["1H", "6H", "1D"];
     if (selectedCount >= 2) availableFilters.push("2D");
-    if (selectedCount === 3) availableFilters.push("MAX");
+    if (selectedCount === 3) availableFilters.push("3D");
+    availableFilters.push("MAX");
+
 
     return (
         <div className="w-full flex flex-col">
@@ -550,12 +554,14 @@ export function MarketCombinedChart({ selectedMarkets, view }: MarketCombinedCha
                 )}
 
                 {view === "3D" && (
-                    <div className="flex flex-col gap-8">
-                        <div className="flex items-center justify-center min-h-[300px] text-gray-400 font-medium italic bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
-                            {view} view coming soon...
-                        </div>
+                    <div className="flex flex-col py-4">
+                        <Market3DView />
+                        <p className="text-[11px] text-gray-400 mt-12 text-center italic font-medium px-4">
+                            Probabilities derived from the joint-outcome AMM world table.
+                        </p>
                     </div>
                 )}
+
             </div>
 
             {/* Footer Stats and Filters */}
