@@ -7,6 +7,8 @@ import { TradeCard } from "@/components/market/TradeCard";
 import { COMBINED_MARKETS } from "@/lib/mock/combined-markets";
 import React from 'react';
 
+type MarketSelection = "yes" | "no" | "any" | null;
+
 export default function MarketPage() {
     const router = useRouter();
     const { slug } = router.query;
@@ -15,6 +17,13 @@ export default function MarketPage() {
         Object.fromEntries(COMBINED_MARKETS.map(m => [m.id, true]))
     );
     const [view, setView] = React.useState("Default");
+
+    // Market selections for Order Ticket (lifted state)
+    const [marketSelections, setMarketSelections] = React.useState<Record<string, MarketSelection>>({
+        m1: null,
+        m2: null,
+        m3: null,
+    });
 
     const toggleMarket = (id: string) => {
         setSelectedMarkets(prev => ({
@@ -59,6 +68,13 @@ export default function MarketPage() {
                             onToggleMarket={toggleMarket}
                         />
 
+                        {/* Context Description */}
+                        <div className="mt-4 px-1">
+                            <p className="text-[13px] text-gray-500 leading-relaxed text-justify">
+                                As of January 2026, Iran is in a state of severe internal upheaval and, to a lesser extent, external conflict following a rapid deterioration of its security and economic situation in the latter half of 2025. The context is defined by a brutal, large-scale crackdown on internal protests, economic collapse, and the aftermath of a direct, 12-day war with Israel in June 2025.
+                            </p>
+                        </div>
+
                         <div className="mt-8 text-gray-500">
                             <MarketTimeFilter
                                 selectedMarkets={selectedMarkets}
@@ -79,13 +95,18 @@ export default function MarketPage() {
                             <MarketCombinedChart
                                 selectedMarkets={selectedMarkets}
                                 view={view}
+                                marketSelections={marketSelections}
+                                onMarketSelectionsChange={setMarketSelections}
                             />
                         </div>
                     </div>
 
                     {/* Right Side: Trade Card */}
-                    <div className="w-full md:w-[320px] flex-shrink-0 sticky top-20">
-                        <TradeCard />
+                    <div className="w-full md:w-[400px] flex-shrink-0 sticky top-20">
+                        <TradeCard
+                            marketSelections={marketSelections}
+                            onMarketSelectionsChange={setMarketSelections}
+                        />
                         <p className="mt-4 text-center text-[13px] text-gray-400 font-medium leading-relaxed">
                             By trading, you agree to the <span className="underline cursor-pointer hover:text-gray-600 transition-colors">Terms of Use.</span>
                         </p>

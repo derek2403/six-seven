@@ -246,7 +246,7 @@ export default function Market3DView() {
         <div className="w-full h-[500px] bg-white rounded-2xl border border-gray-100 shadow-sm relative overflow-hidden">
             <div className="absolute top-6 left-6 z-10">
                 <h2 className="text-[14px] font-black text-gray-900 uppercase tracking-[0.2em]">3D Market Matrix</h2>
-                <p className="text-[11px] text-gray-400 mt-1 font-medium italic">8 joint-outcome possibilities</p>
+                <p className="text-[13px] text-gray-400 mt-1 font-medium italic">8 joint-outcome possibilities</p>
             </div>
 
             <Canvas shadows dpr={[1, 2]}>

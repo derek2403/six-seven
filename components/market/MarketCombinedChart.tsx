@@ -261,7 +261,11 @@ const HeatmapColorLegend = () => {
     );
 };
 
-const ConfusionMatrix = ({ selectedMarkets }: { selectedMarkets: Record<string, boolean> }) => {
+const ConfusionMatrix = ({ selectedMarkets, marketSelections, onMarketSelectionsChange }: {
+    selectedMarkets: Record<string, boolean>;
+    marketSelections: Record<string, MarketSelection>;
+    onMarketSelectionsChange: (selections: Record<string, MarketSelection>) => void;
+}) => {
     const activeMarkets = COMBINED_MARKETS.filter(m => selectedMarkets[m.id]);
 
     // State for tracking which market is where
@@ -366,6 +370,27 @@ const ConfusionMatrix = ({ selectedMarkets }: { selectedMarkets: Record<string, 
                 setShiningBox(null);
             } else {
                 setShiningBox(boxId);
+
+                // Update market selections based on the box clicked
+                // topLabel is for topMarketId, leftLabel is for leftMarketId
+                const newSelections = { ...marketSelections };
+
+                // Set selections based on box labels (Yes/No)
+                if (topMarketId) {
+                    newSelections[topMarketId] = topLabel.toLowerCase() as MarketSelection;
+                }
+                if (leftMarketId) {
+                    newSelections[leftMarketId] = leftLabel.toLowerCase() as MarketSelection;
+                }
+
+                // Set the third market (not displayed) to null (no selection)
+                const allMarketIds = ["m1", "m2", "m3"];
+                const thirdMarketId = allMarketIds.find(id => id !== topMarketId && id !== leftMarketId);
+                if (thirdMarketId) {
+                    newSelections[thirdMarketId] = null;
+                }
+
+                onMarketSelectionsChange(newSelections);
             }
         };
 
@@ -550,12 +575,16 @@ const ConfusionMatrix = ({ selectedMarkets }: { selectedMarkets: Record<string, 
     );
 };
 
+type MarketSelection = "yes" | "no" | "any" | null;
+
 interface MarketCombinedChartProps {
     selectedMarkets: Record<string, boolean>;
     view: string;
+    marketSelections: Record<string, MarketSelection>;
+    onMarketSelectionsChange: (selections: Record<string, MarketSelection>) => void;
 }
 
-export function MarketCombinedChart({ selectedMarkets, view }: MarketCombinedChartProps) {
+export function MarketCombinedChart({ selectedMarkets, view, marketSelections, onMarketSelectionsChange }: MarketCombinedChartProps) {
     const selectedCount = Object.values(selectedMarkets).filter(Boolean).length;
 
     // Default percentages based on your prompt (or mock)
@@ -667,7 +696,11 @@ export function MarketCombinedChart({ selectedMarkets, view }: MarketCombinedCha
                 )}
 
                 {view === "2D" && (
-                    <ConfusionMatrix selectedMarkets={selectedMarkets} />
+                    <ConfusionMatrix
+                        selectedMarkets={selectedMarkets}
+                        marketSelections={marketSelections}
+                        onMarketSelectionsChange={onMarketSelectionsChange}
+                    />
                 )}
 
                 {view === "3D" && (
