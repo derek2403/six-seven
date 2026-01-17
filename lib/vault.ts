@@ -1,4 +1,5 @@
 import { Transaction } from '@mysten/sui/transactions';
+import { SuiObjectResponse } from '@mysten/sui/client';
 import { VAULT_CONFIG } from './config';
 
 /**
@@ -31,18 +32,8 @@ export interface UserAccountData {
  * @param vaultData - Raw vault data from Sui client
  * @returns Parsed vault statistics or null if invalid
  */
-export const parseVaultStats = (vaultData: {
-    data?: {
-        content?: {
-            fields?: {
-                balance?: string;
-                total_deposited?: string;
-                total_withdrawn?: string;
-            };
-        };
-    };
-} | null): VaultStats | null => {
-    if (vaultData?.data?.content && 'fields' in vaultData.data.content) {
+export const parseVaultStats = (vaultData: SuiObjectResponse | null | undefined): VaultStats | null => {
+    if (vaultData?.data?.content?.dataType === 'moveObject' && 'fields' in vaultData.data.content) {
         const fields = vaultData.data.content.fields as {
             balance: string;
             total_deposited: string;
@@ -62,21 +53,8 @@ export const parseVaultStats = (vaultData: {
  * @param accountData - Raw account data from Sui client
  * @returns Parsed user account data or null if invalid
  */
-export const parseUserAccountData = (accountData: {
-    data?: {
-        content?: {
-            fields?: {
-                value?: {
-                    fields?: {
-                        deposited_amount?: string;
-                        withdrawable_amount?: string;
-                    }
-                }
-            };
-        };
-    };
-} | null): UserAccountData | null => {
-    if (accountData?.data?.content && 'fields' in accountData.data.content) {
+export const parseUserAccountData = (accountData: SuiObjectResponse | null | undefined): UserAccountData | null => {
+    if (accountData?.data?.content?.dataType === 'moveObject' && 'fields' in accountData.data.content) {
         // The table stores values, so we look for the value field
         // Structure: DynamicField { name: address, value: UserAccount { ... } }
         const fields = accountData.data.content.fields as {
