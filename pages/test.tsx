@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useCurrentAccount, useSignAndExecuteTransaction, useSuiClient } from '@mysten/dapp-kit';
 import { Transaction } from '@mysten/sui/transactions';
-import { PlaceBetRequest, PlaceBetResponse, ResolveRequest, ResolveResponse } from '../lib/tee';
+import { PlaceBetRequest, PlaceBetResponse, ResolveRequest, ResolveResponse, AttestationRequest, AttestationResponse } from '../lib/tee';
 import { PM_CONFIG } from '../lib/pm';
 import { VAULT_CONFIG, WORLD_CONFIG, USDC_CONFIG } from '../lib/config';
 import { buildMint1000UsdcTransaction, USDC_COIN_TYPE } from '../lib/usdc';
@@ -395,6 +395,43 @@ export default function TestPage() {
         }
     };
 
+    // Test 6: Get Attestation
+    const testAttestation = async () => {
+        setLoading(true);
+        log('--- TEST: Get Attestation ---');
+
+        try {
+            // Generate random challenge
+            const challenge = Array.from({ length: 16 }, () => Math.floor(Math.random() * 256).toString(16).padStart(2, '0')).join('');
+            const request: AttestationRequest = { challenge };
+
+            log(`Requesting attestation with challenge: ${challenge}`);
+
+            const response = await fetch('/api/tee-proxy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    endpoint: 'get_attestation',
+                    payload: request,
+                }),
+            });
+
+            const data = await response.json();
+
+            if (data.response?.data) {
+                const attData: AttestationResponse = data.response.data;
+                log(`✅ Attestation Received! Length: ${attData.attestation_doc.length}`);
+                log(`Doc (truncated): ${attData.attestation_doc.slice(0, 50)}...`);
+            } else {
+                log(`❌ Error: ${JSON.stringify(data.error || data)}`);
+            }
+        } catch (err: any) {
+            log(`❌ Error: ${err.message}`);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-zinc-900 text-white p-8">
             <h1 className="text-3xl font-bold mb-6">🧪 Integration Test Page</h1>
@@ -494,6 +531,13 @@ export default function TestPage() {
                         className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg font-semibold disabled:opacity-50"
                     >
                         5. Resolve Market
+                    </button>
+                    <button
+                        onClick={testAttestation}
+                        disabled={loading}
+                        className="bg-cyan-600 hover:bg-cyan-700 px-4 py-2 rounded-lg font-semibold disabled:opacity-50"
+                    >
+                        6. Get Attestation
                     </button>
                     <button
                         onClick={fetchUserData}

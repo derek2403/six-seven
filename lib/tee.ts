@@ -84,3 +84,11 @@ export interface ResolveResponse {
     payouts: Payout[];
     total_payout: number;
 }
+
+export interface AttestationRequest {
+    challenge: string; // Hex string or just bytes
+}
+
+export interface AttestationResponse {
+    attestation_doc: string; // Base64 encoded
+}
