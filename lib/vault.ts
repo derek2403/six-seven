@@ -10,12 +10,20 @@ export interface CoinData {
 }
 
 /**
- * Vault statistics parsed from the vault object
+ * Vault statistics parsed from the vault object (Global stats)
  */
 export interface VaultStats {
     balance: string;
     deposited: string;
     withdrawable: string;
+}
+
+/**
+ * User Account data parsed from the vault's accounts table
+ */
+export interface UserAccountData {
+    deposited_amount: string;
+    withdrawable_amount: string;
 }
 
 /**
@@ -45,6 +53,47 @@ export const parseVaultStats = (vaultData: {
             deposited: fields.total_deposited || '0',
             withdrawable: String(BigInt(fields.total_deposited || '0') - BigInt(fields.total_withdrawn || '0')),
         };
+    }
+    return null;
+};
+
+/**
+ * Parse user account data from the dynamic field object
+ * @param accountData - Raw account data from Sui client
+ * @returns Parsed user account data or null if invalid
+ */
+export const parseUserAccountData = (accountData: {
+    data?: {
+        content?: {
+            fields?: {
+                value?: {
+                    fields?: {
+                        deposited_amount?: string;
+                        withdrawable_amount?: string;
+                    }
+                }
+            };
+        };
+    };
+} | null): UserAccountData | null => {
+    if (accountData?.data?.content && 'fields' in accountData.data.content) {
+        // The table stores values, so we look for the value field
+        // Structure: DynamicField { name: address, value: UserAccount { ... } }
+        const fields = accountData.data.content.fields as {
+            value?: {
+                fields?: {
+                    deposited_amount: string;
+                    withdrawable_amount: string;
+                }
+            }
+        };
+
+        if (fields.value?.fields) {
+            return {
+                deposited_amount: fields.value.fields.deposited_amount || '0',
+                withdrawable_amount: fields.value.fields.withdrawable_amount || '0',
+            };
+        }
     }
     return null;
 };
