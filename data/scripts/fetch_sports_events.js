@@ -29,7 +29,10 @@ async function fetchEvents() {
                 event.title.includes("KHL: Torpedo vs. Shanghai Dragons") ||
                 event.title.includes("AHL: San Diego Gulls vs. Tucson Roadrunners") ||
                 event.title.includes("LoL: Invictus Gaming vs Top Esports") ||
-                event.title.includes("LoL: LNG Esports vs LGD Gaming")) {
+                event.title.includes("LoL: LNG Esports vs LGD Gaming") ||
+                event.title.includes("AHL: Colorado Eagles vs. Bakersfield Condors") ||
+                event.title.includes("SHL: Froelunda HC vs. Skellefteaa") ||
+                event.title.includes("AHL: Chicago Wolves vs. Cleveland Monsters")) {
                 return false;
             }
 

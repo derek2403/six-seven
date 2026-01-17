@@ -68,12 +68,23 @@ const EventCard = ({ event }: { event: any }) => {
                                 <div className={`flex w-full ${outcomes.some((o: string) => o.length > 20) ? 'flex-col space-y-2' : 'space-x-1'}`}>
                                     {outcomes.map((outcome: string, idx: number) => {
                                         const price = prices && prices[idx] ? Math.round(parseFloat(prices[idx]) * 100) : 0;
-                                        const isYesOrUp = outcome === 'Yes' || outcome === 'Up';
-                                        const isNoOrDown = outcome === 'No' || outcome === 'Down';
+                                        const isYesOrUpOrOver = outcome === 'Yes' || outcome === 'Up' || outcome === 'Over';
+                                        const isNoOrDownOrUnder = outcome === 'No' || outcome === 'Down' || outcome === 'Under';
 
                                         let colorClass = "bg-gray-50 hover:bg-gray-100 text-gray-700";
-                                        if (isYesOrUp) colorClass = "bg-emerald-50 hover:bg-emerald-100 text-emerald-700";
-                                        if (isNoOrDown) colorClass = "bg-red-50 hover:bg-red-100 text-red-700";
+
+                                        if (isYesOrUpOrOver) {
+                                            colorClass = "bg-emerald-50 hover:bg-emerald-100 text-emerald-700";
+                                        } else if (isNoOrDownOrUnder) {
+                                            colorClass = "bg-red-50 hover:bg-red-100 text-red-700";
+                                        } else if (outcomes.length === 2) {
+                                            // Team colors for 2-outcome markets (excluding Yes/No/Over/Under)
+                                            if (idx === 0) {
+                                                colorClass = "bg-blue-50 hover:bg-blue-100 text-blue-700";
+                                            } else {
+                                                colorClass = "bg-amber-50 hover:bg-amber-100 text-amber-700";
+                                            }
+                                        }
 
                                         return (
                                             <button key={idx} className={`flex-1 ${colorClass} text-sm font-medium py-1.5 px-3 rounded transition-colors flex justify-between items-center w-full`}>
@@ -131,8 +142,8 @@ export default function DataPage() {
                                     key={filter}
                                     onClick={() => setActiveFilter(filter as any)}
                                     className={`font-medium cursor-pointer transition-colors ${activeFilter === filter
-                                            ? 'text-gray-900 font-bold'
-                                            : 'text-gray-500 hover:text-gray-900'
+                                        ? 'text-gray-900 font-bold'
+                                        : 'text-gray-500 hover:text-gray-900'
                                         }`}
                                 >
                                     {filter}
