@@ -73,39 +73,31 @@ const EventCard = ({ event }: { event: any }) => {
                         const outcomes = safeParse(market.outcomes);
                         const prices = safeParse(market.outcomePrices);
 
-                        // If it's a simple Yes/No, we might just show the buttons.
-                        // If it's a multi-outcome, we list them.
-                        // For now, assume Yes/No structure as per JSON snippet.
-
                         return (
                             <div key={market.id} className="flex items-center justify-between space-x-2">
-                                {/* If there are multiple markets, maybe show the question or outcome name? 
-                     For the "Portugal" example, the event title is "Portugal Presidential Election", 
-                     and rows are "Antonio Jose...", "Joao Cotrim...". 
-                     This implies the rows are the markets or outcomes.
-                 */}
                                 {event.markets.length > 1 && (
                                     <span className="text-sm text-gray-700 font-medium truncate flex-1">
                                         {market.groupItemTitle || market.question}
-                                        {/* The JSON doesn't clearly show 'groupItemTitle' in the snippet, but 'question' is there. 
-                         However, 'question' is often the full question. 
-                         Let's try to be smart. If multiple markets, use the market question? 
-                         Or maybe these are just outcomes of one market? 
-                         The JSON shows "markets": [{...}] array. 
-                         Let's just display the Yes/No buttons for the market.
-                     */}
                                     </span>
                                 )}
 
                                 <div className="flex space-x-1 w-full">
-                                    <button className="flex-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-sm font-medium py-1.5 px-3 rounded transition-colors flex justify-between items-center">
-                                        <span>Yes</span>
-                                        <span>{Math.round(parseFloat(prices[0] || '0') * 100)}%</span>
-                                    </button>
-                                    <button className="flex-1 bg-red-50 hover:bg-red-100 text-red-700 text-sm font-medium py-1.5 px-3 rounded transition-colors flex justify-between items-center">
-                                        <span>No</span>
-                                        <span>{Math.round(parseFloat(prices[1] || '0') * 100)}%</span>
-                                    </button>
+                                    {outcomes.map((outcome: string, idx: number) => {
+                                        const price = prices && prices[idx] ? Math.round(parseFloat(prices[idx]) * 100) : 0;
+                                        const isYesOrUp = outcome === 'Yes' || outcome === 'Up';
+                                        const isNoOrDown = outcome === 'No' || outcome === 'Down';
+
+                                        let colorClass = "bg-gray-50 hover:bg-gray-100 text-gray-700";
+                                        if (isYesOrUp) colorClass = "bg-emerald-50 hover:bg-emerald-100 text-emerald-700";
+                                        if (isNoOrDown) colorClass = "bg-red-50 hover:bg-red-100 text-red-700";
+
+                                        return (
+                                            <button key={idx} className={`flex-1 ${colorClass} text-sm font-medium py-1.5 px-3 rounded transition-colors flex justify-between items-center`}>
+                                                <span className="truncate mr-1">{outcome}</span>
+                                                <span>{price}%</span>
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         );
