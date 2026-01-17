@@ -46,25 +46,36 @@ export default function TestPage() {
             log(`Wallet USDC: ${(Number(walletBalance) / 1_000_000).toFixed(2)}`);
 
             // Get vault balance (via dynamic field)
-            const ledgerFields = await client.getDynamicFields({
-                parentId: VAULT_CONFIG.LEDGER_ID,
+            // 1. Get Ledger Object to find the accounts table ID
+            const ledgerObj = await client.getObject({
+                id: VAULT_CONFIG.LEDGER_ID,
+                options: { showContent: true }
             });
-            const userField = ledgerFields.data.find(f =>
-                (f.name as any).value === account.address
-            );
-            if (userField) {
-                const fieldObj = await client.getObject({
-                    id: userField.objectId,
-                    options: { showContent: true },
+
+            const accountsTableId = ledgerObj.data?.content && 'fields' in ledgerObj.data.content
+                ? (ledgerObj.data.content.fields as any).accounts?.fields?.id?.id
+                : null;
+
+            if (accountsTableId) {
+                // 2. Query the user's account from the table using Dynamic Field
+                const userAccountObj = await client.getDynamicFieldObject({
+                    parentId: accountsTableId,
+                    name: {
+                        type: 'address',
+                        value: account.address,
+                    }
                 });
-                const userData = parseUserAccountData(fieldObj);
+
+                const userData = parseUserAccountData(userAccountObj);
                 if (userData) {
                     setVaultBalance(userData.withdrawable_amount);
                     log(`Vault Balance: ${(Number(userData.withdrawable_amount) / 1_000_000).toFixed(2)} USDC`);
+                } else {
+                    setVaultBalance('0');
+                    log('No vault account found');
                 }
             } else {
-                setVaultBalance('0');
-                log('No vault account found');
+                log('Could not find accounts table in Ledger');
             }
 
             // Get World data and pools
@@ -349,7 +360,7 @@ export default function TestPage() {
                 {account ? (
                     <div>
                         <p className="text-green-400">✅ Connected: {account.address.slice(0, 10)}...</p>
-                        <p className="text-zinc-400">Vault Balance: {(Number(vaultBalance) / 1_000_000).toFixed(2)} USDC</p>
+                        <p className="text-zinc-400">User Balance: {(Number(vaultBalance) / 1_000_000).toFixed(2)} USDC</p>
                     </div>
                 ) : (
                     <p className="text-red-400">❌ Wallet not connected</p>
