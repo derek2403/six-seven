@@ -3,7 +3,7 @@
 import React from "react";
 import { Line, LineChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
 import { Trophy, Clock, Settings, SlidersHorizontal, ChevronDown, Shuffle, ArrowUpDown } from "lucide-react";
-import { COMBINED_CHART_DATA, COMBINED_MARKETS } from "@/lib/mock/combined-markets";
+import { CombinedChartPoint, CombinedMarketItem, COMBINED_CHART_DATA, COMBINED_MARKETS } from "@/lib/mock/combined-markets";
 import Market3DView from "./Market3DView";
 
 
@@ -63,8 +63,8 @@ const CustomDot = (props: any) => {
     return null;
 };
 
-const OutcomeSlider = ({ selectedMarkets, currentValues }: { selectedMarkets: Record<string, boolean>; currentValues: Record<string, number> }) => {
-    const activeMarkets = COMBINED_MARKETS.filter(m => selectedMarkets[m.id]);
+const OutcomeSlider = ({ selectedMarkets, currentValues, markets }: { selectedMarkets: Record<string, boolean>; currentValues: Record<string, number>; markets: CombinedMarketItem[] }) => {
+    const activeMarkets = markets.filter(m => selectedMarkets[m.id]);
 
     // Sort markets by value to determine clumping
     const sortedMarkets = [...activeMarkets].sort((a, b) => currentValues[a.id] - currentValues[b.id]);
@@ -315,8 +315,8 @@ const ConfusionMatrix = ({ selectedMarkets, marketSelections, onMarketSelections
 
     if (!topMarketId || !leftMarketId) return null;
 
-    const mTop = COMBINED_MARKETS.find(m => m.id === topMarketId)!;
-    const mLeft = COMBINED_MARKETS.find(m => m.id === leftMarketId)!;
+    const mTop = markets.find(m => m.id === topMarketId)!;
+    const mLeft = markets.find(m => m.id === leftMarketId)!;
 
     const mTopName = MARKET_NAMES[`value${mTop.id.slice(1)}`];
     const mLeftName = MARKET_NAMES[`value${mLeft.id.slice(1)}`];
@@ -596,19 +596,24 @@ const ConfusionMatrix = ({ selectedMarkets, marketSelections, onMarketSelections
 type MarketSelection = "yes" | "no" | "any" | null;
 
 interface MarketCombinedChartProps {
+    // Optional for backward compatibility (crypto passes these, Iran doesn't)
+    data?: CombinedChartPoint[];
+    markets?: CombinedMarketItem[];
     selectedMarkets: Record<string, boolean>;
     view: string;
-    marketSelections: Record<string, MarketSelection>;
-    onMarketSelectionsChange: (selections: Record<string, MarketSelection>) => void;
-    focusedMarket: string | null;
-    onFocusedMarketChange: (marketId: string | null) => void;
+    // New props for Iran (optional for crypto backward compatibility)
+    marketSelections?: Record<string, MarketSelection>;
+    onMarketSelectionsChange?: (selections: Record<string, MarketSelection>) => void;
+    focusedMarket?: string | null;
+    onFocusedMarketChange?: (marketId: string | null) => void;
 }
 
-export function MarketCombinedChart({ selectedMarkets, view, marketSelections, onMarketSelectionsChange, focusedMarket, onFocusedMarketChange }: MarketCombinedChartProps) {
+export function MarketCombinedChart({ data, selectedMarkets, view, marketSelections, onMarketSelectionsChange, focusedMarket, onFocusedMarketChange }: MarketCombinedChartProps) {
     const selectedCount = Object.values(selectedMarkets).filter(Boolean).length;
 
     // Handle line click to focus/unfocus a market
     const handleLineClick = (marketId: string) => {
+        if (!onFocusedMarketChange) return;
         if (focusedMarket === marketId) {
             // Clicking same line unfocuses
             onFocusedMarketChange(null);
@@ -637,7 +642,7 @@ export function MarketCombinedChart({ selectedMarkets, view, marketSelections, o
                 {view === "Default" && (
                     <div className="h-[400px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={COMBINED_CHART_DATA} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+                            <LineChart data={data || COMBINED_CHART_DATA} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
                                 <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#e5e7eb" />
                                 <XAxis
                                     dataKey="date"
@@ -673,7 +678,7 @@ export function MarketCombinedChart({ selectedMarkets, view, marketSelections, o
                                         strokeWidth={2}
                                         dot={(props: any) => {
                                             const { key, ...rest } = props;
-                                            return <CustomDot key={key} {...rest} color="#60a5fa" lastIndex={COMBINED_CHART_DATA.length - 1} />;
+                                            return <CustomDot key={key} {...rest} color="#60a5fa" lastIndex={(data || COMBINED_CHART_DATA).length - 1} />;
                                         }}
                                         activeDot={<CustomActiveDot />}
                                         isAnimationActive={false}
@@ -687,7 +692,7 @@ export function MarketCombinedChart({ selectedMarkets, view, marketSelections, o
                                         strokeWidth={2}
                                         dot={(props: any) => {
                                             const { key, ...rest } = props;
-                                            return <CustomDot key={key} {...rest} color="#2563eb" lastIndex={COMBINED_CHART_DATA.length - 1} />;
+                                            return <CustomDot key={key} {...rest} color="#2563eb" lastIndex={(data || COMBINED_CHART_DATA).length - 1} />;
                                         }}
                                         activeDot={<CustomActiveDot />}
                                         isAnimationActive={false}
@@ -701,7 +706,7 @@ export function MarketCombinedChart({ selectedMarkets, view, marketSelections, o
                                         strokeWidth={2}
                                         dot={(props: any) => {
                                             const { key, ...rest } = props;
-                                            return <CustomDot key={key} {...rest} color="#facc15" lastIndex={COMBINED_CHART_DATA.length - 1} />;
+                                            return <CustomDot key={key} {...rest} color="#facc15" lastIndex={(data || COMBINED_CHART_DATA).length - 1} />;
                                         }}
                                         activeDot={<CustomActiveDot />}
                                         isAnimationActive={false}
@@ -836,7 +841,7 @@ export function MarketCombinedChart({ selectedMarkets, view, marketSelections, o
                     </div>
                 )}
 
-                {view === "2D" && (
+                {view === "2D" && marketSelections && onMarketSelectionsChange && (
                     <ConfusionMatrix
                         selectedMarkets={selectedMarkets}
                         marketSelections={marketSelections}
@@ -844,7 +849,7 @@ export function MarketCombinedChart({ selectedMarkets, view, marketSelections, o
                     />
                 )}
 
-                {view === "3D" && (
+                {view === "3D" && marketSelections && onMarketSelectionsChange && (
                     <div className="flex flex-col py-4">
                         <Market3DView
                             marketSelections={marketSelections}

@@ -1,11 +1,12 @@
 import { useRouter } from 'next/router';
 import { CombinedMarketList } from "@/components/market/CombinedMarketList";
+import { CryptoMarketChart } from "@/components/market/CryptoMarketChart";
 import { MarketTimeFilter } from "@/components/market/MarketTimeFilter";
 import { MarketLegend } from "@/components/market/MarketLegend";
 import { MarketCombinedChart } from "@/components/market/MarketCombinedChart";
 import { TradeCard } from "@/components/market/TradeCard";
-import { COMBINED_MARKETS } from "@/lib/mock/combined-markets";
-import React from 'react';
+import { MARKET_DATA, DEFAULT_MARKET_DATA } from "@/lib/mock/combined-markets";
+import React, { useEffect, useMemo } from 'react';
 
 type MarketSelection = "yes" | "no" | "any" | null;
 
@@ -13,9 +14,85 @@ export default function MarketPage() {
     const router = useRouter();
     const { slug } = router.query;
 
-    const [selectedMarkets, setSelectedMarkets] = React.useState<Record<string, boolean>>(
-        Object.fromEntries(COMBINED_MARKETS.map(m => [m.id, true]))
-    );
+    // Determine which data to use based on slug
+    const marketData = useMemo(() => {
+        if (!slug || typeof slug !== 'string') return DEFAULT_MARKET_DATA;
+        const key = slug.toLowerCase();
+        return MARKET_DATA[key] || DEFAULT_MARKET_DATA;
+    }, [slug]);
+
+    // Initialize selected markets when marketData changes
+    const [selectedMarkets, setSelectedMarkets] = React.useState<Record<string, boolean>>({});
+
+    // Store live prices: Coin Address -> { price, change24h }
+    interface PriceData { price: number; change24h: number; }
+    const [liveData, setLiveData] = React.useState<Record<string, PriceData>>({});
+
+    // Map IDs to Noodles Coin Addresses for Crypto
+    const CRYPTO_COIN_MAP: Record<string, string> = {
+        "m1": "0x0041f9f9344cac094454cd574e333c4fdb132d7bcc9379bcd4aab485b2a63942::wbtc::WBTC", // Bitcoin
+        "m2": "0xaf8cd5edc19c4512f4259f0bee101a40d41ebed738ade5874359610ef8eeced5::coin::COIN", // Ethereum
+        "m3": "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI", // Sui
+    };
+
+    // Fetch Prices Effect
+    useEffect(() => {
+        if (slug !== 'crypto') return;
+
+        const fetchPrices = async () => {
+            try {
+                const coins = Object.values(CRYPTO_COIN_MAP);
+                const res = await fetch(`/api/integrations/noodles?coins=${encodeURIComponent(coins.join(','))}`);
+                const data = await res.json();
+
+                if (data.data && Array.isArray(data.data)) {
+                    setLiveData(prev => {
+                        const updated = { ...prev };
+                        data.data.forEach((item: any) => {
+                            // Only update if we have a valid price
+                            if (item.coin && item.price != null && !isNaN(item.price)) {
+                                updated[item.coin] = {
+                                    price: item.price,
+                                    change24h: item.price_change_24h || prev[item.coin]?.change24h || 0
+                                };
+                            }
+                        });
+                        return updated;
+                    });
+                }
+            } catch (e) {
+                console.error("Failed to fetch prices", e);
+            }
+        };
+
+        fetchPrices();
+        const interval = setInterval(fetchPrices, 1000);
+        return () => clearInterval(interval);
+    }, [slug]);
+
+    useEffect(() => {
+        if (marketData) {
+            setSelectedMarkets(
+                Object.fromEntries(marketData.markets.map(m => [m.id, true]))
+            );
+        }
+    }, [marketData]);
+
+    // Merge live prices into markets
+    const displayMarkets = useMemo(() => {
+        if (slug !== 'crypto') return marketData.markets;
+
+        return marketData.markets.map(m => {
+            const coinId = CRYPTO_COIN_MAP[m.id];
+            const data = coinId ? liveData[coinId] : undefined;
+            return {
+                ...m,
+                livePrice: data?.price,
+                priceChange24h: data?.change24h
+            };
+        });
+    }, [marketData, liveData, slug]);
+
     const [view, setView] = React.useState("Default");
 
     // Market selections for Order Ticket (lifted state)
@@ -89,6 +166,9 @@ export default function MarketPage() {
                     {/* Left Column: All Content */}
                     <div className="flex-1 min-w-0">
                         <CombinedMarketList
+                            title={marketData.title}
+                            avatar={marketData.avatar}
+                            markets={displayMarkets}
                             selectedMarkets={selectedMarkets}
                             onToggleMarket={toggleMarket}
                         />
@@ -110,31 +190,47 @@ export default function MarketPage() {
 
                         <div className="mt-8">
                             <MarketLegend
+                                items={marketData.legendItems}
                                 selectedMarkets={selectedMarkets}
                                 view={view}
                                 onViewChange={setView}
                             />
                         </div>
 
+
+
                         <div className="mt-4">
-                            <MarketCombinedChart
-                                selectedMarkets={selectedMarkets}
-                                view={view}
-                                marketSelections={marketSelections}
-                                onMarketSelectionsChange={setMarketSelections}
-                                focusedMarket={focusedMarket}
-                                onFocusedMarketChange={setFocusedMarket}
-                            />
+                            {slug === 'crypto' ? (
+                                <CryptoMarketChart
+                                    data={marketData.chartData}
+                                    markets={marketData.markets}
+                                    selectedMarkets={selectedMarkets}
+                                    view={view}
+                                />
+                            ) : (
+                                <MarketCombinedChart
+                                    selectedMarkets={selectedMarkets}
+                                    view={view}
+                                    marketSelections={marketSelections}
+                                    onMarketSelectionsChange={setMarketSelections}
+                                    focusedMarket={focusedMarket}
+                                    onFocusedMarketChange={setFocusedMarket}
+                                />
+                            )}
                         </div>
                     </div>
 
                     {/* Right Side: Trade Card */}
                     <div className="w-full md:w-[400px] flex-shrink-0 sticky top-20">
-                        <TradeCard
-                            marketSelections={marketSelections}
-                            onMarketSelectionsChange={setMarketSelections}
-                            focusedMarket={focusedMarket}
-                        />
+                        {slug === 'crypto' ? (
+                            <TradeCard market={marketData.markets[0]} />
+                        ) : (
+                            <TradeCard
+                                marketSelections={marketSelections}
+                                onMarketSelectionsChange={setMarketSelections}
+                                focusedMarket={focusedMarket}
+                            />
+                        )}
                         <p className="mt-4 text-center text-[13px] text-gray-400 font-medium leading-relaxed">
                             By trading, you agree to the <span className="underline cursor-pointer hover:text-gray-600 transition-colors">Terms of Use.</span>
                         </p>
