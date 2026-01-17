@@ -101,15 +101,15 @@ const IRAN_LEGEND: LegendItem[] = [
 // --- CRYPTO DATA ---
 
 const CRYPTO_MARKETS: CombinedMarketItem[] = [
-    { id: "m1", title: "Bitcoin > $100k by Jan 31?", avatar: "https://cryptologos.cc/logos/bitcoin-btc-logo.png", targetPrice: 100000 },
-    { id: "m2", title: "Ethereum > $4k by Jan 31?", avatar: "https://cryptologos.cc/logos/ethereum-eth-logo.png", targetPrice: 4000 },
-    { id: "m3", title: "Sui > $5 by Jan 31?", avatar: "https://cryptologos.cc/logos/sui-sui-logo.png", targetPrice: 5 },
+    { id: "m1", title: "Bitcoin > $96k in 15 minutes?", avatar: "https://cryptologos.cc/logos/bitcoin-btc-logo.png", targetPrice: 96000 },
+    { id: "m2", title: "Ethereum > $3.4k in 15 minutes?", avatar: "https://cryptologos.cc/logos/ethereum-eth-logo.png", targetPrice: 3400 },
+    { id: "m3", title: "Sui > $1.9 in 15 minutes?", avatar: "https://cryptologos.cc/logos/sui-sui-logo.png", targetPrice: 1.9 },
 ];
 
 const CRYPTO_LEGEND: LegendItem[] = [
-    { label: "Bitcoin > $100k by Jan 31?", value: "65%", color: "#60a5fa" },
-    { label: "Ethereum > $4k by Jan 31?", value: "42%", color: "#2563eb" },
-    { label: "Sui > $5 by Jan 31?", value: "88%", color: "#facc15" },
+    { label: "Bitcoin > $96k in 15 minutes?", value: "65%", color: "#60a5fa" },
+    { label: "Ethereum > $3.4k in 15 minutes?", value: "42%", color: "#2563eb" },
+    { label: "Sui > $1.9 in 15 minutes?", value: "88%", color: "#facc15" },
 ];
 
 // --- EXPORTED DICTIONARY ---
