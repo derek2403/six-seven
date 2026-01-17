@@ -582,10 +582,23 @@ interface MarketCombinedChartProps {
     view: string;
     marketSelections: Record<string, MarketSelection>;
     onMarketSelectionsChange: (selections: Record<string, MarketSelection>) => void;
+    focusedMarket: string | null;
+    onFocusedMarketChange: (marketId: string | null) => void;
 }
 
-export function MarketCombinedChart({ selectedMarkets, view, marketSelections, onMarketSelectionsChange }: MarketCombinedChartProps) {
+export function MarketCombinedChart({ selectedMarkets, view, marketSelections, onMarketSelectionsChange, focusedMarket, onFocusedMarketChange }: MarketCombinedChartProps) {
     const selectedCount = Object.values(selectedMarkets).filter(Boolean).length;
+
+    // Handle line click to focus/unfocus a market
+    const handleLineClick = (marketId: string) => {
+        if (focusedMarket === marketId) {
+            // Clicking same line unfocuses
+            onFocusedMarketChange(null);
+        } else {
+            // Focus on this market
+            onFocusedMarketChange(marketId);
+        }
+    };
 
     // Default percentages based on your prompt (or mock)
     const currentValues: Record<string, number> = {
@@ -684,14 +697,86 @@ export function MarketCombinedChart({ selectedMarkets, view, marketSelections, o
                 {view === "Table" && <WorldTable />}
 
                 {view === "1D" && (
-                    <div className="flex flex-col py-8 pb-12">
-                        <OutcomeSlider
-                            selectedMarkets={selectedMarkets}
-                            currentValues={currentValues}
-                        />
-                        <p className="text-[11px] text-gray-400 mt-4 text-center italic font-medium px-4">
-                            Probabilities derived from the joint-outcome AMM world table.
-                        </p>
+                    <div className="h-[400px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={COMBINED_CHART_DATA} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+                                <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#e5e7eb" />
+                                <XAxis
+                                    dataKey="date"
+                                    tickLine={false}
+                                    axisLine={false}
+                                    tick={{ fill: "#9ca3af", fontSize: 12 }}
+                                    minTickGap={60}
+                                    tickFormatter={(val) => {
+                                        const [month] = val.split(' ');
+                                        return month;
+                                    }}
+                                />
+                                <YAxis
+                                    orientation="right"
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fill: "#9ca3af", fontSize: 12 }}
+                                    tickFormatter={(val) => `${val}%`}
+                                    domain={[0, 100]}
+                                    ticks={[0, 25, 50, 75, 100]}
+                                />
+                                <Tooltip
+                                    content={<CustomTooltip />}
+                                    cursor={{ stroke: '#e5e7eb', strokeWidth: 1 }}
+                                    coordinate={{ y: 0 }}
+                                    position={{ y: 20 }}
+                                />
+                                {selectedMarkets.m1 && (
+                                    <Line
+                                        type="linear"
+                                        dataKey="value1"
+                                        stroke={focusedMarket === null || focusedMarket === "m1" ? "#60a5fa" : "#d1d5db"}
+                                        strokeWidth={2}
+                                        dot={(props: any) => {
+                                            const { key, ...rest } = props;
+                                            return <CustomDot key={key} {...rest} color={focusedMarket === null || focusedMarket === "m1" ? "#60a5fa" : "#d1d5db"} lastIndex={COMBINED_CHART_DATA.length - 1} />;
+                                        }}
+                                        activeDot={<CustomActiveDot />}
+                                        isAnimationActive={false}
+                                        onClick={() => handleLineClick("m1")}
+                                        style={{ cursor: 'pointer' }}
+                                    />
+                                )}
+                                {selectedMarkets.m2 && (
+                                    <Line
+                                        type="linear"
+                                        dataKey="value2"
+                                        stroke={focusedMarket === null || focusedMarket === "m2" ? "#2563eb" : "#d1d5db"}
+                                        strokeWidth={2}
+                                        dot={(props: any) => {
+                                            const { key, ...rest } = props;
+                                            return <CustomDot key={key} {...rest} color={focusedMarket === null || focusedMarket === "m2" ? "#2563eb" : "#d1d5db"} lastIndex={COMBINED_CHART_DATA.length - 1} />;
+                                        }}
+                                        activeDot={<CustomActiveDot />}
+                                        isAnimationActive={false}
+                                        onClick={() => handleLineClick("m2")}
+                                        style={{ cursor: 'pointer' }}
+                                    />
+                                )}
+                                {selectedMarkets.m3 && (
+                                    <Line
+                                        type="linear"
+                                        dataKey="value3"
+                                        stroke={focusedMarket === null || focusedMarket === "m3" ? "#facc15" : "#d1d5db"}
+                                        strokeWidth={2}
+                                        dot={(props: any) => {
+                                            const { key, ...rest } = props;
+                                            return <CustomDot key={key} {...rest} color={focusedMarket === null || focusedMarket === "m3" ? "#facc15" : "#d1d5db"} lastIndex={COMBINED_CHART_DATA.length - 1} />;
+                                        }}
+                                        activeDot={<CustomActiveDot />}
+                                        isAnimationActive={false}
+                                        onClick={() => handleLineClick("m3")}
+                                        style={{ cursor: 'pointer' }}
+                                    />
+                                )}
+                            </LineChart>
+                        </ResponsiveContainer>
                     </div>
                 )}
 

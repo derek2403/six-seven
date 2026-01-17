@@ -12,9 +12,10 @@ type MarketSelection = "yes" | "no" | "any" | null;
 interface TradeCardProps {
     marketSelections: Record<string, MarketSelection>;
     onMarketSelectionsChange: (selections: Record<string, MarketSelection>) => void;
+    focusedMarket: string | null;
 }
 
-export function TradeCard({ marketSelections, onMarketSelectionsChange }: TradeCardProps) {
+export function TradeCard({ marketSelections, onMarketSelectionsChange, focusedMarket }: TradeCardProps) {
     const [tab, setTab] = React.useState<"buy" | "sell">("buy");
     const [amount, setAmount] = React.useState("");
     const [isFocused, setIsFocused] = React.useState(false);
@@ -54,56 +55,67 @@ export function TradeCard({ marketSelections, onMarketSelectionsChange }: TradeC
 
             {/* Markets List with Yes/No/Any buttons */}
             <div className="space-y-3 mb-4">
-                {COMBINED_MARKETS.map((market) => (
-                    <div key={market.id} className="flex flex-col gap-2">
-                        {/* Avatar and Title Row */}
-                        <div className="flex items-center gap-2.5">
-                            <div className="relative h-8 w-8 flex-shrink-0">
-                                <Image
-                                    src={market.avatar}
-                                    alt={market.title}
-                                    fill
-                                    unoptimized
-                                    className="rounded-full object-cover border border-gray-100"
-                                />
-                            </div>
-                            <p className="text-[13px] font-medium text-gray-800 line-clamp-2 leading-tight flex-1">
-                                {market.title}
-                            </p>
-                        </div>
+                {COMBINED_MARKETS.map((market) => {
+                    // Only show market if it's focused or no market is focused
+                    const isMarketActive = focusedMarket === null || focusedMarket === market.id;
 
-                        {/* Yes/No/Any buttons below title */}
-                        <div className="flex gap-2 pl-10">
-                            <button
-                                onClick={() => handleSelection(market.id, "yes")}
-                                className={`flex-1 px-3 py-2 rounded-lg text-[13px] font-bold transition-all ${marketSelections[market.id] === "yes"
-                                    ? "bg-[#22c55e] text-white shadow-md"
-                                    : "bg-[#22c55e]/10 text-[#22c55e] hover:bg-[#22c55e]/20"
-                                    }`}
-                            >
-                                Yes
-                            </button>
-                            <button
-                                onClick={() => handleSelection(market.id, "no")}
-                                className={`flex-1 px-3 py-2 rounded-lg text-[13px] font-bold transition-all ${marketSelections[market.id] === "no"
-                                    ? "bg-[#ef4444] text-white shadow-md"
-                                    : "bg-[#ef4444]/10 text-[#ef4444] hover:bg-[#ef4444]/20"
-                                    }`}
-                            >
-                                No
-                            </button>
-                            <button
-                                onClick={() => handleSelection(market.id, "any")}
-                                className={`flex-1 px-3 py-2 rounded-lg text-[13px] font-bold transition-all ${marketSelections[market.id] === "any"
-                                    ? "bg-[#3b82f6] text-white shadow-md"
-                                    : "bg-[#3b82f6]/10 text-[#3b82f6] hover:bg-[#3b82f6]/20"
-                                    }`}
-                            >
-                                Any
-                            </button>
+                    return (
+                        <div key={market.id} className="flex flex-col gap-2" style={{ opacity: isMarketActive ? 1 : 0.4 }}>
+                            {/* Avatar and Title Row */}
+                            <div className="flex items-center gap-2.5">
+                                <div className="relative h-8 w-8 flex-shrink-0">
+                                    <Image
+                                        src={market.avatar}
+                                        alt={market.title}
+                                        fill
+                                        unoptimized
+                                        className="rounded-full object-cover border border-gray-100"
+                                    />
+                                </div>
+                                <p className="text-[13px] font-medium text-gray-800 line-clamp-2 leading-tight flex-1">
+                                    {market.title}
+                                </p>
+                            </div>
+
+                            {/* Yes/No/Any buttons below title */}
+                            <div className="flex gap-2 pl-10">
+                                <button
+                                    onClick={() => handleSelection(market.id, "yes")}
+                                    disabled={!isMarketActive}
+                                    className={`flex-1 px-3 py-2 rounded-lg text-[13px] font-bold transition-all ${!isMarketActive ? "bg-gray-100 text-gray-400 cursor-not-allowed" :
+                                        marketSelections[market.id] === "yes"
+                                            ? "bg-[#22c55e] text-white shadow-md"
+                                            : "bg-[#22c55e]/10 text-[#22c55e] hover:bg-[#22c55e]/20"
+                                        }`}
+                                >
+                                    Yes
+                                </button>
+                                <button
+                                    onClick={() => handleSelection(market.id, "no")}
+                                    disabled={!isMarketActive}
+                                    className={`flex-1 px-3 py-2 rounded-lg text-[13px] font-bold transition-all ${!isMarketActive ? "bg-gray-100 text-gray-400 cursor-not-allowed" :
+                                        marketSelections[market.id] === "no"
+                                            ? "bg-[#ef4444] text-white shadow-md"
+                                            : "bg-[#ef4444]/10 text-[#ef4444] hover:bg-[#ef4444]/20"
+                                        }`}
+                                >
+                                    No
+                                </button>
+                                <button
+                                    onClick={() => handleSelection(market.id, "any")}
+                                    disabled={!isMarketActive}
+                                    className={`flex-1 px-3 py-2 rounded-lg text-[13px] font-bold transition-all ${!isMarketActive ? "bg-gray-100 text-gray-400 cursor-not-allowed" :
+                                        marketSelections[market.id] === "any"
+                                            ? "bg-[#3b82f6] text-white shadow-md"
+                                            : "bg-[#3b82f6]/10 text-[#3b82f6] hover:bg-[#3b82f6]/20"
+                                        }`}
+                                >
+                                    Any
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                ))}
+                    )
+                })}
             </div>
 
             {/* Amount Input */}

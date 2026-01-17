@@ -25,6 +25,9 @@ export default function MarketPage() {
         m3: null,
     });
 
+    // Focused market for line selection (only one market active at a time)
+    const [focusedMarket, setFocusedMarket] = React.useState<string | null>(null);
+
     const toggleMarket = (id: string) => {
         setSelectedMarkets(prev => ({
             ...prev,
@@ -97,6 +100,8 @@ export default function MarketPage() {
                                 view={view}
                                 marketSelections={marketSelections}
                                 onMarketSelectionsChange={setMarketSelections}
+                                focusedMarket={focusedMarket}
+                                onFocusedMarketChange={setFocusedMarket}
                             />
                         </div>
                     </div>
@@ -106,6 +111,7 @@ export default function MarketPage() {
                         <TradeCard
                             marketSelections={marketSelections}
                             onMarketSelectionsChange={setMarketSelections}
+                            focusedMarket={focusedMarket}
                         />
                         <p className="mt-4 text-center text-[13px] text-gray-400 font-medium leading-relaxed">
                             By trading, you agree to the <span className="underline cursor-pointer hover:text-gray-600 transition-colors">Terms of Use.</span>
