@@ -13,9 +13,10 @@ interface TradeCardProps {
     marketSelections: Record<string, MarketSelection>;
     onMarketSelectionsChange: (selections: Record<string, MarketSelection>) => void;
     focusedMarket: string | null;
+    onTrade?: (amount: string, outcome: number) => Promise<void>;
 }
 
-export function TradeCard({ marketSelections, onMarketSelectionsChange, focusedMarket }: TradeCardProps) {
+export function TradeCard({ marketSelections, onMarketSelectionsChange, focusedMarket, onTrade }: TradeCardProps) {
     const [tab, setTab] = React.useState<"buy" | "sell">("buy");
     const [amount, setAmount] = React.useState("");
     const [isFocused, setIsFocused] = React.useState(false);
@@ -158,7 +159,29 @@ export function TradeCard({ marketSelections, onMarketSelectionsChange, focusedM
             </div>
 
             {/* Trade Button */}
-            <Button className="w-full h-11 bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-[16px] font-bold rounded-xl transition-all active:scale-[0.98]">
+            {/* Trade Button */}
+            <Button
+                onClick={() => {
+                    if (!onTrade) return;
+                    // Calculate outcome index
+                    // m1 (Khamenei) -> 4
+                    // m2 (US) -> 2
+                    // m3 (Israel) -> 1
+                    let outcome = 0;
+                    if (marketSelections.m1 === 'yes') outcome += 4;
+                    if (marketSelections.m2 === 'yes') outcome += 2;
+                    if (marketSelections.m3 === 'yes') outcome += 1;
+
+                    // Simple validation: Ensure no 'any' or null if we want precise outcome
+                    // For now we assume if 'no', it adds 0. If 'yes', it adds bit.
+                    // What if 'any'? We might not support 'any' for this specific backend integration yet.
+                    // Let's assume user selects valid Yes/No for all 3 for now, or we default to NO (0) which might be risky.
+
+                    onTrade(amount, outcome);
+                }}
+                disabled={!amount || !onTrade}
+                className="w-full h-11 bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-[16px] font-bold rounded-xl transition-all active:scale-[0.98]"
+            >
                 Trade
             </Button>
         </div>
