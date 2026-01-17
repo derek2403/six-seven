@@ -268,6 +268,9 @@ const ConfusionMatrix = ({ selectedMarkets }: { selectedMarkets: Record<string, 
     const [topMarketId, setTopMarketId] = React.useState<string | null>(null);
     const [leftMarketId, setLeftMarketId] = React.useState<string | null>(null);
 
+    // State for tracking which box is currently shining
+    const [shiningBox, setShiningBox] = React.useState<string | null>(null);
+
     // Sync state with selected markets
     React.useEffect(() => {
         const activeIds = activeMarkets.map(m => m.id);
@@ -355,11 +358,80 @@ const ConfusionMatrix = ({ selectedMarkets }: { selectedMarkets: Record<string, 
         const normalized = maxProb === minProb ? 0.5 : (prob - minProb) / (maxProb - minProb);
         const textColor = normalized > 0.5 ? 'white' : '#1e3a5f';
 
+        const boxId = `${topLabel}${leftLabel}`;
+        const isShining = shiningBox === boxId;
+
+        const handleClick = () => {
+            if (isShining) {
+                setShiningBox(null);
+            } else {
+                setShiningBox(boxId);
+            }
+        };
+
         return (
             <div
-                className="relative w-full h-full flex flex-col items-center justify-center transition-all duration-300 hover:scale-[1.02] hover:shadow-lg cursor-pointer group"
+                className="relative w-full h-full flex flex-col items-center justify-center transition-all duration-300 hover:scale-[1.02] hover:shadow-lg cursor-pointer group overflow-hidden"
                 style={{ backgroundColor: bgColor }}
+                onClick={handleClick}
             >
+                {/* Pulsing glow effect from all 4 sides */}
+                {isShining && (
+                    <>
+                        {/* Top glow */}
+                        <div
+                            className="absolute top-0 left-0 right-0 h-2"
+                            style={{
+                                animation: 'shine-pulse 1s infinite',
+                                background: 'linear-gradient(to bottom, #3b82f6, transparent)'
+                            }}
+                        />
+                        {/* Bottom glow */}
+                        <div
+                            className="absolute bottom-0 left-0 right-0 h-2"
+                            style={{
+                                animation: 'shine-pulse 1s infinite',
+                                background: 'linear-gradient(to top, #3b82f6, transparent)'
+                            }}
+                        />
+                        {/* Left glow */}
+                        <div
+                            className="absolute top-0 bottom-0 left-0 w-2"
+                            style={{
+                                animation: 'shine-pulse 1s infinite',
+                                background: 'linear-gradient(to right, #3b82f6, transparent)'
+                            }}
+                        />
+                        {/* Right glow */}
+                        <div
+                            className="absolute top-0 bottom-0 right-0 w-2"
+                            style={{
+                                animation: 'shine-pulse 1s infinite',
+                                background: 'linear-gradient(to left, #3b82f6, transparent)'
+                            }}
+                        />
+                        {/* Pulsing border */}
+                        <div
+                            className="absolute inset-0 border-2 rounded"
+                            style={{
+                                animation: 'shine-pulse 1s infinite',
+                                borderColor: '#3b82f6',
+                                boxShadow: '0 0 20px rgba(59, 130, 246, 0.8), inset 0 0 20px rgba(59, 130, 246, 0.4)'
+                            }}
+                        />
+                    </>
+                )}
+
+                <style jsx>{`
+                    @keyframes shine-pulse {
+                        0%, 100% {
+                            opacity: 0.3;
+                        }
+                        50% {
+                            opacity: 1;
+                        }
+                    }
+                `}</style>
                 <span
                     className="text-xl font-bold transition-all duration-200 group-hover:scale-110"
                     style={{ color: textColor }}
