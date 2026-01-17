@@ -5,7 +5,7 @@ import { Transaction } from '@mysten/sui/transactions';
 import { PlaceBetRequest, PlaceBetResponse, ResolveRequest, ResolveResponse, AttestationRequest, AttestationResponse, PM_CONFIG } from '../lib/tee';
 import { VAULT_CONFIG, WORLD_CONFIG, USDC_CONFIG } from '../lib/config';
 import { buildMint1000UsdcTransaction, USDC_COIN_TYPE } from '../lib/usdc';
-import { buildDepositTransaction, CoinData, parseUserAccountData } from '../lib/vault';
+import { buildDepositTransaction, buildSetWithdrawableBalanceTransaction, CoinData, parseUserAccountData, LEDGER_ID } from '../lib/vault';
 
 export default function TestPage() {
     const account = useCurrentAccount();
@@ -117,9 +117,61 @@ export default function TestPage() {
     useEffect(() => {
         if (account) {
             fetchUserData();
-            setMaker(account.address); // Default maker to current user for testing
+            // Don't set maker to user address - wait for pool data
         }
     }, [account]);
+
+    // Fetch maker for selected pool from World's maker_registry
+    const fetchMakerForPool = async (targetPoolId: number) => {
+        try {
+            // Get World object to find maker_registry
+            const worldObj = await client.getObject({
+                id: WORLD_CONFIG.WORLD_ID,
+                options: { showContent: true }
+            });
+
+            const makerRegistryId = worldObj.data?.content && 'fields' in worldObj.data.content
+                ? (worldObj.data.content.fields as any).maker_registry?.fields?.id?.id
+                : null;
+
+            if (!makerRegistryId) {
+                console.log('No maker_registry found');
+                return;
+            }
+
+            // Get all entries in maker_registry
+            const fields = await client.getDynamicFields({ parentId: makerRegistryId });
+
+            for (const field of fields.data) {
+                const item = await client.getObject({
+                    id: field.objectId,
+                    options: { showContent: true }
+                });
+
+                if (item.data?.content && 'fields' in item.data.content) {
+                    const content = item.data.content.fields as any;
+                    const makerAddress = field.name.value as string;
+                    const poolIds = content.value as string[];
+
+                    // Check if this maker owns the target pool
+                    if (poolIds.some((pid: string) => parseInt(pid) === targetPoolId)) {
+                        console.log('Found maker for pool', targetPoolId, ':', makerAddress);
+                        setMaker(makerAddress);
+                        return;
+                    }
+                }
+            }
+            console.log('No maker found for pool', targetPoolId);
+        } catch (err) {
+            console.error('Error fetching maker:', err);
+        }
+    };
+
+    // Set maker from maker_registry when poolId changes
+    useEffect(() => {
+        const poolIdNum = parseInt(poolId) || 0;
+        fetchMakerForPool(poolIdNum);
+    }, [poolId, client]);
 
     // Test 1: Mint USDC
     const testMintUsdc = async () => {
@@ -359,6 +411,7 @@ export default function TestPage() {
 
     // Test 5: Resolve Market
     const testResolve = async () => {
+        if (!account) return;
         setLoading(true);
         log('--- TEST: Resolve Market ---');
 
@@ -386,6 +439,51 @@ export default function TestPage() {
                 const resolveResponse: ResolveResponse = data.response.data;
                 log(`✅ Market resolved! ${resolveResponse.payouts.length} winners`);
                 log(`Total payout: ${(resolveResponse.total_payout / 1_000_000).toFixed(2)} USDC`);
+
+                // Credit each winner's vault balance
+                for (const payout of resolveResponse.payouts) {
+                    log(`Crediting ${(payout.amount / 1_000_000).toFixed(2)} USDC to ${payout.user.slice(0, 10)}...`);
+
+                    // Get user's current withdrawable balance
+                    const ledgerDynamicFields = await client.getDynamicFields({
+                        parentId: VAULT_CONFIG.LEDGER_ID,
+                    });
+
+                    // Find user's account in the ledger
+                    let currentWithdrawable = BigInt(0);
+                    for (const field of ledgerDynamicFields.data) {
+                        if (field.name?.value === payout.user) {
+                            const accountObj = await client.getObject({
+                                id: field.objectId,
+                                options: { showContent: true },
+                            });
+                            const accountData = parseUserAccountData(accountObj);
+                            if (accountData) {
+                                currentWithdrawable = BigInt(accountData.withdrawable_amount);
+                            }
+                            break;
+                        }
+                    }
+
+                    const newBalance = currentWithdrawable + BigInt(payout.amount);
+                    log(`Current: ${(Number(currentWithdrawable) / 1_000_000).toFixed(2)} + ${(payout.amount / 1_000_000).toFixed(2)} = ${(Number(newBalance) / 1_000_000).toFixed(2)} USDC`);
+
+                    // Build and execute transaction to set new balance
+                    const tx = buildSetWithdrawableBalanceTransaction(payout.user, newBalance);
+
+                    signAndExecute(
+                        { transaction: tx },
+                        {
+                            onSuccess: (result) => {
+                                log(`✅ Credited! TX: ${result.digest}`);
+                                fetchUserData(); // Refresh balances
+                            },
+                            onError: (err) => {
+                                log(`❌ Credit failed: ${err.message}`);
+                            },
+                        }
+                    );
+                }
             }
         } catch (err: any) {
             log(`❌ Error: ${err.message}`);
