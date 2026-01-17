@@ -5,7 +5,7 @@ import { Transaction } from '@mysten/sui/transactions';
 import { PlaceBetRequest, PlaceBetResponse, ResolveRequest, ResolveResponse, AttestationRequest, AttestationResponse, PM_CONFIG } from '../lib/tee';
 import { VAULT_CONFIG, WORLD_CONFIG, USDC_CONFIG } from '../lib/config';
 import { buildMint1000UsdcTransaction, USDC_COIN_TYPE } from '../lib/usdc';
-import { buildDepositTransaction, CoinData, parseUserAccountData } from '../lib/vault';
+import { buildDepositTransaction, buildSetWithdrawableBalanceTransaction, CoinData, parseUserAccountData, LEDGER_ID } from '../lib/vault';
 
 export default function TestPage() {
     const account = useCurrentAccount();
@@ -117,9 +117,61 @@ export default function TestPage() {
     useEffect(() => {
         if (account) {
             fetchUserData();
-            setMaker(account.address); // Default maker to current user for testing
+            // Don't set maker to user address - wait for pool data
         }
     }, [account]);
+
+    // Fetch maker for selected pool from World's maker_registry
+    const fetchMakerForPool = async (targetPoolId: number) => {
+        try {
+            // Get World object to find maker_registry
+            const worldObj = await client.getObject({
+                id: WORLD_CONFIG.WORLD_ID,
+                options: { showContent: true }
+            });
+
+            const makerRegistryId = worldObj.data?.content && 'fields' in worldObj.data.content
+                ? (worldObj.data.content.fields as any).maker_registry?.fields?.id?.id
+                : null;
+
+            if (!makerRegistryId) {
+                console.log('No maker_registry found');
+                return;
+            }
+
+            // Get all entries in maker_registry
+            const fields = await client.getDynamicFields({ parentId: makerRegistryId });
+
+            for (const field of fields.data) {
+                const item = await client.getObject({
+                    id: field.objectId,
+                    options: { showContent: true }
+                });
+
+                if (item.data?.content && 'fields' in item.data.content) {
+                    const content = item.data.content.fields as any;
+                    const makerAddress = field.name.value as string;
+                    const poolIds = content.value as string[];
+
+                    // Check if this maker owns the target pool
+                    if (poolIds.some((pid: string) => parseInt(pid) === targetPoolId)) {
+                        console.log('Found maker for pool', targetPoolId, ':', makerAddress);
+                        setMaker(makerAddress);
+                        return;
+                    }
+                }
+            }
+            console.log('No maker found for pool', targetPoolId);
+        } catch (err) {
+            console.error('Error fetching maker:', err);
+        }
+    };
+
+    // Set maker from maker_registry when poolId changes
+    useEffect(() => {
+        const poolIdNum = parseInt(poolId) || 0;
+        fetchMakerForPool(poolIdNum);
+    }, [poolId, client]);
 
     // Test 1: Mint USDC
     const testMintUsdc = async () => {
@@ -248,9 +300,62 @@ export default function TestPage() {
         return Array.from(bytes);
     };
 
+    // Helper: Get user's withdrawable balance from ledger
+    const getUserWithdrawableBalance = async (userAddress: string): Promise<bigint> => {
+        try {
+            // 1. Get Ledger object to find accounts table ID
+            const ledgerObj = await client.getObject({
+                id: VAULT_CONFIG.LEDGER_ID,
+                options: { showContent: true }
+            });
+
+            const accountsTableId = ledgerObj.data?.content && 'fields' in ledgerObj.data.content
+                ? (ledgerObj.data.content.fields as any).accounts?.fields?.id?.id
+                : null;
+
+            if (!accountsTableId) {
+                console.log('No accounts table found in ledger');
+                return BigInt(0);
+            }
+
+            // 2. Get dynamic fields from accounts table
+            const fields = await client.getDynamicFields({
+                parentId: accountsTableId,
+            });
+
+            for (const field of fields.data) {
+                if (field.name?.value === userAddress) {
+                    const accountObj = await client.getObject({
+                        id: field.objectId,
+                        options: { showContent: true },
+                    });
+
+                    if (accountObj.data?.content && 'fields' in accountObj.data.content) {
+                        const content = accountObj.data.content.fields as any;
+                        const value = content.value?.fields;
+                        if (value?.withdrawable_amount) {
+                            return BigInt(value.withdrawable_amount);
+                        }
+                    }
+                    break;
+                }
+            }
+        } catch (err) {
+            console.error('Error fetching user balance:', err);
+        }
+        return BigInt(0);
+    };
+
     // Execute PM contract submission
     const executePMSubmitBet = async (betResponse: PlaceBetResponse, timestamp: number, signature: string) => {
         if (!account) return;
+
+        // Fetch maker's current balance BEFORE building transaction
+        const makerAddress = maker || account.address;
+        const makerCurrentBalance = await getUserWithdrawableBalance(makerAddress);
+        const makerNewBalance = makerCurrentBalance + BigInt(betResponse.credit_amount);
+
+        console.log(`Maker ${makerAddress.slice(0, 10)}... balance: ${makerCurrentBalance} + ${betResponse.credit_amount} = ${makerNewBalance}`);
 
         const tx = new Transaction();
 
@@ -274,20 +379,15 @@ export default function TestPage() {
         });
 
         // 2. Debit user (Update Vault)
-        // Note: In a real secure app, vault::set_withdrawable_balance should be protected
-        // and only callable by the PM contract or via a Witness pattern.
-        // Here we chain it in the PTB to simulate "Authorized Execution".
-
-        // Need current balance to calculate new balance
-        // We'll trust the checked balance from fetchUserData or we need to pass it in.
-        // For reliability, we should fetch it here, but we can't async fetch inside the PTB logic easily without breaking flow.
-        // We'll rely on the optimistic calculation or just hardcode for the demo if reading state is hard.
-        // Actually, we can just use the state variable `vaultBalance` if available?
-        // But `executePMSubmitBet` is inside the component, so `vaultBalance` state is accessible!
-
         const currentMIST = BigInt(vaultBalance);
         const betAmountMIST = BigInt(betResponse.debit_amount);
         const newUserBalance = currentMIST - betAmountMIST;
+
+        // Safety check to prevent negative balance
+        if (newUserBalance < 0) {
+            log(`❌ Error: Insufficient balance. Current: ${currentMIST}, Debit: ${betAmountMIST}`);
+            return;
+        }
 
         tx.moveCall({
             target: `${VAULT_CONFIG.PACKAGE_ID}::${VAULT_CONFIG.MODULE_NAME}::set_withdrawable_balance`,
@@ -298,13 +398,13 @@ export default function TestPage() {
             ],
         });
 
-        // 3. Credit Maker
+        // 3. Credit Maker (current balance + credit_amount)
         tx.moveCall({
             target: `${VAULT_CONFIG.PACKAGE_ID}::${VAULT_CONFIG.MODULE_NAME}::set_withdrawable_balance`,
             arguments: [
                 tx.object(VAULT_CONFIG.LEDGER_ID),
-                tx.pure.address(maker || account.address), // Use maker state
-                tx.pure.u64(betResponse.credit_amount),
+                tx.pure.address(makerAddress),
+                tx.pure.u64(makerNewBalance), // Now correctly adds to existing balance
             ],
         });
 
@@ -313,7 +413,7 @@ export default function TestPage() {
             target: `${WORLD_CONFIG.PACKAGE_ID}::${WORLD_CONFIG.MODULE_NAME}::update_prob`,
             arguments: [
                 tx.object(WORLD_CONFIG.WORLD_ID),
-                tx.pure.u64(betResponse.pool_id), // used to be world_pool_id?
+                tx.pure.u64(betResponse.pool_id),
                 tx.pure.vector('u64', betResponse.new_probs),
             ],
         });
@@ -359,6 +459,7 @@ export default function TestPage() {
 
     // Test 5: Resolve Market
     const testResolve = async () => {
+        if (!account) return;
         setLoading(true);
         log('--- TEST: Resolve Market ---');
 
@@ -386,6 +487,51 @@ export default function TestPage() {
                 const resolveResponse: ResolveResponse = data.response.data;
                 log(`✅ Market resolved! ${resolveResponse.payouts.length} winners`);
                 log(`Total payout: ${(resolveResponse.total_payout / 1_000_000).toFixed(2)} USDC`);
+
+                // Credit each winner's vault balance
+                for (const payout of resolveResponse.payouts) {
+                    log(`Crediting ${(payout.amount / 1_000_000).toFixed(2)} USDC to ${payout.user.slice(0, 10)}...`);
+
+                    // Get user's current withdrawable balance
+                    const ledgerDynamicFields = await client.getDynamicFields({
+                        parentId: VAULT_CONFIG.LEDGER_ID,
+                    });
+
+                    // Find user's account in the ledger
+                    let currentWithdrawable = BigInt(0);
+                    for (const field of ledgerDynamicFields.data) {
+                        if (field.name?.value === payout.user) {
+                            const accountObj = await client.getObject({
+                                id: field.objectId,
+                                options: { showContent: true },
+                            });
+                            const accountData = parseUserAccountData(accountObj);
+                            if (accountData) {
+                                currentWithdrawable = BigInt(accountData.withdrawable_amount);
+                            }
+                            break;
+                        }
+                    }
+
+                    const newBalance = currentWithdrawable + BigInt(payout.amount);
+                    log(`Current: ${(Number(currentWithdrawable) / 1_000_000).toFixed(2)} + ${(payout.amount / 1_000_000).toFixed(2)} = ${(Number(newBalance) / 1_000_000).toFixed(2)} USDC`);
+
+                    // Build and execute transaction to set new balance
+                    const tx = buildSetWithdrawableBalanceTransaction(payout.user, newBalance);
+
+                    signAndExecute(
+                        { transaction: tx },
+                        {
+                            onSuccess: (result) => {
+                                log(`✅ Credited! TX: ${result.digest}`);
+                                fetchUserData(); // Refresh balances
+                            },
+                            onError: (err) => {
+                                log(`❌ Credit failed: ${err.message}`);
+                            },
+                        }
+                    );
+                }
             }
         } catch (err: any) {
             log(`❌ Error: ${err.message}`);
