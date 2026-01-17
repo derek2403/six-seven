@@ -32,15 +32,31 @@ const WORLDS: WorldData[] = [
 
 const COLORS = ["#60a5fa", "#2563eb", "#facc15"];
 
-function Cube({ position, prob, state, isHovered, onHover, onClick }: {
+function Cube({ position, prob, state, isHovered, isSelected, onHover, onClick }: {
     position: [number, number, number],
     prob: number,
     state: string,
     isHovered: boolean,
+    isSelected: boolean,
     onHover: (hover: boolean) => void,
     onClick: () => void
 }) {
     const mesh = useRef<THREE.Mesh>(null!);
+    const [pulsePhase, setPulsePhase] = useState(0);
+
+    // Pulsing animation for selected cube
+    useFrame((state, delta) => {
+        if (isSelected) {
+            setPulsePhase(prev => (prev + delta * 2) % (Math.PI * 2));
+            if (mesh.current) {
+                // Pulse scale
+                const scale = 1 + Math.sin(pulsePhase) * 0.05;
+                mesh.current.scale.setScalar(scale);
+            }
+        } else if (mesh.current) {
+            mesh.current.scale.setScalar(1);
+        }
+    });
 
     // Intensity based on probability
     const intensity = 0.1 + (prob / 100) * 0.9;
@@ -72,15 +88,15 @@ function Cube({ position, prob, state, isHovered, onHover, onClick }: {
                 <boxGeometry args={[1, 1, 1]} />
                 <meshPhysicalMaterial
                     transparent
-                    opacity={isHovered ? 0.9 : 0.3 * intensity + 0.1}
-                    color={isMostProbable ? "#facc15" : "#60a5fa"}
+                    opacity={isHovered ? 0.9 : isSelected ? 0.8 : 0.3 * intensity + 0.1}
+                    color={isSelected ? "#3b82f6" : isMostProbable ? "#facc15" : "#60a5fa"}
                     roughness={0.1}
                     metalness={0.2}
                     transmission={0.5}
                     thickness={1}
                     clearcoat={1}
-                    emissive={isMostProbable ? "#facc15" : "#60a5fa"}
-                    emissiveIntensity={isHovered ? 0.6 : 0.2 * intensity}
+                    emissive={isSelected ? "#3b82f6" : isMostProbable ? "#facc15" : "#60a5fa"}
+                    emissiveIntensity={isSelected ? 0.5 + Math.sin(pulsePhase) * 0.3 : isHovered ? 0.6 : 0.2 * intensity}
                 />
 
                 {/* Always-visible probability on the cube */}
@@ -205,8 +221,16 @@ function Scene({ marketSelections, onMarketSelectionsChange }: {
     onMarketSelectionsChange?: (selections: Record<string, MarketSelection>) => void;
 }) {
     const [hoveredState, setHoveredState] = useState<string | null>(null);
+    const [selectedState, setSelectedState] = useState<string | null>(null);
 
     const handleCubeClick = (state: string) => {
+        // Toggle selection
+        if (selectedState === state) {
+            setSelectedState(null);
+        } else {
+            setSelectedState(state);
+        }
+
         if (!onMarketSelectionsChange) return;
 
         // Map state characters to yes/no for each market
@@ -244,6 +268,7 @@ function Scene({ marketSelections, onMarketSelectionsChange }: {
                             prob={c.prob}
                             state={c.state}
                             isHovered={hoveredState === c.state}
+                            isSelected={selectedState === c.state}
                             onHover={(h) => setHoveredState(h ? c.state : null)}
                             onClick={() => handleCubeClick(c.state)}
                         />
