@@ -35,6 +35,28 @@ export default function MarketPage() {
         }));
     };
 
+    // Auto-switch to 3D view when all 3 markets have yes/no selections
+    // Auto-switch back to 2D when any market becomes "any" or null
+    React.useEffect(() => {
+        const m1Sel = marketSelections.m1;
+        const m2Sel = marketSelections.m2;
+        const m3Sel = marketSelections.m3;
+
+        // If all 3 markets have yes or no (not null, not "any"), switch to 3D
+        if (m1Sel !== null && m1Sel !== "any" &&
+            m2Sel !== null && m2Sel !== "any" &&
+            m3Sel !== null && m3Sel !== "any") {
+            setView("3D");
+        }
+        // If any market is "any" or null, and we're in 3D view, switch back to 2D
+        else if (view === "3D" &&
+            (m1Sel === "any" || m1Sel === null ||
+                m2Sel === "any" || m2Sel === null ||
+                m3Sel === "any" || m3Sel === null)) {
+            setView("2D");
+        }
+    }, [marketSelections, view]);
+
     return (
         <div className="min-h-screen bg-white font-sans">
             {/* Site Header */}

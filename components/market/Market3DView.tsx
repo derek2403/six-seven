@@ -223,6 +223,28 @@ function Scene({ marketSelections, onMarketSelectionsChange }: {
     const [hoveredState, setHoveredState] = useState<string | null>(null);
     const [selectedState, setSelectedState] = useState<string | null>(null);
 
+    // Auto-select cube when all 3 markets have yes/no selections
+    React.useEffect(() => {
+        if (!marketSelections) return;
+
+        const m1 = marketSelections.m1;
+        const m2 = marketSelections.m2;
+        const m3 = marketSelections.m3;
+
+        // If all 3 markets have yes or no (not null, not "any"), auto-select cube
+        if (m1 !== null && m1 !== "any" &&
+            m2 !== null && m2 !== "any" &&
+            m3 !== null && m3 !== "any") {
+            // Build the state string: "0" for no, "1" for yes
+            const state = (
+                (m1 === "yes" ? "1" : "0") +
+                (m2 === "yes" ? "1" : "0") +
+                (m3 === "yes" ? "1" : "0")
+            );
+            setSelectedState(state);
+        }
+    }, [marketSelections]);
+
     const handleCubeClick = (state: string) => {
         // Toggle selection
         if (selectedState === state) {
