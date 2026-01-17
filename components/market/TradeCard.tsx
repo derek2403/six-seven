@@ -5,27 +5,38 @@ import Image from "next/image";
 import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-import { COMBINED_MARKETS } from "@/lib/mock/combined-markets";
+import { CombinedMarketItem, COMBINED_MARKETS } from "@/lib/mock/combined-markets";
 
 type MarketSelection = "yes" | "no" | "any" | null;
 
 interface TradeCardProps {
-    marketSelections: Record<string, MarketSelection>;
-    onMarketSelectionsChange: (selections: Record<string, MarketSelection>) => void;
-    focusedMarket: string | null;
-    onTrade?: (amount: string, outcome: number) => Promise<void>;
+    // Markets to display in the card
+    markets?: CombinedMarketItem[];
+    // Selection state props
+    marketSelections?: Record<string, MarketSelection>;
+    onMarketSelectionsChange?: (selections: Record<string, MarketSelection>) => void;
+    focusedMarket?: string | null;
+    // Old prop for legacy compatibility
+    market?: CombinedMarketItem;
 }
 
-export function TradeCard({ marketSelections, onMarketSelectionsChange, focusedMarket, onTrade }: TradeCardProps) {
+export function TradeCard({ markets, marketSelections, onMarketSelectionsChange, focusedMarket, market }: TradeCardProps) {
+    // Use provided markets or fallback to COMBINED_MARKETS (Iran)
+    const displayMarkets = markets || COMBINED_MARKETS;
     const [tab, setTab] = React.useState<"buy" | "sell">("buy");
     const [amount, setAmount] = React.useState("");
     const [isFocused, setIsFocused] = React.useState(false);
 
+    // Check if using new Iran mode or old Crypto mode
+    const isIranMode = marketSelections !== undefined && onMarketSelectionsChange !== undefined;
+
     const handleSelection = (marketId: string, selection: MarketSelection) => {
-        onMarketSelectionsChange({
-            ...marketSelections,
-            [marketId]: selection
-        });
+        if (onMarketSelectionsChange && marketSelections) {
+            onMarketSelectionsChange({
+                ...marketSelections,
+                [marketId]: selection
+            });
+        }
     };
 
     return (
@@ -55,69 +66,99 @@ export function TradeCard({ marketSelections, onMarketSelectionsChange, focusedM
             </div>
 
             {/* Markets List with Yes/No/Any buttons */}
-            <div className="space-y-3 mb-4">
-                {COMBINED_MARKETS.map((market) => {
-                    // Only show market if it's focused or no market is focused
-                    const isMarketActive = focusedMarket === null || focusedMarket === market.id;
+            {isIranMode && marketSelections && (
+                <div className="space-y-3 mb-4">
+                    {displayMarkets.map((marketItem) => {
+                        // Only show market if it's focused or no market is focused
+                        const isMarketActive = focusedMarket === null || focusedMarket === undefined || focusedMarket === marketItem.id;
 
-                    return (
-                        <div key={market.id} className="flex flex-col gap-2" style={{ opacity: isMarketActive ? 1 : 0.4 }}>
-                            {/* Avatar and Title Row */}
-                            <div className="flex items-center gap-2.5">
-                                <div className="relative h-8 w-8 flex-shrink-0">
-                                    <Image
-                                        src={market.avatar}
-                                        alt={market.title}
-                                        fill
-                                        unoptimized
-                                        className="rounded-full object-cover border border-gray-100"
-                                    />
+                        return (
+                            <div key={marketItem.id} className="flex flex-col gap-2" style={{ opacity: isMarketActive ? 1 : 0.4 }}>
+                                {/* Avatar and Title Row */}
+                                <div className="flex items-center gap-2.5">
+                                    <div className="relative h-8 w-8 flex-shrink-0">
+                                        <Image
+                                            src={marketItem.avatar}
+                                            alt={marketItem.title}
+                                            fill
+                                            unoptimized
+                                            className="rounded-full object-cover border border-gray-100"
+                                        />
+                                    </div>
+                                    <p className="text-[13px] font-medium text-gray-800 whitespace-nowrap flex-1">
+                                        {marketItem.title}
+                                    </p>
                                 </div>
-                                <p className="text-[13px] font-medium text-gray-800 line-clamp-2 leading-tight flex-1">
-                                    {market.title}
-                                </p>
-                            </div>
 
-                            {/* Yes/No/Any buttons below title */}
-                            <div className="flex gap-2 pl-10">
-                                <button
-                                    onClick={() => handleSelection(market.id, "yes")}
-                                    disabled={!isMarketActive}
-                                    className={`flex-1 px-3 py-2 rounded-lg text-[13px] font-bold transition-all ${!isMarketActive ? "bg-gray-100 text-gray-400 cursor-not-allowed" :
-                                        marketSelections[market.id] === "yes"
-                                            ? "bg-[#22c55e] text-white shadow-md"
-                                            : "bg-[#22c55e]/10 text-[#22c55e] hover:bg-[#22c55e]/20"
-                                        }`}
-                                >
-                                    Yes
-                                </button>
-                                <button
-                                    onClick={() => handleSelection(market.id, "no")}
-                                    disabled={!isMarketActive}
-                                    className={`flex-1 px-3 py-2 rounded-lg text-[13px] font-bold transition-all ${!isMarketActive ? "bg-gray-100 text-gray-400 cursor-not-allowed" :
-                                        marketSelections[market.id] === "no"
-                                            ? "bg-[#ef4444] text-white shadow-md"
-                                            : "bg-[#ef4444]/10 text-[#ef4444] hover:bg-[#ef4444]/20"
-                                        }`}
-                                >
-                                    No
-                                </button>
-                                <button
-                                    onClick={() => handleSelection(market.id, "any")}
-                                    disabled={!isMarketActive}
-                                    className={`flex-1 px-3 py-2 rounded-lg text-[13px] font-bold transition-all ${!isMarketActive ? "bg-gray-100 text-gray-400 cursor-not-allowed" :
-                                        marketSelections[market.id] === "any"
-                                            ? "bg-[#3b82f6] text-white shadow-md"
-                                            : "bg-[#3b82f6]/10 text-[#3b82f6] hover:bg-[#3b82f6]/20"
-                                        }`}
-                                >
-                                    Any
-                                </button>
+                                {/* Yes/No/Any buttons below title */}
+                                <div className="flex gap-2 pl-10">
+                                    <button
+                                        onClick={() => handleSelection(marketItem.id, "yes")}
+                                        disabled={!isMarketActive}
+                                        className={`flex-1 px-3 py-2 rounded-lg text-[13px] font-bold transition-all ${!isMarketActive ? "bg-gray-100 text-gray-400 cursor-not-allowed" :
+                                            marketSelections[marketItem.id] === "yes"
+                                                ? "bg-[#22c55e] text-white shadow-md"
+                                                : "bg-[#22c55e]/10 text-[#22c55e] hover:bg-[#22c55e]/20"
+                                            }`}
+                                    >
+                                        Yes
+                                    </button>
+                                    <button
+                                        onClick={() => handleSelection(marketItem.id, "no")}
+                                        disabled={!isMarketActive}
+                                        className={`flex-1 px-3 py-2 rounded-lg text-[13px] font-bold transition-all ${!isMarketActive ? "bg-gray-100 text-gray-400 cursor-not-allowed" :
+                                            marketSelections[marketItem.id] === "no"
+                                                ? "bg-[#ef4444] text-white shadow-md"
+                                                : "bg-[#ef4444]/10 text-[#ef4444] hover:bg-[#ef4444]/20"
+                                            }`}
+                                    >
+                                        No
+                                    </button>
+                                    <button
+                                        onClick={() => handleSelection(marketItem.id, "any")}
+                                        disabled={!isMarketActive}
+                                        className={`flex-1 px-3 py-2 rounded-lg text-[13px] font-bold transition-all ${!isMarketActive ? "bg-gray-100 text-gray-400 cursor-not-allowed" :
+                                            marketSelections[marketItem.id] === "any"
+                                                ? "bg-[#3b82f6] text-white shadow-md"
+                                                : "bg-[#3b82f6]/10 text-[#3b82f6] hover:bg-[#3b82f6]/20"
+                                            }`}
+                                    >
+                                        Any
+                                    </button>
+                                </div>
                             </div>
+                        )
+                    })}
+                </div>
+            )}
+
+            {/* Simple Yes/No Buttons - Only for Crypto mode */}
+            {!isIranMode && market && (
+                <div className="mb-3">
+                    <div className="flex items-center gap-2.5 mb-3">
+                        <div className="relative h-10 w-10 flex-shrink-0">
+                            <Image
+                                src={market.avatar}
+                                alt={market.title}
+                                fill
+                                unoptimized
+                                className="rounded-full object-cover border border-gray-100"
+                            />
                         </div>
-                    )
-                })}
-            </div>
+                        <h2 className="text-[16px] font-bold text-black tracking-tight leading-snug">{market.title}</h2>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2.5">
+                        <button className="flex items-center justify-center gap-1.5 h-[52px] bg-[#22c55e] hover:bg-[#16a34a] text-white rounded-xl transition-all">
+                            <span className="text-[17px] font-bold">Yes</span>
+                            <span className="text-[17px] font-medium opacity-90">58¢</span>
+                        </button>
+                        <button className="flex items-center justify-center gap-1.5 h-[52px] bg-[#f1f5f9] hover:bg-[#e2e8f0] text-gray-500 rounded-xl transition-all">
+                            <span className="text-[17px] font-bold text-gray-600">No</span>
+                            <span className="text-[17px] font-medium">43¢</span>
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Amount Input */}
             <div className="mb-0.5">
