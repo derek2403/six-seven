@@ -274,6 +274,51 @@ export default function TestPage() {
             ],
         });
 
+        // 2. Debit user (Update Vault)
+        // Note: In a real secure app, vault::set_withdrawable_balance should be protected
+        // and only callable by the PM contract or via a Witness pattern.
+        // Here we chain it in the PTB to simulate "Authorized Execution".
+
+        // Need current balance to calculate new balance
+        // We'll trust the checked balance from fetchUserData or we need to pass it in.
+        // For reliability, we should fetch it here, but we can't async fetch inside the PTB logic easily without breaking flow.
+        // We'll rely on the optimistic calculation or just hardcode for the demo if reading state is hard.
+        // Actually, we can just use the state variable `vaultBalance` if available?
+        // But `executePMSubmitBet` is inside the component, so `vaultBalance` state is accessible!
+
+        const currentMIST = BigInt(vaultBalance);
+        const betAmountMIST = BigInt(betResponse.debit_amount);
+        const newUserBalance = currentMIST - betAmountMIST;
+
+        tx.moveCall({
+            target: `${VAULT_CONFIG.PACKAGE_ID}::${VAULT_CONFIG.MODULE_NAME}::set_withdrawable_balance`,
+            arguments: [
+                tx.object(VAULT_CONFIG.LEDGER_ID),
+                tx.pure.address(account.address),
+                tx.pure.u64(newUserBalance),
+            ],
+        });
+
+        // 3. Credit Maker
+        tx.moveCall({
+            target: `${VAULT_CONFIG.PACKAGE_ID}::${VAULT_CONFIG.MODULE_NAME}::set_withdrawable_balance`,
+            arguments: [
+                tx.object(VAULT_CONFIG.LEDGER_ID),
+                tx.pure.address(maker || account.address), // Use maker state
+                tx.pure.u64(betResponse.credit_amount),
+            ],
+        });
+
+        // 4. Update World Probs
+        tx.moveCall({
+            target: `${WORLD_CONFIG.PACKAGE_ID}::${WORLD_CONFIG.MODULE_NAME}::update_prob`,
+            arguments: [
+                tx.object(WORLD_CONFIG.WORLD_ID),
+                tx.pure.u64(betResponse.pool_id), // used to be world_pool_id?
+                tx.pure.vector('u64', betResponse.new_probs),
+            ],
+        });
+
         signAndExecute(
             { transaction: tx },
             {
