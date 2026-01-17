@@ -10,7 +10,7 @@ pub mod state;
 
 use crate::common::{to_signed_response, IntentMessage, ProcessDataRequest, ProcessedDataResponse};
 use crate::{AppState, EnclaveError};
-use axum::{extract::State, Json};
+use axum::{extract::{State, Query}, Json};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
@@ -205,4 +205,21 @@ pub async fn resolve(
         timestamp_ms,
         IntentScope::Resolve as u8,
     )))
+}
+
+// ============================================================
+// LIST POSITIONS ENDPOINT (Debug)
+// ============================================================
+#[derive(Deserialize)]
+pub struct GetPositionsParams {
+    pub pool_id: u64,
+}
+
+pub async fn get_positions_handler(
+    State(_state): State<Arc<AppState>>,
+    Query(params): Query<GetPositionsParams>,
+) -> Result<Json<Vec<state::Position>>, EnclaveError> {
+    let store = POSITION_STORE.read()
+        .map_err(|_| EnclaveError::GenericError("Lock error".into()))?;
+    Ok(Json(store.get_positions_by_pool(params.pool_id)))
 }

@@ -94,6 +94,6 @@ export function MarketTimeFilter({ selectedMarkets, view, onViewChange }: Market
                     </RainbowButton>
                 )
             )}
-                </div>
+        </div>
     );
 }
