@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { Geist, Geist_Mono } from "next/font/google";
-import { WalletConnect } from "../components/WalletConnect";
+
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 import RotatingEarth from "../components/RotatingEarth";
-import WireframeCard from "../components/WireframeCard";
+import { AnimatedListDemo } from "../components/AnimatedListDemo";
 import { motion, useScroll, useTransform } from "framer-motion";
 // ... imports
 
@@ -30,7 +30,6 @@ export default function Home() {
     <div
       className={`${geistSans.className} ${geistMono.className} min-h-screen bg-zinc-50 font-sans dark:bg-black`}
     >
-      <WalletConnect />
 
       <main className="flex min-h-screen w-full flex-col items-center pt-32 px-4 sm:px-16 bg-white dark:bg-black overflow-hidden">
         <div className="w-full flex justify-center items-center h-[600px] fixed top-32 left-0 right-0 pointer-events-none px-10">
@@ -38,12 +37,12 @@ export default function Home() {
             <RotatingEarth />
           </motion.div>
 
-          {/* Wireframe Card */}
+          {/* Animated List Card */}
           <motion.div
             style={{ opacity: cardOpacity, y: cardY }}
-            className="absolute right-[10%] xl:right-[20%] pointer-events-auto z-20"
+            className="absolute right-[5%] xl:right-[15%] pointer-events-auto z-20"
           >
-            <WireframeCard />
+            <AnimatedListDemo className="w-full max-w-[400px] shadow-2xl bg-white/80 dark:bg-black/80 backdrop-blur-md border border-zinc-200 dark:border-zinc-800" />
           </motion.div>
         </div>
 
