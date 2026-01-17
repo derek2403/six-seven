@@ -2,7 +2,7 @@
 
 import React, { useRef, useState, useMemo } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { OrbitControls, PerspectiveCamera, Text, Float, ContactShadows, Environment, Billboard } from "@react-three/drei";
+import { OrbitControls, PerspectiveCamera, Text, Float, ContactShadows, Environment, Billboard, Html } from "@react-three/drei";
 import * as THREE from "three";
 
 interface WorldData {
@@ -42,7 +42,7 @@ function Cube({ position, prob, state, isHovered, onHover }: {
     // Intensity based on probability
     const intensity = 0.1 + (prob / 100) * 0.9;
     const isMostProbable = prob > 50;
-    
+
     // Detailed breakdown for hover
     const khameneiVal = state[0] === '1' ? 'YES' : 'NO';
     const usVal = state[1] === '1' ? 'YES' : 'NO';
@@ -91,136 +91,53 @@ function Cube({ position, prob, state, isHovered, onHover }: {
                 )}
             </mesh>
 
-            {/* Detailed Info on Hover - Solid White Modal Design */}
+            {/* Detailed Info on Hover - Using Html for reliable rendering */}
             {isHovered && (
-                <Billboard position={[0, 0, 1.5]} follow={true}>
-                    <group renderOrder={9998}>
-                        {/* Border (Black) */}
-                        <mesh position={[0, 0, -0.01]} renderOrder={9998}>
-                            <planeGeometry args={[1.82, 1.32]} />
-                            <meshBasicMaterial color="#000000" depthTest={false} depthWrite={false} toneMapped={false} side={THREE.DoubleSide} transparent={true} opacity={1} />
-                        </mesh>
-                        {/* Modal Background (White) */}
-                        <mesh position={[0, 0, 0]} renderOrder={9999}>
-                            <planeGeometry args={[1.8, 1.3]} />
-                            <meshBasicMaterial color="#ffffff" depthTest={false} depthWrite={false} toneMapped={false} side={THREE.DoubleSide} transparent={true} opacity={1} />
-                        </mesh>
-
-                        {/* Probability Header */}
-                        <group position={[0, 0.35, 0.1]}>
-                            <mesh>
-                                <planeGeometry args={[0.7, 0.45]} />
-                                <meshBasicMaterial color={isMostProbable ? "#fbbf24" : "#2563eb"} depthTest={false} depthWrite={false} toneMapped={false} />
-                            </mesh>
-                            <Text
-                                fontSize={0.18}
-                                anchorX="center"
-                                anchorY="middle"
-                                renderOrder={10001}
-                            >
-                                <meshBasicMaterial
-                                    attach="material"
-                                    color="#000000"
-                                    toneMapped={false}
-                                    depthTest={false}
-                                    depthWrite={false}
-                                />
-                                {prob}%
-                            </Text>
-                        </group>
+                <Html
+                    position={[0, 0, 0.8]}
+                    center
+                    distanceFactor={3}
+                    style={{ pointerEvents: 'none' }}
+                >
+                    <div style={{
+                        background: 'white',
+                        border: '2px solid black',
+                        borderRadius: '8px',
+                        padding: '12px 16px',
+                        minWidth: '180px',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                    }}>
+                        {/* Probability */}
+                        <div style={{
+                            background: isMostProbable ? '#fbbf24' : '#2563eb',
+                            color: 'black',
+                            fontWeight: 'bold',
+                            fontSize: '18px',
+                            padding: '6px 12px',
+                            borderRadius: '4px',
+                            textAlign: 'center',
+                            marginBottom: '10px',
+                        }}>
+                            {prob}%
+                        </div>
 
                         {/* Market Results */}
-                        {/* Market Results */}
-                        <group position={[-0.8, 0.05, 0.2]}>
-                            {/* Line 1: Khamenei (m1 - Light Blue) */}
-                            <group position={[0, 0, 0]}>
-                                <mesh position={[-0.08, -0.04, 0]} renderOrder={20000}>
-                                    <circleGeometry args={[0.04, 32]} />
-                                    <meshBasicMaterial
-                                        color={COLORS[0]}
-                                        depthTest={false}
-                                        depthWrite={false}
-                                        toneMapped={false}
-                                    />
-                                </mesh>
-                                <Text
-                                    position={[0, 0, 0]}
-                                    fontSize={0.10}
-                                    anchorX="left"
-                                    anchorY="top"
-                                    renderOrder={10001}
-                                >
-                                    <meshBasicMaterial
-                                        attach="material"
-                                        color="#000000"
-                                        toneMapped={false}
-                                        depthTest={false}
-                                        depthWrite={false}
-                                    />
-                                    Khamenei out: {khameneiVal}
-                                </Text>
-                            </group>
-
-                            {/* Line 2: US (m2 - Dark Blue) */}
-                            <group position={[0, -0.22, 0]}>
-                                <mesh position={[-0.08, -0.04, 0]} renderOrder={20000}>
-                                    <circleGeometry args={[0.04, 32]} />
-                                    <meshBasicMaterial
-                                        color={COLORS[1]}
-                                        depthTest={false}
-                                        depthWrite={false}
-                                        toneMapped={false}
-                                    />
-                                </mesh>
-                                <Text
-                                    position={[0, 0, 0]}
-                                    fontSize={0.10}
-                                    anchorX="left"
-                                    anchorY="top"
-                                    renderOrder={10001}
-                                >
-                                    <meshBasicMaterial
-                                        attach="material"
-                                        color="#000000"
-                                        toneMapped={false}
-                                        depthTest={false}
-                                        depthWrite={false}
-                                    />
-                                    Us Strikes Iran: {usVal}
-                                </Text>
-                            </group>
-
-                            {/* Line 3: Israel (m3 - Yellow) */}
-                            <group position={[0, -0.44, 0]}>
-                                <mesh position={[-0.08, -0.04, 0]} renderOrder={20000}>
-                                    <circleGeometry args={[0.04, 32]} />
-                                    <meshBasicMaterial
-                                        color={COLORS[2]}
-                                        depthTest={false}
-                                        depthWrite={false}
-                                        toneMapped={false}
-                                    />
-                                </mesh>
-                                <Text
-                                    position={[0, 0, 0]}
-                                    fontSize={0.10}
-                                    anchorX="left"
-                                    anchorY="top"
-                                    renderOrder={10001}
-                                >
-                                    <meshBasicMaterial
-                                        attach="material"
-                                        color="#000000"
-                                        toneMapped={false}
-                                        depthTest={false}
-                                        depthWrite={false}
-                                    />
-                                    Israel Strikes Iran: {israelVal}
-                                </Text>
-                            </group>
-                        </group>
-                    </group>
-                </Billboard>
+                        <div style={{ color: 'black', fontSize: '12px', lineHeight: '1.6' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: COLORS[0], display: 'inline-block' }}></span>
+                                <span>Khamenei out: <strong>{khameneiVal}</strong></span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: COLORS[1], display: 'inline-block' }}></span>
+                                <span>US Strikes Iran: <strong>{usVal}</strong></span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: COLORS[2], display: 'inline-block' }}></span>
+                                <span>Israel Strikes Iran: <strong>{israelVal}</strong></span>
+                            </div>
+                        </div>
+                    </div>
+                </Html>
             )}
 
         </group>
