@@ -267,3 +267,225 @@ This design turns multiple correlated prediction markets into a single **multi-d
 - **liquidity is pooled instead of fragmented**
 
 The result is a market that is simpler for users, more capital-efficient for liquidity providers, and more consistent overall.
+
+---
+
+## Implementation Details
+
+### 1) Market Clustering Criteria
+
+We combine markets when they share most of:
+- **Same domain/driver** (same geopolitical conflict, same company, same macro theme)
+- **Similar time window** (or clearly modelable time structure)
+- **Non-contradicting resolution sources** (same oracle / same definitions)
+- **Expected correlation is strong enough** that shared liquidity helps more than it confuses
+
+#### Context Pipeline (MVP Approach)
+
+For each market question, we extract a structured "context card":
+
+| Field | Examples |
+|-------|----------|
+| Entities | United States, China, Donald Trump |
+| Event type | strike / resignation / sanction / election |
+| Region | Middle East, Europe |
+| Time window | by [date] |
+| Causal theme | escalation / regime change / conflict |
+
+We then compute similarity and group:
+
+**Step A: Similarity Score**
+- Text embedding similarity (semantic)
+- Overlap in entities
+- Overlap in event type
+- Overlap in time window
+
+**Step B: Cluster**
+- If similarity > threshold → same "cluster"
+- Cap cluster size for MVP (3–5 markets)
+
+**Step C: Human/Rules Guardrails**
+- Don't combine if time windows differ too much
+- Don't combine if resolution criteria differ ("strike" definitions)
+
+This produces market clusters (e.g., "combine these 3 markets") without heavy statistical modeling.
+
+---
+
+### 1b) Initializing Correlation via Naive Bayes
+
+We derive the world table by assuming a **latent "driver" variable** (e.g., `E = escalation level`) that captures the correlation structure.
+
+#### Example Setup
+
+```
+E = 0  →  calm
+E = 1  →  high escalation
+
+P(E=1) = 0.30
+
+P(A=Yes | E=1) = 0.70,  P(A=Yes | E=0) = 0.10
+P(B=Yes | E=1) = 0.60,  P(B=Yes | E=0) = 0.05
+P(C=Yes | E=1) = 0.80,  P(C=Yes | E=0) = 0.10
+```
+
+#### Naive Bayes Formula (Conditionally Independent Given E)
+
+```
+P(A,B,C) = Σₑ P(E=e) · P(A|e) · P(B|e) · P(C|e)
+```
+
+This automatically creates a coherent 8-world table that:
+- Makes A/B/C **positively correlated** via E
+- Provides a reasonable starting "shape"
+- Market trades then override and reshape this prior
+
+#### Source of E
+- **Context clustering** — markets in the same escalation cluster share the same latent driver
+- **Historical learning** — optionally refined over time from market data
+
+> This is a compelling story: we start with a structured prior, then traders move it.
+
+---
+
+### 2) Ensuring Slice Pricing Consistency
+
+We use a single AMM over corners only.
+
+The AMM lives on the **8 corners** (000…111). Marginals and slices are **not separate markets** — they are **basket trades of corners**.
+
+#### Pricing Rules
+
+| Contract Type | Price Formula |
+|---------------|---------------|
+| Slice (A=1, B=1 regardless of C) | `p₁₁₀ + p₁₁₁` |
+| Marginal (C=Yes) | `p₀₀₁ + p₀₁₁ + p₁₀₁ + p₁₁₁` |
+| Corner (exact world) | `pᵢⱼₖ` directly |
+
+Users can "trade slices/marginals" in the UI, but the **backend executes as a basket of corner trades** at AMM prices.
+
+**Benefits:**
+- ✅ No price mismatch possible
+- ✅ No need for merge/split arbitrage logic
+- ✅ Much simpler implementation
+
+#### Alternative: Tradeable Slice Tokens (More Complex)
+
+If slices traded directly as separate tokens, merge/split conversion would be required:
+- **Merge:** `110 + 111 → slice(AB)`
+- **Split:** `slice(AB) → 110 + 111`
+
+If the slice token got overpriced vs corners, arbitrage would sell slice and buy corners.
+We avoid this complexity by using corners-only AMM + basket UI.
+
+---
+
+### 3) Position Accounting in Corner-Space
+
+We represent every position internally as **exposure over the 8 corners**.
+Cancellation happens automatically by normal addition/subtraction.
+
+#### Internal Accounting Model
+
+We store a portfolio vector `x[000..111]` = how many $1-per-share claims owned on each corner.
+
+| Action | Effect |
+|--------|--------|
+| Buy corner 110 | `x[110] += 1` |
+| Buy slice AB (110+111) | `x[110] += 1, x[111] += 1` |
+| Sell corner 111 | `x[111] -= 1` |
+
+#### Example: Automatic Netting
+
+```
+User buys slice AB = (110 + 111)
+  → x[110] = 1, x[111] = 1
+
+User sells corner 111
+  → x[111] -= 1
+
+Net result:
+  → x[110] = 1, x[111] = 0
+```
+
+The "regardless of C" exposure is **gone** — now it's a pure corner bet on (1,1,0).
+
+Positions are always stored in corner-space, so netting is exact — no manual cancellation needed.
+
+#### UI Display (Merged Positions)
+
+After netting, we compress the display for users:
+- If `x[110]` and `x[111]` are both 5 → show **"5 shares of slice(AB)"**
+- If only one exists → show corner
+
+This feels magical for users, but it's just algebra on the corner vector.
+
+---
+
+### 4) AMM Scalability
+
+Updating 8 markets per trade is trivial for the machine.
+
+- We run **one AMM** that outputs 8 corner prices
+- Marginals/slices are **derived** (sums of corner prices)
+- The UI shows a small set; all 8 corners are only shown in "advanced mode"
+
+**Why We Use LMSR:**
+- Naturally supports **many outcomes**
+- Always produces a **coherent probability distribution** (sums to 1)
+- Single update formula handles any basket trade
+
+```
+User trades marginal A=Yes
+  → AMM updates corners {100, 101, 110, 111}
+  → All 8 prices recalculate via softmax
+  → All derived marginals/slices update automatically
+```
+
+The computational cost is O(2^N) per trade, which is trivial for N ≤ 5 (32 outcomes).
+
+---
+
+### 5) TEE-Based Privacy for Informed Traders
+
+Multi-dimensional markets amplify a known problem: **informed traders (insiders) are easier to identify**.
+
+In traditional prediction markets, sophisticated observers can fingerprint traders by their betting patterns. In multi-dimensional markets, this becomes even easier — betting on specific corners or unusual slices creates a unique signature. Once identified, insiders face:
+- **Copy-trading** — their edge disappears as others follow their bets
+- **Social/legal exposure** — being linked back to real identity
+
+This discourages informed traders from participating, which **hurts price discovery for everyone**.
+
+#### Our Solution: TEE-Shielded Betting with Nautilus on Sui
+
+We run the AMM inside a **Trusted Execution Environment (TEE)** using **Nautilus** — Sui's native TEE framework. Individual bets remain encrypted and hidden; only the aggregated world table is published on-chain.
+
+Nautilus provides:
+- **Hardware-backed isolation** — computation runs in secure enclaves
+- **Native Sui integration** — seamless interaction with Move smart contracts
+- **Attestation proofs** — verifiable evidence that the TEE ran the correct LMSR code
+
+```
+User bet (encrypted) → TEE enclave
+                        ├── Validates bet
+                        ├── Updates internal world table (LMSR)
+                        └── Publishes ONLY: new world prices
+
+Public sees: p₀₀₀, p₀₀₁, ... p₁₁₁ (corner prices + derived marginals)
+Public does NOT see: who bet what, individual position sizes
+```
+
+#### What This Achieves
+
+| Property | Benefit |
+|----------|---------|
+| **Bet privacy** | Individual positions are never revealed on-chain |
+| **Price transparency** | Full world table and all derived odds are public |
+| **Computation integrity** | TEE attestation proves the AMM ran correctly |
+| **Insider protection** | Informed traders can bet without fear of exposure |
+
+#### Why This Matters for Multi-Dimensional Markets
+
+The more dimensions, the more specific a bet can be — and the easier it is to identify *who* would know that specific combination of outcomes. TEE privacy is not just nice-to-have; it's **essential** to attract the informed capital that makes these markets accurate.
+
+> We hide individual bets unlike Polymarket, but publish the full world table so anyone can see coherent, aggregated probabilities across all correlated events.
