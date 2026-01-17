@@ -5,6 +5,7 @@
 module pm::pm {
     use enclave::enclave::{Self, Enclave, Cap};
     use std::string::String;
+    use std::vector;
 
     // Intent scopes - must match Rust
     const INTENT_PLACE_BET: u8 = 0;
@@ -25,6 +26,21 @@ module pm::pm {
         outcome: u8,
         debit_amount: u64,
         credit_amount: u64,
+    }
+
+    /// Payout info for a winner - Match Rust
+    public struct Payout has copy, drop {
+        user: String,
+        amount: u64,
+    }
+
+    /// Response after resolving - Match Rust ResolveResponse
+    public struct ResolveResponse has copy, drop {
+        success: bool,
+        pool_id: u64,
+        winning_outcome: u8,
+        payouts: vector<Payout>,
+        total_payout: u64,
     }
 
     // ============================================================
@@ -89,6 +105,50 @@ module pm::pm {
         // Signature verified!
         // The frontend can now safely call vault::set_withdrawable_balance
         // and world::update_prob with the verified data
+    }
+
+    /// Resolve market with TEE-signed proof
+    public entry fun resolve_market<T>(
+        enclave: &Enclave<T>,
+        // ResolveResponse fields
+        success: bool,
+        pool_id: u64,
+        winning_outcome: u8,
+        payout_users: vector<String>, 
+        payout_amounts: vector<u64>,
+        total_payout: u64,
+        // Signature data
+        timestamp_ms: u64,
+        sig: vector<u8>,
+        _ctx: &mut TxContext,
+    ) {
+        // Reconstruct Payouts
+        let mut payouts = vector::empty<Payout>();
+        let len = vector::length(&payout_users);
+        let mut i = 0;
+        while (i < len) {
+            let user = *vector::borrow(&payout_users, i);
+            let amount = *vector::borrow(&payout_amounts, i);
+            vector::push_back(&mut payouts, Payout { user, amount });
+            i = i + 1;
+        };
+
+        let response = ResolveResponse {
+            success,
+            pool_id,
+            winning_outcome,
+            payouts,
+            total_payout,
+        };
+
+        // Verify TEE signature
+        let verified = enclave.verify_signature(
+            INTENT_RESOLVE,
+            timestamp_ms,
+            response,
+            &sig,
+        );
+        assert!(verified, EInvalidSignature);
     }
 
     // ============================================================
