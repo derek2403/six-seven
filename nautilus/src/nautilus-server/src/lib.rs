@@ -21,6 +21,14 @@ mod apps {
     #[cfg(feature = "seal-example")]
     #[path = "seal-example/mod.rs"]
     pub mod seal_example;
+
+    #[cfg(feature = "prediction-market")]
+    #[path = "prediction-market/mod.rs"]
+    pub mod prediction_market;
+
+    #[cfg(feature = "pm")]
+    #[path = "pm/mod.rs"]
+    pub mod pm;
 }
 
 pub mod app {
@@ -32,6 +40,12 @@ pub mod app {
 
     #[cfg(feature = "seal-example")]
     pub use crate::apps::seal_example::*;
+
+    #[cfg(feature = "prediction-market")]
+    pub use crate::apps::prediction_market::*;
+
+    #[cfg(feature = "pm")]
+    pub use crate::apps::pm::*;
 }
 
 pub mod common;

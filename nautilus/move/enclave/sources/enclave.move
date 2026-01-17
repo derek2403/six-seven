@@ -179,6 +179,23 @@ public fun create_intent_message<P: drop>(intent: u8, timestamp_ms: u64, payload
     }
 }
 
+/// Debug registration - register an enclave with just a public key
+/// This bypasses PCR verification - DO NOT use in production
+/// Only for testing when Nitro attestation isn't available
+public fun register_enclave_debug<T>(
+    enclave_config: &EnclaveConfig<T>,
+    pk: vector<u8>,
+    ctx: &mut TxContext,
+) {
+    let enclave = Enclave<T> {
+        id: object::new(ctx),
+        pk,
+        config_version: enclave_config.version,
+        owner: ctx.sender(),
+    };
+    transfer::share_object(enclave);
+}
+
 #[test_only]
 public fun destroy<T>(enclave: Enclave<T>) {
     let Enclave { id, .. } = enclave;

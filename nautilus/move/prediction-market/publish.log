@@ -1,0 +1,326 @@
+[warning] Client/Server api version mismatch, client api version : 1.59.0, server api version : 1.63.3
+[warning] CLI's protocol version is 99, but the active network's protocol version is 107. 
+ Consider installing the latest version of the CLI - https://docs.sui.io/guides/developer/getting-started/sui-install 
+
+ If publishing/upgrading returns a dependency verification error, then install the latest CLI version.
+[Note]: Dependency sources are no longer verified automatically during publication and upgrade. You can pass the `--verify-deps` option if you would like to verify them as part of publication or upgrade.
+[warning]: The network is using protocol version ProtocolVersion(99), but this binary only recognizes protocol version ProtocolVersion(107); the system packages used for compilation (e.g. MoveStdlib) may be out of date. If you have errors related to system packages, you may need to update your CLI.
+[note] Dependencies on Bridge, MoveStdlib, Sui, and SuiSystem are automatically added, but this feature is disabled for your package because you have explicitly included dependencies on Sui. Consider removing these dependencies from Move.toml.
+INCLUDING DEPENDENCY enclave
+INCLUDING DEPENDENCY Bridge
+INCLUDING DEPENDENCY SuiSystem
+INCLUDING DEPENDENCY usdc
+INCLUDING DEPENDENCY Sui
+INCLUDING DEPENDENCY MoveStdlib
+BUILDING prediction_market
+[0m[1m[38;5;11mwarning[W09011][0m[1m: unused constant[0m
+   [0m[34m┌─[0m /Users/derekliew/Developer/six-seven/nautilus/move/prediction-market/sources/market.move:28:11
+   [0m[34m│[0m
+[0m[34m28[0m [0m[34m│[0m     const [0m[33mEAlreadyClaimed[0m: u64 = 4;
+   [0m[34m│[0m           [0m[33m^^^^^^^^^^^^^^^[0m [0m[33mThe constant 'EAlreadyClaimed' is never used. Consider removing it.[0m
+   [0m[34m│[0m
+   [0m[34m=[0m This warning can be suppressed with '#[allow(unused_const)]' applied to the 'module' or module member ('const', 'fun', or 'struct')
+
+[0m[1m[38;5;11mwarning[Lint W99010][0m[1m: unnecessary `entry` on a `public` function[0m
+    [0m[34m┌─[0m /Users/derekliew/Developer/six-seven/nautilus/move/prediction-market/sources/market.move:115:12
+    [0m[34m│[0m
+[0m[34m115[0m [0m[34m│[0m     public [0m[33mentry[0m fun deposit(
+    [0m[34m│[0m            [0m[33m^^^^^[0m [0m[33m`entry` on `public` functions limits composability as it adds restrictions, e.g. the type of each return value must have `drop`. `entry` on `public` is only meaningful in niche scenarios.[0m
+    [0m[34m│[0m
+    [0m[34m=[0m `public` functions can be called from PTBs. `entry` can be used to allow non-`public` functions to be called from PTBs, but it adds restrictions on the usage of input arguments and on the type of return values. Unless this `public` function interacts with an intricate set of other `entry` functions, the `entry` modifier should be removed.
+    [0m[34m=[0m This warning can be suppressed with '#[allow(lint(public_entry))]' applied to the 'module' or module member ('const', 'fun', or 'struct')
+
+[0m[1m[38;5;11mwarning[Lint W99010][0m[1m: unnecessary `entry` on a `public` function[0m
+    [0m[34m┌─[0m /Users/derekliew/Developer/six-seven/nautilus/move/prediction-market/sources/market.move:138:12
+    [0m[34m│[0m
+[0m[34m138[0m [0m[34m│[0m     public [0m[33mentry[0m fun submit_bet<T>(
+    [0m[34m│[0m            [0m[33m^^^^^[0m [0m[33m`entry` on `public` functions limits composability as it adds restrictions, e.g. the type of each return value must have `drop`. `entry` on `public` is only meaningful in niche scenarios.[0m
+    [0m[34m│[0m
+    [0m[34m=[0m `public` functions can be called from PTBs. `entry` can be used to allow non-`public` functions to be called from PTBs, but it adds restrictions on the usage of input arguments and on the type of return values. Unless this `public` function interacts with an intricate set of other `entry` functions, the `entry` modifier should be removed.
+    [0m[34m=[0m This warning can be suppressed with '#[allow(lint(public_entry))]' applied to the 'module' or module member ('const', 'fun', or 'struct')
+
+[0m[1m[38;5;11mwarning[Lint W99010][0m[1m: unnecessary `entry` on a `public` function[0m
+    [0m[34m┌─[0m /Users/derekliew/Developer/six-seven/nautilus/move/prediction-market/sources/market.move:203:12
+    [0m[34m│[0m
+[0m[34m203[0m [0m[34m│[0m     public [0m[33mentry[0m fun resolve(
+    [0m[34m│[0m            [0m[33m^^^^^[0m [0m[33m`entry` on `public` functions limits composability as it adds restrictions, e.g. the type of each return value must have `drop`. `entry` on `public` is only meaningful in niche scenarios.[0m
+    [0m[34m│[0m
+    [0m[34m=[0m `public` functions can be called from PTBs. `entry` can be used to allow non-`public` functions to be called from PTBs, but it adds restrictions on the usage of input arguments and on the type of return values. Unless this `public` function interacts with an intricate set of other `entry` functions, the `entry` modifier should be removed.
+    [0m[34m=[0m This warning can be suppressed with '#[allow(lint(public_entry))]' applied to the 'module' or module member ('const', 'fun', or 'struct')
+
+[0m[1m[38;5;11mwarning[Lint W99010][0m[1m: unnecessary `entry` on a `public` function[0m
+    [0m[34m┌─[0m /Users/derekliew/Developer/six-seven/nautilus/move/prediction-market/sources/market.move:217:12
+    [0m[34m│[0m
+[0m[34m217[0m [0m[34m│[0m     public [0m[33mentry[0m fun claim<T>(
+    [0m[34m│[0m            [0m[33m^^^^^[0m [0m[33m`entry` on `public` functions limits composability as it adds restrictions, e.g. the type of each return value must have `drop`. `entry` on `public` is only meaningful in niche scenarios.[0m
+    [0m[34m│[0m
+    [0m[34m=[0m `public` functions can be called from PTBs. `entry` can be used to allow non-`public` functions to be called from PTBs, but it adds restrictions on the usage of input arguments and on the type of return values. Unless this `public` function interacts with an intricate set of other `entry` functions, the `entry` modifier should be removed.
+    [0m[34m=[0m This warning can be suppressed with '#[allow(lint(public_entry))]' applied to the 'module' or module member ('const', 'fun', or 'struct')
+
+Please report feedback on the linter warnings at https://forums.sui.io
+
+Skipping dependency verification
+{
+  "digest": "3i15d9tm9W8FzcaiH3BptM1JoMhwnjpRxr1NAGpXqqMi",
+  "transaction": {
+    "data": {
+      "messageVersion": "v1",
+      "transaction": {
+        "kind": "ProgrammableTransaction",
+        "inputs": [
+          {
+            "type": "pure",
+            "valueType": "address",
+            "value": "0x72cfe7e741d9858f132016b04f199e87fe9c2c8483ea5067e651d6e076f441f2"
+          }
+        ],
+        "transactions": [
+          {
+            "Publish": [
+              "0x0000000000000000000000000000000000000000000000000000000000000001",
+              "0x0000000000000000000000000000000000000000000000000000000000000002",
+              "0x8b46d0f2d32974451336e0ede960ccd1714d6b9c3580715863bb2e303fa4795a",
+              "0xbf298f701d3494c4411e68e72161d4d5a7495bbd93c9d8639050bbc8ac42881a"
+            ]
+          },
+          {
+            "TransferObjects": [
+              [
+                {
+                  "Result": 0
+                }
+              ],
+              {
+                "Input": 0
+              }
+            ]
+          }
+        ]
+      },
+      "sender": "0x72cfe7e741d9858f132016b04f199e87fe9c2c8483ea5067e651d6e076f441f2",
+      "gasData": {
+        "payment": [
+          {
+            "objectId": "0x683a504af4141e74b7b98b8c0c8b7c9204cbefa9cf21974c8c2041c3f0d74b91",
+            "version": 733201072,
+            "digest": "G3tByYgX57Ywf8E1RBiPyt7uzPDsuPPiHcWxL2PNeoEw"
+          }
+        ],
+        "owner": "0x72cfe7e741d9858f132016b04f199e87fe9c2c8483ea5067e651d6e076f441f2",
+        "price": "1000",
+        "budget": "100000000"
+      }
+    },
+    "txSignatures": [
+      "ABocasdt+UKkCUtWgT6MJ0NiBtMjoPv1Ngy/Idho+E9n6aCOPWF2OPqxmyzRU6xQIKxDMS8q8jyiqacKJ9/3ZQnWyaPQje6a22YvWvR1aiCW3h4Et7TVkaJmfP/3+3ILWw=="
+    ]
+  },
+  "effects": {
+    "messageVersion": "v1",
+    "status": {
+      "status": "success"
+    },
+    "executedEpoch": "982",
+    "gasUsed": {
+      "computationCost": "1000000",
+      "storageCost": "33060000",
+      "storageRebate": "978120",
+      "nonRefundableStorageFee": "9880"
+    },
+    "modifiedAtVersions": [
+      {
+        "objectId": "0x683a504af4141e74b7b98b8c0c8b7c9204cbefa9cf21974c8c2041c3f0d74b91",
+        "sequenceNumber": "733201072"
+      }
+    ],
+    "transactionDigest": "3i15d9tm9W8FzcaiH3BptM1JoMhwnjpRxr1NAGpXqqMi",
+    "created": [
+      {
+        "owner": {
+          "AddressOwner": "0x72cfe7e741d9858f132016b04f199e87fe9c2c8483ea5067e651d6e076f441f2"
+        },
+        "reference": {
+          "objectId": "0x086c31bf1786d4d5a441773cdff76b1c895328d409ff2f8823d99f58bfce6c25",
+          "version": 733201073,
+          "digest": "cNxpAPUwQ47F3JW2SFFF46SxKKWec8cU8kb6diQhKYr"
+        }
+      },
+      {
+        "owner": "Immutable",
+        "reference": {
+          "objectId": "0x3757c5b83a2d4606659e17a8130cc3022e398cb092830fe93a186171d4d2cdb8",
+          "version": 1,
+          "digest": "4NvJZYUqx1AY2BMgQTzDDs9RqkuDXUBPbXFTh1VYa6o8"
+        }
+      },
+      {
+        "owner": {
+          "Shared": {
+            "initial_shared_version": 733201073
+          }
+        },
+        "reference": {
+          "objectId": "0x48e625408db3aa995ed216f9e273956a7cba6e9ac9604a458df493a49591d7e4",
+          "version": 733201073,
+          "digest": "5NAKnmzY5BuN8QwJ2UXnQF1mUeMimqb61xzvd3zU5cFP"
+        }
+      },
+      {
+        "owner": {
+          "AddressOwner": "0x72cfe7e741d9858f132016b04f199e87fe9c2c8483ea5067e651d6e076f441f2"
+        },
+        "reference": {
+          "objectId": "0x53c084308ece8b6e3c9963d2470444bbf1a1a13673b91c020dc552890bb15d11",
+          "version": 733201073,
+          "digest": "Gp8jpcoxgyhXRx8WRYFARnr9ESKDnYzuC8hnzQtcE9RM"
+        }
+      },
+      {
+        "owner": {
+          "AddressOwner": "0x72cfe7e741d9858f132016b04f199e87fe9c2c8483ea5067e651d6e076f441f2"
+        },
+        "reference": {
+          "objectId": "0x6d64046ae9a29f8163913da6bb377c425c09ab715b98ebab9d725fe9982a6860",
+          "version": 733201073,
+          "digest": "YmGiVoMoiDMyfZr3LT1XEiySWVoWkAY2CHncm85aBuA"
+        }
+      },
+      {
+        "owner": {
+          "Shared": {
+            "initial_shared_version": 733201073
+          }
+        },
+        "reference": {
+          "objectId": "0xbaaada92a105f8ae69c14323ace0e003b6d14898820b916fcbdcafba87195b35",
+          "version": 733201073,
+          "digest": "5ZDzPsFHrRCGVFUUF3kX2pxQ74eB52nZkTshLcZVbvLN"
+        }
+      }
+    ],
+    "mutated": [
+      {
+        "owner": {
+          "AddressOwner": "0x72cfe7e741d9858f132016b04f199e87fe9c2c8483ea5067e651d6e076f441f2"
+        },
+        "reference": {
+          "objectId": "0x683a504af4141e74b7b98b8c0c8b7c9204cbefa9cf21974c8c2041c3f0d74b91",
+          "version": 733201073,
+          "digest": "6EQJsMrvomKZ3cjs6ohMUPudh1qYe7FuToSDRuodHtJU"
+        }
+      }
+    ],
+    "gasObject": {
+      "owner": {
+        "AddressOwner": "0x72cfe7e741d9858f132016b04f199e87fe9c2c8483ea5067e651d6e076f441f2"
+      },
+      "reference": {
+        "objectId": "0x683a504af4141e74b7b98b8c0c8b7c9204cbefa9cf21974c8c2041c3f0d74b91",
+        "version": 733201073,
+        "digest": "6EQJsMrvomKZ3cjs6ohMUPudh1qYe7FuToSDRuodHtJU"
+      }
+    },
+    "dependencies": [
+      "2BNuLYzJ44M4TUWDYrZd3Ve2mcAuz1hWg6toU4jsJoeX",
+      "2qhQjceqLVpVKvEzoKh1NoE7zu2hXmqowkAceq7ZjBKd",
+      "6nnyxGNXY8S23XhbyEp7mbjsJXeUP36Ai7k6XCN1fUvH",
+      "7ekw9Sia6Rui2TKcLKnFjeXmkmJez42yfrAWo7LwWLRf",
+      "A9Txae1uT1X5Uqj5tfVi7Q2WdA7F4VbJHiGQK1k7722s"
+    ]
+  },
+  "events": [],
+  "objectChanges": [
+    {
+      "type": "mutated",
+      "sender": "0x72cfe7e741d9858f132016b04f199e87fe9c2c8483ea5067e651d6e076f441f2",
+      "owner": {
+        "AddressOwner": "0x72cfe7e741d9858f132016b04f199e87fe9c2c8483ea5067e651d6e076f441f2"
+      },
+      "objectType": "0x2::coin::Coin<0x2::sui::SUI>",
+      "objectId": "0x683a504af4141e74b7b98b8c0c8b7c9204cbefa9cf21974c8c2041c3f0d74b91",
+      "version": "733201073",
+      "previousVersion": "733201072",
+      "digest": "6EQJsMrvomKZ3cjs6ohMUPudh1qYe7FuToSDRuodHtJU"
+    },
+    {
+      "type": "created",
+      "sender": "0x72cfe7e741d9858f132016b04f199e87fe9c2c8483ea5067e651d6e076f441f2",
+      "owner": {
+        "AddressOwner": "0x72cfe7e741d9858f132016b04f199e87fe9c2c8483ea5067e651d6e076f441f2"
+      },
+      "objectType": "0x2::package::UpgradeCap",
+      "objectId": "0x086c31bf1786d4d5a441773cdff76b1c895328d409ff2f8823d99f58bfce6c25",
+      "version": "733201073",
+      "digest": "cNxpAPUwQ47F3JW2SFFF46SxKKWec8cU8kb6diQhKYr"
+    },
+    {
+      "type": "published",
+      "packageId": "0x3757c5b83a2d4606659e17a8130cc3022e398cb092830fe93a186171d4d2cdb8",
+      "version": "1",
+      "digest": "4NvJZYUqx1AY2BMgQTzDDs9RqkuDXUBPbXFTh1VYa6o8",
+      "modules": [
+        "market"
+      ]
+    },
+    {
+      "type": "created",
+      "sender": "0x72cfe7e741d9858f132016b04f199e87fe9c2c8483ea5067e651d6e076f441f2",
+      "owner": {
+        "Shared": {
+          "initial_shared_version": 733201073
+        }
+      },
+      "objectType": "0x8b46d0f2d32974451336e0ede960ccd1714d6b9c3580715863bb2e303fa4795a::enclave::EnclaveConfig<0x3757c5b83a2d4606659e17a8130cc3022e398cb092830fe93a186171d4d2cdb8::market::MARKET>",
+      "objectId": "0x48e625408db3aa995ed216f9e273956a7cba6e9ac9604a458df493a49591d7e4",
+      "version": "733201073",
+      "digest": "5NAKnmzY5BuN8QwJ2UXnQF1mUeMimqb61xzvd3zU5cFP"
+    },
+    {
+      "type": "created",
+      "sender": "0x72cfe7e741d9858f132016b04f199e87fe9c2c8483ea5067e651d6e076f441f2",
+      "owner": {
+        "AddressOwner": "0x72cfe7e741d9858f132016b04f199e87fe9c2c8483ea5067e651d6e076f441f2"
+      },
+      "objectType": "0x8b46d0f2d32974451336e0ede960ccd1714d6b9c3580715863bb2e303fa4795a::enclave::Cap<0x3757c5b83a2d4606659e17a8130cc3022e398cb092830fe93a186171d4d2cdb8::market::MARKET>",
+      "objectId": "0x53c084308ece8b6e3c9963d2470444bbf1a1a13673b91c020dc552890bb15d11",
+      "version": "733201073",
+      "digest": "Gp8jpcoxgyhXRx8WRYFARnr9ESKDnYzuC8hnzQtcE9RM"
+    },
+    {
+      "type": "created",
+      "sender": "0x72cfe7e741d9858f132016b04f199e87fe9c2c8483ea5067e651d6e076f441f2",
+      "owner": {
+        "AddressOwner": "0x72cfe7e741d9858f132016b04f199e87fe9c2c8483ea5067e651d6e076f441f2"
+      },
+      "objectType": "0x3757c5b83a2d4606659e17a8130cc3022e398cb092830fe93a186171d4d2cdb8::market::AdminCap",
+      "objectId": "0x6d64046ae9a29f8163913da6bb377c425c09ab715b98ebab9d725fe9982a6860",
+      "version": "733201073",
+      "digest": "YmGiVoMoiDMyfZr3LT1XEiySWVoWkAY2CHncm85aBuA"
+    },
+    {
+      "type": "created",
+      "sender": "0x72cfe7e741d9858f132016b04f199e87fe9c2c8483ea5067e651d6e076f441f2",
+      "owner": {
+        "Shared": {
+          "initial_shared_version": 733201073
+        }
+      },
+      "objectType": "0x3757c5b83a2d4606659e17a8130cc3022e398cb092830fe93a186171d4d2cdb8::market::Market",
+      "objectId": "0xbaaada92a105f8ae69c14323ace0e003b6d14898820b916fcbdcafba87195b35",
+      "version": "733201073",
+      "digest": "5ZDzPsFHrRCGVFUUF3kX2pxQ74eB52nZkTshLcZVbvLN"
+    }
+  ],
+  "balanceChanges": [
+    {
+      "owner": {
+        "AddressOwner": "0x72cfe7e741d9858f132016b04f199e87fe9c2c8483ea5067e651d6e076f441f2"
+      },
+      "coinType": "0x2::sui::SUI",
+      "amount": "-33081880"
+    }
+  ],
+  "timestampMs": "1768640564812",
+  "confirmedLocalExecution": true,
+  "checkpoint": "287049085"
+}

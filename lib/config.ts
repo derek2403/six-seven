@@ -37,3 +37,14 @@ export const VAULT_CONFIG = {
     // Shared Ledger object ID
     LEDGER_ID: "0x537654bf8d72f1fef3e036f2405efb3750f3d1d5ada3225f326abdfcf64ea214",
 };
+
+export const WORLD_CONFIG = {
+    // Package ID for the deployed world module
+    PACKAGE_ID: "0x4cea1bfc34390760843699634eb9f3c3b55e5cf4248def1d862f6a7ffea4c76b",
+
+    // Module name
+    MODULE_NAME: "world",
+
+    // Shared World object ID
+    WORLD_ID: "0x84d9deddf76eeae57ce0f0bbe6718cb575963bf8feb7230f5b779f8da4cad391",
+};

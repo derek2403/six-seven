@@ -1,0 +1,10 @@
+[warning] Client/Server api version mismatch, client api version : 1.59.0, server api version : 1.63.3
+[warning] CLI's protocol version is 99, but the active network's protocol version is 107. 
+ Consider installing the latest version of the CLI - https://docs.sui.io/guides/developer/getting-started/sui-install 
+
+ If publishing/upgrading returns a dependency verification error, then install the latest CLI version.
+[Note]: Dependency sources are no longer verified automatically during publication and upgrade. You can pass the `--verify-deps` option if you would like to verify them as part of publication or upgrade.
+[warning]: The network is using protocol version ProtocolVersion(99), but this binary only recognizes protocol version ProtocolVersion(107); the system packages used for compilation (e.g. MoveStdlib) may be out of date. If you have errors related to system packages, you may need to update your CLI.
+[note] Dependencies on Bridge, MoveStdlib, Sui, and SuiSystem are automatically added, but this feature is disabled for your package because you have explicitly included dependencies on Sui. Consider removing these dependencies from Move.toml.
+Failed to publish the Move module(s), reason: Package dependency "usdc" does not specify a published address (the Move.toml manifest for "usdc" does not contain a 'published-at' field, nor is there a 'published-id' in the Move.lock).
+If this is intentional, you may use the --with-unpublished-dependencies flag to continue publishing these dependencies as part of your package (they won't be linked against existing packages on-chain).
