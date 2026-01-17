@@ -1,19 +1,15 @@
 'use client';
 
 import { Geist, Geist_Mono } from "next/font/google";
-import { ConnectButton, useCurrentAccount, useSignAndExecuteTransaction, useSuiClient, useSuiClientQuery } from "@mysten/dapp-kit";
+import { useCurrentAccount, useSignAndExecuteTransaction, useSuiClient, useSuiClientQuery } from "@mysten/dapp-kit";
 import { USDC_CONFIG, VAULT_CONFIG } from "../lib/config";
 import { useState, useEffect } from "react";
-import { formatBalance, parseAmount } from "../lib/format";
+import { formatBalance } from "../lib/format";
 import { buildMint1000UsdcTransaction, USDC_COIN_TYPE } from "../lib/usdc";
 import {
-    buildDepositTransaction,
-    buildWithdrawTransaction,
-    buildWithdrawAllTransaction,
     parseVaultStats,
     VAULT_ID,
-    type VaultStats,
-    type CoinData
+    type VaultStats
 } from "../lib/vault";
 
 const geistSans = Geist({
@@ -36,11 +32,10 @@ export default function TokenPage() {
                     Mock USDC &amp; Vault Testing
                 </h1>
                 <p className="text-zinc-600 dark:text-zinc-400 text-center">
-                    Test minting USDC tokens and vault deposit/withdraw functions
+                    Test minting USDC tokens. Use the header controls to Deposit/Withdraw.
                 </p>
 
                 <div className="w-full rounded-xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-                    <ConnectButton />
                     <TokenActions />
                 </div>
             </main>
@@ -48,32 +43,18 @@ export default function TokenPage() {
     );
 }
 
-// Component for token minting and vault actions
+// Component for token minting and vault stats
 function TokenActions() {
     const account = useCurrentAccount();
     const suiClient = useSuiClient();
     const { mutate: signAndExecute } = useSignAndExecuteTransaction();
     const [isLoading, setIsLoading] = useState(false);
     const [txStatus, setTxStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-    const [depositAmount, setDepositAmount] = useState('100');
-    const [withdrawAmount, setWithdrawAmount] = useState('50');
     const [vaultStats, setVaultStats] = useState<VaultStats | null>(null);
 
     // Query USDC balance for the connected wallet
     const { data: balanceData, refetch: refetchBalance } = useSuiClientQuery(
         'getBalance',
-        {
-            owner: account?.address ?? '',
-            coinType: USDC_COIN_TYPE,
-        },
-        {
-            enabled: !!account?.address,
-        }
-    );
-
-    // Query all USDC coins for the connected wallet (needed for deposit)
-    const { data: coinsData, refetch: refetchCoins } = useSuiClientQuery(
-        'getCoins',
         {
             owner: account?.address ?? '',
             coinType: USDC_COIN_TYPE,
@@ -105,7 +86,7 @@ function TokenActions() {
 
     // Refetch all data
     const refetchAll = async () => {
-        await Promise.all([refetchBalance(), refetchCoins(), refetchVault()]);
+        await Promise.all([refetchBalance(), refetchVault()]);
     };
 
     // Mint 1000 USDC to the connected wallet
@@ -148,153 +129,10 @@ function TokenActions() {
         }
     };
 
-    // Deposit USDC into the vault
-    const handleDeposit = async () => {
-        if (!account || !coinsData?.data) return;
-
-        const amountToDeposit = parseAmount(depositAmount);
-        if (amountToDeposit <= 0) {
-            setTxStatus({ type: 'error', message: 'Please enter a valid deposit amount' });
-            return;
-        }
-
-        setIsLoading(true);
-        setTxStatus(null);
-
-        try {
-            const coins: CoinData[] = coinsData.data.map(c => ({
-                coinObjectId: c.coinObjectId,
-                balance: c.balance,
-            }));
-
-            const tx = buildDepositTransaction(coins, amountToDeposit);
-
-            if (!tx) {
-                setTxStatus({ type: 'error', message: 'No USDC coins found in wallet' });
-                setIsLoading(false);
-                return;
-            }
-
-            signAndExecute(
-                { transaction: tx },
-                {
-                    onSuccess: async (result) => {
-                        await suiClient.waitForTransaction({ digest: result.digest });
-                        setTxStatus({
-                            type: 'success',
-                            message: `Successfully deposited ${depositAmount} USDC! Tx: ${result.digest}`,
-                        });
-                        await refetchAll();
-                        setIsLoading(false);
-                    },
-                    onError: (error) => {
-                        setTxStatus({
-                            type: 'error',
-                            message: `Failed to deposit: ${error.message}`,
-                        });
-                        setIsLoading(false);
-                    },
-                }
-            );
-        } catch (error) {
-            setTxStatus({
-                type: 'error',
-                message: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
-            });
-            setIsLoading(false);
-        }
-    };
-
-    // Withdraw USDC from the vault
-    const handleWithdraw = async () => {
-        if (!account) return;
-
-        const amountToWithdraw = parseAmount(withdrawAmount);
-        if (amountToWithdraw <= 0) {
-            setTxStatus({ type: 'error', message: 'Please enter a valid withdraw amount' });
-            return;
-        }
-
-        setIsLoading(true);
-        setTxStatus(null);
-
-        try {
-            const tx = buildWithdrawTransaction(amountToWithdraw);
-
-            signAndExecute(
-                { transaction: tx },
-                {
-                    onSuccess: async (result) => {
-                        await suiClient.waitForTransaction({ digest: result.digest });
-                        setTxStatus({
-                            type: 'success',
-                            message: `Successfully withdrew ${withdrawAmount} USDC! Tx: ${result.digest}`,
-                        });
-                        await refetchAll();
-                        setIsLoading(false);
-                    },
-                    onError: (error) => {
-                        setTxStatus({
-                            type: 'error',
-                            message: `Failed to withdraw: ${error.message}`,
-                        });
-                        setIsLoading(false);
-                    },
-                }
-            );
-        } catch (error) {
-            setTxStatus({
-                type: 'error',
-                message: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
-            });
-            setIsLoading(false);
-        }
-    };
-
-    // Withdraw all USDC from the vault
-    const handleWithdrawAll = async () => {
-        if (!account) return;
-
-        setIsLoading(true);
-        setTxStatus(null);
-
-        try {
-            const tx = buildWithdrawAllTransaction();
-
-            signAndExecute(
-                { transaction: tx },
-                {
-                    onSuccess: async (result) => {
-                        await suiClient.waitForTransaction({ digest: result.digest });
-                        setTxStatus({
-                            type: 'success',
-                            message: `Successfully withdrew all USDC! Tx: ${result.digest}`,
-                        });
-                        await refetchAll();
-                        setIsLoading(false);
-                    },
-                    onError: (error) => {
-                        setTxStatus({
-                            type: 'error',
-                            message: `Failed to withdraw all: ${error.message}`,
-                        });
-                        setIsLoading(false);
-                    },
-                }
-            );
-        } catch (error) {
-            setTxStatus({
-                type: 'error',
-                message: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
-            });
-            setIsLoading(false);
-        }
-    };
-
     if (!account) {
         return (
             <div className="mt-6 text-center text-zinc-500 dark:text-zinc-400">
-                Please connect your wallet to test the token and vault functions
+                Please connect your wallet to test the token functions
             </div>
         );
     }
@@ -356,59 +194,6 @@ function TokenActions() {
                         </div>
                     </div>
                 </div>
-            </div>
-
-            {/* Deposit Section */}
-            <div className="rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-900/20">
-                <h3 className="text-lg font-semibold text-green-800 dark:text-green-300 mb-3">
-                    📥 Deposit to Vault
-                </h3>
-                <div className="flex gap-3">
-                    <input
-                        type="number"
-                        value={depositAmount}
-                        onChange={(e) => setDepositAmount(e.target.value)}
-                        placeholder="Amount"
-                        className="flex-1 rounded-lg border border-green-300 bg-white px-4 py-3 text-black dark:border-green-700 dark:bg-zinc-800 dark:text-white"
-                    />
-                    <button
-                        onClick={handleDeposit}
-                        disabled={isLoading}
-                        className="rounded-lg bg-green-600 px-6 py-3 font-semibold text-white transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                        Deposit
-                    </button>
-                </div>
-            </div>
-
-            {/* Withdraw Section */}
-            <div className="rounded-lg border border-orange-200 bg-orange-50 p-4 dark:border-orange-800 dark:bg-orange-900/20">
-                <h3 className="text-lg font-semibold text-orange-800 dark:text-orange-300 mb-3">
-                    📤 Withdraw from Vault
-                </h3>
-                <div className="flex gap-3 mb-3">
-                    <input
-                        type="number"
-                        value={withdrawAmount}
-                        onChange={(e) => setWithdrawAmount(e.target.value)}
-                        placeholder="Amount"
-                        className="flex-1 rounded-lg border border-orange-300 bg-white px-4 py-3 text-black dark:border-orange-700 dark:bg-zinc-800 dark:text-white"
-                    />
-                    <button
-                        onClick={handleWithdraw}
-                        disabled={isLoading}
-                        className="rounded-lg bg-orange-600 px-6 py-3 font-semibold text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                        Withdraw
-                    </button>
-                </div>
-                <button
-                    onClick={handleWithdrawAll}
-                    disabled={isLoading}
-                    className="w-full rounded-lg bg-orange-500 px-6 py-2 font-semibold text-white transition-colors hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                    Withdraw All
-                </button>
             </div>
 
             {/* Transaction Status */}
