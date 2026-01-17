@@ -432,6 +432,43 @@ export default function TestPage() {
         }
     };
 
+    // Test 7: Get Positions
+    const testListPositions = async () => {
+        setLoading(true);
+        log('--- TEST: Get Active Positions ---');
+
+        try {
+            const poolIdNum = parseInt(poolId);
+            log(`Fetching positions for Pool ID: ${poolIdNum}`);
+
+            const response = await fetch('/api/tee-proxy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    endpoint: `positions?pool_id=${poolIdNum}`,
+                    method: 'GET',
+                    payload: {}
+                }),
+            });
+
+            const data = await response.json();
+
+            if (Array.isArray(data)) {
+                log(`✅ Found ${data.length} positions`);
+                data.forEach((pos: any, i) => {
+                    log(`[${i}] Wallet: ...${pos.wallet.slice(-6)} | Outcome: ${pos.outcome} | Shares: ${pos.shares}`);
+                });
+            } else {
+                log(`Response: ${JSON.stringify(data)}`);
+            }
+
+        } catch (err: any) {
+            log(`❌ Error: ${err.message}`);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-zinc-900 text-white p-8">
             <h1 className="text-3xl font-bold mb-6">🧪 Integration Test Page</h1>
@@ -538,6 +575,13 @@ export default function TestPage() {
                         className="bg-cyan-600 hover:bg-cyan-700 px-4 py-2 rounded-lg font-semibold disabled:opacity-50"
                     >
                         6. Get Attestation
+                    </button>
+                    <button
+                        onClick={testListPositions}
+                        disabled={loading}
+                        className="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg font-semibold disabled:opacity-50"
+                    >
+                        7. Get Positions
                     </button>
                     <button
                         onClick={fetchUserData}

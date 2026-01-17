@@ -48,10 +48,10 @@ COPY --from=user-cpio . /
 COPY --from=user-linux-nitro /bzImage .
 COPY --from=user-linux-nitro /linux.config .
 
-FROM base AS build
-COPY . .
 
+FROM base AS build
 WORKDIR /src/nautilus-server
+COPY src/nautilus-server .
 ENV OPENSSL_STATIC=true
 ENV TARGET=x86_64-unknown-linux-musl
 ARG ENCLAVE_APP
