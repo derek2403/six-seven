@@ -1,4 +1,5 @@
 import { Transaction } from '@mysten/sui/transactions';
+import { SuiObjectResponse } from '@mysten/sui/client';
 import { VAULT_CONFIG } from './config';
 
 /**
@@ -10,7 +11,7 @@ export interface CoinData {
 }
 
 /**
- * Vault statistics parsed from the vault object
+ * Vault statistics parsed from the vault object (Global stats)
  */
 export interface VaultStats {
     balance: string;
@@ -19,22 +20,20 @@ export interface VaultStats {
 }
 
 /**
+ * User Account data parsed from the vault's accounts table
+ */
+export interface UserAccountData {
+    deposited_amount: string;
+    withdrawable_amount: string;
+}
+
+/**
  * Parse vault stats from vault object data
  * @param vaultData - Raw vault data from Sui client
  * @returns Parsed vault statistics or null if invalid
  */
-export const parseVaultStats = (vaultData: {
-    data?: {
-        content?: {
-            fields?: {
-                balance?: string;
-                total_deposited?: string;
-                total_withdrawn?: string;
-            };
-        };
-    };
-} | null): VaultStats | null => {
-    if (vaultData?.data?.content && 'fields' in vaultData.data.content) {
+export const parseVaultStats = (vaultData: SuiObjectResponse | null | undefined): VaultStats | null => {
+    if (vaultData?.data?.content?.dataType === 'moveObject' && 'fields' in vaultData.data.content) {
         const fields = vaultData.data.content.fields as {
             balance: string;
             total_deposited: string;
@@ -45,6 +44,34 @@ export const parseVaultStats = (vaultData: {
             deposited: fields.total_deposited || '0',
             withdrawable: String(BigInt(fields.total_deposited || '0') - BigInt(fields.total_withdrawn || '0')),
         };
+    }
+    return null;
+};
+
+/**
+ * Parse user account data from the dynamic field object
+ * @param accountData - Raw account data from Sui client
+ * @returns Parsed user account data or null if invalid
+ */
+export const parseUserAccountData = (accountData: SuiObjectResponse | null | undefined): UserAccountData | null => {
+    if (accountData?.data?.content?.dataType === 'moveObject' && 'fields' in accountData.data.content) {
+        // The table stores values, so we look for the value field
+        // Structure: DynamicField { name: address, value: UserAccount { ... } }
+        const fields = accountData.data.content.fields as {
+            value?: {
+                fields?: {
+                    deposited_amount: string;
+                    withdrawable_amount: string;
+                }
+            }
+        };
+
+        if (fields.value?.fields) {
+            return {
+                deposited_amount: fields.value.fields.deposited_amount || '0',
+                withdrawable_amount: fields.value.fields.withdrawable_amount || '0',
+            };
+        }
     }
     return null;
 };

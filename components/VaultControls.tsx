@@ -8,7 +8,7 @@ import {
     buildDepositTransaction,
     buildWithdrawTransaction,
     buildWithdrawAllTransaction,
-    parseVaultStats,
+    parseUserAccountData,
     VAULT_ID,
     type CoinData
 } from '../lib/vault';
@@ -47,14 +47,37 @@ export function VaultControls() {
 }
 
 function VaultTrigger({ isOpen, onClick }: { isOpen: boolean; onClick: () => void }) {
+    const account = useCurrentAccount();
+
+    // 1. Get Vault Object to find the accounts table ID
     const { data: vaultData } = useSuiClientQuery(
         'getObject',
-        { id: VAULT_ID, options: { showContent: true } },
-        { refetchInterval: 5000 }
+        { id: VAULT_ID, options: { showContent: true } }
     );
 
-    const stats = parseVaultStats(vaultData as Parameters<typeof parseVaultStats>[0]);
-    const balance = stats ? formatBalance(stats.withdrawable) : '0.00';
+    // Extract accounts table ID
+    const accountsTableId = vaultData?.data?.content && 'fields' in vaultData.data.content
+        ? (vaultData.data.content.fields as any).accounts?.fields?.id?.id
+        : null;
+
+    // 2. Query the user's account from the table using Dynamic Field
+    const { data: userAccountData } = useSuiClientQuery(
+        'getDynamicFieldObject',
+        {
+            parentId: accountsTableId || '',
+            name: {
+                type: 'address',
+                value: account?.address || '',
+            }
+        },
+        {
+            enabled: !!accountsTableId && !!account?.address,
+            refetchInterval: 5000
+        }
+    );
+
+    const userStats = parseUserAccountData(userAccountData);
+    const balance = userStats ? formatBalance(userStats.withdrawable_amount) : '0.00';
 
     return (
         <button
@@ -99,6 +122,24 @@ function VaultActions({ onClose }: { onClose: () => void }) {
         { enabled: !!account }
     );
 
+    // Also fetch user vault balance for the withdraw tab
+    const { data: vaultData } = useSuiClientQuery(
+        'getObject',
+        { id: VAULT_ID, options: { showContent: true } }
+    );
+    const accountsTableId = vaultData?.data?.content && 'fields' in vaultData.data.content
+        ? (vaultData.data.content.fields as any).accounts?.fields?.id?.id
+        : null;
+    const { data: userAccountData, refetch: refetchUserVault } = useSuiClientQuery(
+        'getDynamicFieldObject',
+        {
+            parentId: accountsTableId || '',
+            name: { type: 'address', value: account?.address || '' }
+        },
+        { enabled: !!accountsTableId && !!account?.address }
+    );
+    const userStats = parseUserAccountData(userAccountData);
+
     const handleAction = async () => {
         if (!account) return;
 
@@ -133,7 +174,7 @@ function VaultActions({ onClose }: { onClose: () => void }) {
                         await suiClient.waitForTransaction({ digest: result.digest });
                         setStatus({ type: 'success', message: 'Transaction successful!' });
                         setAmount('');
-                        await refetchCoins();
+                        await Promise.all([refetchCoins(), refetchUserVault()]);
                         // Close after short delay on success
                         setTimeout(onClose, 1500);
                     },
@@ -160,6 +201,7 @@ function VaultActions({ onClose }: { onClose: () => void }) {
                     onSuccess: async (result) => {
                         await suiClient.waitForTransaction({ digest: result.digest });
                         setStatus({ type: 'success', message: 'Withdrew all funds!' });
+                        await refetchUserVault();
                         setTimeout(onClose, 1500);
                     },
                     onError: (error) => setStatus({ type: 'error', message: error.message })
@@ -181,8 +223,8 @@ function VaultActions({ onClose }: { onClose: () => void }) {
                         key={tab}
                         onClick={() => { setActiveTab(tab); setStatus(null); }}
                         className={`flex-1 rounded-md py-1.5 text-sm font-medium capitalize transition-colors ${activeTab === tab
-                            ? 'bg-white text-black shadow-sm dark:bg-zinc-700 dark:text-white'
-                            : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'
+                                ? 'bg-white text-black shadow-sm dark:bg-zinc-700 dark:text-white'
+                                : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'
                             }`}
                     >
                         {tab}
@@ -196,7 +238,7 @@ function VaultActions({ onClose }: { onClose: () => void }) {
                     {activeTab === 'deposit' ? (
                         <>Wallet Balance: {balanceData ? formatBalance(balanceData.totalBalance) : '0'} USDC</>
                     ) : (
-                        <>Available to Withdraw</>
+                        <>Available to Withdraw: {userStats ? formatBalance(userStats.withdrawable_amount) : '0'} USDC</>
                     )}
                 </div>
 
@@ -212,8 +254,8 @@ function VaultActions({ onClose }: { onClose: () => void }) {
                     onClick={handleAction}
                     disabled={isLoading}
                     className={`w-full rounded-lg py-2 text-sm font-semibold text-white transition-colors ${activeTab === 'deposit'
-                        ? 'bg-green-600 hover:bg-green-700'
-                        : 'bg-orange-600 hover:bg-orange-700'
+                            ? 'bg-green-600 hover:bg-green-700'
+                            : 'bg-orange-600 hover:bg-orange-700'
                         } disabled:opacity-50`}
                 >
                     {isLoading ? 'Processing...' : activeTab === 'deposit' ? 'Deposit' : 'Withdraw'}
