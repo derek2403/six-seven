@@ -46,7 +46,7 @@ export function CryptoPriceStrip({ targetPrice, currentPrice, priceChange24h = 0
                         isUp ? "text-green-600 bg-green-50" : "text-red-600 bg-red-50"
                     )}>
                         {isUp ? <ArrowUp className="size-2.5" strokeWidth={3} /> : <ArrowDown className="size-2.5" strokeWidth={3} />}
-                        <span>${Math.abs(priceChange24h).toFixed(2)}</span>
+                        <span>{Math.abs(priceChange24h).toFixed(2)}%</span>
                     </div>
                 </div>
                 <span className="text-[20px] font-bold text-orange-500 leading-none tracking-tight">
