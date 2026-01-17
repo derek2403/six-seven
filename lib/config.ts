@@ -33,6 +33,7 @@ export const VAULT_CONFIG = {
 
     // Shared Vault object ID
     VAULT_ID: "0xe15931d233831ef86894d072b1767103ddf0b13a470b03d96812c2768faee17e",
+    LEDGER_ID: "0x537654bf8d72f1fef3e036f2405efb3750f3d1d5ada3225f326abdfcf64ea214",
 };
 
 

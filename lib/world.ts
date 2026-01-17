@@ -46,7 +46,7 @@ export const buildCreatePoolTransaction = (
 
 export const buildProvideLiquidityTransaction = (
     poolId: string,
-    amount: number
+    amount: bigint
 ) => {
     const tx = new Transaction();
 

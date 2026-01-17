@@ -19,6 +19,12 @@ const geistMono = Geist_Mono({
 });
 
 export default function WorldPage() {
+    const [createdPools, setCreatedPools] = useState<Record<string, string>>({});
+
+    const handlePoolCreated = (poolId: string, digest: string) => {
+        setCreatedPools(prev => ({ ...prev, [poolId]: digest }));
+    };
+
     return (
         <div
             className={`${geistSans.className} ${geistMono.className} flex min-h-screen flex-col items-center justify-center bg-zinc-50 p-8 font-sans dark:bg-black`}
@@ -38,7 +44,7 @@ export default function WorldPage() {
                 <div className="grid w-full grid-cols-1 gap-8 lg:grid-cols-2">
                     <div className="flex flex-col gap-8">
                         <div className="rounded-xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-                            <CreatePoolForm />
+                            <CreatePoolForm onPoolCreated={handlePoolCreated} />
                         </div>
                         <div className="rounded-xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
                             <ProvideLiquidityForm />
@@ -47,7 +53,10 @@ export default function WorldPage() {
 
                     <div className="flex flex-col gap-8">
                         <div className="rounded-xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-                            <WorldTable />
+                            <WorldTable createdPools={createdPools} />
+                        </div>
+                        <div className="rounded-xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+                            <MakerTable />
                         </div>
                     </div>
                 </div>
@@ -56,7 +65,7 @@ export default function WorldPage() {
     );
 }
 
-function CreatePoolForm() {
+function CreatePoolForm({ onPoolCreated }: { onPoolCreated: (poolId: string, digest: string) => void }) {
     const account = useCurrentAccount();
     const suiClient = useSuiClient();
     const { mutate: signAndExecute } = useSignAndExecuteTransaction();
@@ -85,7 +94,42 @@ function CreatePoolForm() {
                 {
                     onSuccess: async (result) => {
                         await suiClient.waitForTransaction({ digest: result.digest });
-                        setStatus({ type: 'success', message: `Pool created! Tx: ${result.digest}` });
+
+                        // Fetch the new Pool ID
+                        let poolIdMessage = "";
+                        try {
+                            const worldObj = await suiClient.getObject({
+                                id: WORLD_CONFIG.WORLD_ID,
+                                options: { showContent: true }
+                            });
+
+                            const makerRegistryId = worldObj.data?.content && 'fields' in worldObj.data.content
+                                ? (worldObj.data.content.fields as any).maker_registry?.fields?.id?.id
+                                : null;
+
+                            if (makerRegistryId) {
+                                const makerField = await suiClient.getDynamicFieldObject({
+                                    parentId: makerRegistryId,
+                                    name: {
+                                        type: 'address',
+                                        value: account.address
+                                    }
+                                });
+
+                                if (makerField.data?.content && 'fields' in makerField.data.content) {
+                                    const userPools = (makerField.data.content.fields as any).value;
+                                    if (Array.isArray(userPools) && userPools.length > 0) {
+                                        const newPoolId = userPools[userPools.length - 1];
+                                        poolIdMessage = ` ID: ${newPoolId}`;
+                                        onPoolCreated(newPoolId, result.digest);
+                                    }
+                                }
+                            }
+                        } catch (err) {
+                            console.error("Failed to fetch new pool ID", err);
+                        }
+
+                        setStatus({ type: 'success', message: `Pool created!${poolIdMessage} Tx: ${result.digest}` });
                         setTitle('');
                         setImageUrl('');
                         setDescription('');
@@ -171,7 +215,7 @@ function ProvideLiquidityForm() {
         if (!account || !poolId || !amount) return;
 
         const parsedAmount = parseAmount(amount);
-        if (parsedAmount <= 0) {
+        if (parsedAmount <= BigInt(0)) {
             setStatus({ type: 'error', message: 'Invalid amount' });
             return;
         }
@@ -250,7 +294,7 @@ interface PoolData {
     probabilities: Record<string, string>;
 }
 
-function WorldTable() {
+function WorldTable({ createdPools }: { createdPools: Record<string, string> }) {
     const suiClient = useSuiClient();
     const [pools, setPools] = useState<PoolData[]>([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -299,7 +343,7 @@ function WorldTable() {
                             const sItem = await suiClient.getObject({ id: sf.objectId, options: { showContent: true } });
                             if (sItem.data?.content && 'fields' in sItem.data.content) {
                                 const sContent = sItem.data.content.fields as any;
-                                shares[sf.name.value] = sContent.value;
+                                shares[sf.name.value as string] = sContent.value;
                             }
                         }
                     }
@@ -310,7 +354,7 @@ function WorldTable() {
                             const pItem = await suiClient.getObject({ id: pf.objectId, options: { showContent: true } });
                             if (pItem.data?.content && 'fields' in pItem.data.content) {
                                 const pContent = pItem.data.content.fields as any;
-                                probs[pf.name.value] = pContent.value;
+                                probs[pf.name.value as string] = pContent.value;
                             }
                         }
                     }
@@ -372,6 +416,11 @@ function WorldTable() {
                                     Liq: {formatBalance(pool.liquidity)}
                                 </span>
                             </div>
+                            {createdPools[pool.id] && (
+                                <div className="mb-2 text-[10px] text-green-600">
+                                    Created in Tx: <a href={`https://suiscan.xyz/tx/${createdPools[pool.id]}`} target="_blank" rel="noreferrer" className="underline">{createdPools[pool.id].slice(0, 10)}...</a>
+                                </div>
+                            )}
 
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left text-xs">
@@ -508,6 +557,115 @@ function UpdateProbForm({ poolId, currentProbs }: { poolId: string, currentProbs
                     {status.message}
                 </div>
             )}
+        </div>
+    );
+}
+
+interface MakerData {
+    address: string;
+    poolIds: string[];
+}
+
+function MakerTable() {
+    const suiClient = useSuiClient();
+    const [makers, setMakers] = useState<MakerData[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+
+    const fetchMakers = async () => {
+        setIsLoading(true);
+        try {
+            const worldObj = await suiClient.getObject({
+                id: WORLD_CONFIG.WORLD_ID,
+                options: { showContent: true }
+            });
+
+            const makerRegistryId = worldObj.data?.content && 'fields' in worldObj.data.content
+                ? (worldObj.data.content.fields as any).maker_registry?.fields?.id?.id
+                : null;
+
+            if (!makerRegistryId) return;
+
+            const fields = await suiClient.getDynamicFields({
+                parentId: makerRegistryId,
+            });
+
+            const makerPromises = fields.data.map(async (field) => {
+                const item = await suiClient.getObject({
+                    id: field.objectId,
+                    options: { showContent: true }
+                });
+
+                if (item.data?.content && 'fields' in item.data.content) {
+                    const content = item.data.content.fields as any;
+                    // Key is address, Value is vector<u64> (pool IDs)
+                    return {
+                        address: field.name.value as string,
+                        poolIds: content.value as string[]
+                    };
+                }
+                return null;
+            });
+
+            const results = await Promise.all(makerPromises);
+            setMakers(results.filter((m): m is NonNullable<typeof m> => m !== null));
+
+        } catch (error) {
+            console.error("Failed to fetch makers", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchMakers();
+        const interval = setInterval(fetchMakers, 10000);
+        return () => clearInterval(interval);
+    }, [suiClient]);
+
+    return (
+        <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-black dark:text-white">
+                    👥 Maker Registry
+                </h3>
+                <button
+                    onClick={fetchMakers}
+                    className="text-xs text-blue-600 hover:underline dark:text-blue-400"
+                >
+                    Refresh
+                </button>
+            </div>
+
+            <div className="flex flex-col gap-2">
+                {isLoading && makers.length === 0 ? (
+                    <div className="text-center text-zinc-500">Loading makers...</div>
+                ) : makers.length === 0 ? (
+                    <div className="text-center text-zinc-500">No makers found</div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs">
+                            <thead>
+                                <tr className="text-zinc-500">
+                                    <th className="pb-2">Maker Address</th>
+                                    <th className="pb-2 text-right">Pools</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-zinc-200/50 dark:divide-zinc-700/50">
+                                {makers.map((maker) => (
+                                    <tr key={maker.address}>
+                                        <td className="py-2 font-mono text-zinc-600 dark:text-zinc-400">
+                                            {maker.address.slice(0, 6)}...{maker.address.slice(-4)}
+                                        </td>
+                                        <td className="py-2 text-right text-zinc-900 dark:text-zinc-100">
+                                            {maker.poolIds.length}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
