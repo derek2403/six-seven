@@ -10,15 +10,19 @@ import { CombinedMarketItem, COMBINED_MARKETS } from "@/lib/mock/combined-market
 type MarketSelection = "yes" | "no" | "any" | null;
 
 interface TradeCardProps {
-    // New props for Iran (optional for backward compatibility)
+    // Markets to display in the card
+    markets?: CombinedMarketItem[];
+    // Selection state props
     marketSelections?: Record<string, MarketSelection>;
     onMarketSelectionsChange?: (selections: Record<string, MarketSelection>) => void;
     focusedMarket?: string | null;
-    // Old prop for Crypto (optional for backward compatibility)
+    // Old prop for legacy compatibility
     market?: CombinedMarketItem;
 }
 
-export function TradeCard({ marketSelections, onMarketSelectionsChange, focusedMarket, market }: TradeCardProps) {
+export function TradeCard({ markets, marketSelections, onMarketSelectionsChange, focusedMarket, market }: TradeCardProps) {
+    // Use provided markets or fallback to COMBINED_MARKETS (Iran)
+    const displayMarkets = markets || COMBINED_MARKETS;
     const [tab, setTab] = React.useState<"buy" | "sell">("buy");
     const [amount, setAmount] = React.useState("");
     const [isFocused, setIsFocused] = React.useState(false);
@@ -61,10 +65,10 @@ export function TradeCard({ marketSelections, onMarketSelectionsChange, focusedM
                 </button>
             </div>
 
-            {/* Markets List with Yes/No/Any buttons - Only for Iran mode */}
+            {/* Markets List with Yes/No/Any buttons */}
             {isIranMode && marketSelections && (
                 <div className="space-y-3 mb-4">
-                    {COMBINED_MARKETS.map((marketItem) => {
+                    {displayMarkets.map((marketItem) => {
                         // Only show market if it's focused or no market is focused
                         const isMarketActive = focusedMarket === null || focusedMarket === undefined || focusedMarket === marketItem.id;
 

@@ -155,7 +155,11 @@ export default function MarketPage() {
                         {/* Context Description */}
                         <div className="mt-4 px-1">
                             <p className="text-[13px] text-gray-500 leading-relaxed text-justify">
-                                As of January 2026, Iran is in a state of severe internal upheaval and, to a lesser extent, external conflict following a rapid deterioration of its security and economic situation in the latter half of 2025. The context is defined by a brutal, large-scale crackdown on internal protests, economic collapse, and the aftermath of a direct, 12-day war with Israel in June 2025.
+                                {slug === 'crypto' ? (
+                                    "In early 2026, the cryptocurrency market is in a strong upward trend, driven by increased institutional participation, substantial inflows into Bitcoin ETFs, and wider mainstream adoption. Bitcoin has moved beyond its prior all-time highs, while Ethereum continues to grow through the expansion of its Layer 2 ecosystem. At the same time, newer altcoins such as Sui are attracting attention due to their innovative blockchain designs. Overall market sentiment remains optimistic, with traders anticipating further price gains."
+                                ) : (
+                                    "As of January 2026, Iran is in a state of severe internal upheaval and, to a lesser extent, external conflict following a rapid deterioration of its security and economic situation in the latter half of 2025. The context is defined by a brutal, large-scale crackdown on internal protests, economic collapse, and the aftermath of a direct, 12-day war with Israel in June 2025."
+                                )}
                             </p>
                         </div>
 
@@ -201,15 +205,12 @@ export default function MarketPage() {
 
                     {/* Right Side: Trade Card */}
                     <div className="w-full md:w-[400px] flex-shrink-0 sticky top-20">
-                        {slug === 'crypto' ? (
-                            <TradeCard market={marketData.markets[0]} />
-                        ) : (
-                            <TradeCard
-                                marketSelections={marketSelections}
-                                onMarketSelectionsChange={setMarketSelections}
-                                focusedMarket={focusedMarket}
-                            />
-                        )}
+                        <TradeCard
+                            markets={displayMarkets}
+                            marketSelections={marketSelections}
+                            onMarketSelectionsChange={setMarketSelections}
+                            focusedMarket={focusedMarket}
+                        />
                         <p className="mt-4 text-center text-[13px] text-gray-400 font-medium leading-relaxed">
                             By trading, you agree to the <span className="underline cursor-pointer hover:text-gray-600 transition-colors">Terms of Use.</span>
                         </p>
