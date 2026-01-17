@@ -3,7 +3,7 @@
 import React from "react";
 import { Line, LineChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
 import { Trophy, Clock, Settings, SlidersHorizontal, ChevronDown, Shuffle, ArrowUpDown } from "lucide-react";
-import { COMBINED_CHART_DATA, COMBINED_MARKETS } from "@/lib/mock/combined-markets";
+import { CombinedChartPoint, CombinedMarketItem } from "@/lib/mock/combined-markets";
 import Market3DView from "./Market3DView";
 
 
@@ -63,8 +63,8 @@ const CustomDot = (props: any) => {
     return null;
 };
 
-const OutcomeSlider = ({ selectedMarkets, currentValues }: { selectedMarkets: Record<string, boolean>; currentValues: Record<string, number> }) => {
-    const activeMarkets = COMBINED_MARKETS.filter(m => selectedMarkets[m.id]);
+const OutcomeSlider = ({ selectedMarkets, currentValues, markets }: { selectedMarkets: Record<string, boolean>; currentValues: Record<string, number>; markets: CombinedMarketItem[] }) => {
+    const activeMarkets = markets.filter(m => selectedMarkets[m.id]);
 
     // Sort markets by value to determine clumping
     const sortedMarkets = [...activeMarkets].sort((a, b) => currentValues[a.id] - currentValues[b.id]);
@@ -237,8 +237,8 @@ const WorldTableRow = ({ world, colors }: { world: any, colors: string[] }) => {
     );
 };
 
-const ConfusionMatrix = ({ selectedMarkets }: { selectedMarkets: Record<string, boolean> }) => {
-    const activeMarkets = COMBINED_MARKETS.filter(m => selectedMarkets[m.id]);
+const ConfusionMatrix = ({ selectedMarkets, markets }: { selectedMarkets: Record<string, boolean>; markets: CombinedMarketItem[] }) => {
+    const activeMarkets = markets.filter(m => selectedMarkets[m.id]);
 
     // State for tracking which market is where
     const [topMarketId, setTopMarketId] = React.useState<string | null>(null);
@@ -266,8 +266,8 @@ const ConfusionMatrix = ({ selectedMarkets }: { selectedMarkets: Record<string, 
 
     if (!topMarketId || !leftMarketId) return null;
 
-    const mTop = COMBINED_MARKETS.find(m => m.id === topMarketId)!;
-    const mLeft = COMBINED_MARKETS.find(m => m.id === leftMarketId)!;
+    const mTop = markets.find(m => m.id === topMarketId)!;
+    const mLeft = markets.find(m => m.id === leftMarketId)!;
 
     const mTopName = MARKET_NAMES[`value${mTop.id.slice(1)}`];
     const mLeftName = MARKET_NAMES[`value${mLeft.id.slice(1)}`];
@@ -434,11 +434,13 @@ const ConfusionMatrix = ({ selectedMarkets }: { selectedMarkets: Record<string, 
 };
 
 interface MarketCombinedChartProps {
+    data: CombinedChartPoint[];
+    markets: CombinedMarketItem[];
     selectedMarkets: Record<string, boolean>;
     view: string;
 }
 
-export function MarketCombinedChart({ selectedMarkets, view }: MarketCombinedChartProps) {
+export function MarketCombinedChart({ data, markets, selectedMarkets, view }: MarketCombinedChartProps) {
     const selectedCount = Object.values(selectedMarkets).filter(Boolean).length;
 
     // Default percentages based on your prompt (or mock)
@@ -460,7 +462,7 @@ export function MarketCombinedChart({ selectedMarkets, view }: MarketCombinedCha
                 {view === "Default" && (
                     <div className="h-[400px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={COMBINED_CHART_DATA} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+                            <LineChart data={data} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
                                 <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#e5e7eb" />
                                 <XAxis
                                     dataKey="date"
@@ -496,7 +498,7 @@ export function MarketCombinedChart({ selectedMarkets, view }: MarketCombinedCha
                                         strokeWidth={2}
                                         dot={(props: any) => {
                                             const { key, ...rest } = props;
-                                            return <CustomDot key={key} {...rest} color="#60a5fa" lastIndex={COMBINED_CHART_DATA.length - 1} />;
+                                            return <CustomDot key={key} {...rest} color="#60a5fa" lastIndex={data.length - 1} />;
                                         }}
                                         activeDot={<CustomActiveDot />}
                                         isAnimationActive={false}
@@ -510,7 +512,7 @@ export function MarketCombinedChart({ selectedMarkets, view }: MarketCombinedCha
                                         strokeWidth={2}
                                         dot={(props: any) => {
                                             const { key, ...rest } = props;
-                                            return <CustomDot key={key} {...rest} color="#2563eb" lastIndex={COMBINED_CHART_DATA.length - 1} />;
+                                            return <CustomDot key={key} {...rest} color="#2563eb" lastIndex={data.length - 1} />;
                                         }}
                                         activeDot={<CustomActiveDot />}
                                         isAnimationActive={false}
@@ -524,7 +526,7 @@ export function MarketCombinedChart({ selectedMarkets, view }: MarketCombinedCha
                                         strokeWidth={2}
                                         dot={(props: any) => {
                                             const { key, ...rest } = props;
-                                            return <CustomDot key={key} {...rest} color="#facc15" lastIndex={COMBINED_CHART_DATA.length - 1} />;
+                                            return <CustomDot key={key} {...rest} color="#facc15" lastIndex={data.length - 1} />;
                                         }}
                                         activeDot={<CustomActiveDot />}
                                         isAnimationActive={false}
@@ -542,6 +544,7 @@ export function MarketCombinedChart({ selectedMarkets, view }: MarketCombinedCha
                         <OutcomeSlider
                             selectedMarkets={selectedMarkets}
                             currentValues={currentValues}
+                            markets={markets}
                         />
                         <p className="text-[11px] text-gray-400 mt-4 text-center italic font-medium px-4">
                             Probabilities derived from the joint-outcome AMM world table.
@@ -550,7 +553,7 @@ export function MarketCombinedChart({ selectedMarkets, view }: MarketCombinedCha
                 )}
 
                 {view === "2D" && (
-                    <ConfusionMatrix selectedMarkets={selectedMarkets} />
+                    <ConfusionMatrix selectedMarkets={selectedMarkets} markets={markets} />
                 )}
 
                 {view === "3D" && (

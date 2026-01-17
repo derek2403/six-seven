@@ -5,13 +5,14 @@ import Image from "next/image";
 import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-import { COMBINED_MARKETS } from "@/lib/mock/combined-markets";
+import { CombinedMarketItem } from "@/lib/mock/combined-markets";
 
-export function TradeCard() {
+export function TradeCard({ market }: { market?: CombinedMarketItem }) {
     const [tab, setTab] = React.useState<"buy" | "sell">("buy");
     const [amount, setAmount] = React.useState("");
     const [isFocused, setIsFocused] = React.useState(false);
-    const market = COMBINED_MARKETS[0];
+
+    if (!market) return null;
 
     return (
         <div className="w-full max-w-[320px] bg-white rounded-[20px] border border-gray-100 p-5 sticky top-6">

@@ -4,15 +4,19 @@ import * as React from "react";
 import Image from "next/image";
 import { Link2, Bookmark, ChevronDown, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { COMBINED_MARKETS } from "@/lib/mock/combined-markets";
+import { CombinedMarketItem } from "@/lib/mock/combined-markets";
 import { cn } from "@/lib/utils";
+import { CryptoPriceStrip } from "./CryptoPriceStrip";
 
 interface CombinedMarketListProps {
+    title: string;
+    avatar: string;
+    markets: CombinedMarketItem[];
     selectedMarkets: Record<string, boolean>;
     onToggleMarket: (id: string) => void;
 }
 
-export function CombinedMarketList({ selectedMarkets, onToggleMarket }: CombinedMarketListProps) {
+export function CombinedMarketList({ title, avatar, markets, selectedMarkets, onToggleMarket }: CombinedMarketListProps) {
     const [isExpanded, setIsExpanded] = React.useState(false);
 
     const toggleMarket = (id: string, e: React.MouseEvent) => {
@@ -30,8 +34,8 @@ export function CombinedMarketList({ selectedMarkets, onToggleMarket }: Combined
                 {/* Unified Avatar */}
                 <div className="relative h-12 w-12 flex-shrink-0">
                     <Image
-                        src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTcHjuJwQinnq7yrEdYTZNb6xYpuKE2zdRCXg&s"
-                        alt="Iran War"
+                        src={avatar}
+                        alt={title}
                         fill
                         unoptimized
                         className="rounded-lg object-cover border border-gray-100"
@@ -42,7 +46,7 @@ export function CombinedMarketList({ selectedMarkets, onToggleMarket }: Combined
                     {/* Title and Collapse Trigger */}
                     <div className="flex items-center gap-2 min-w-0">
                         <h1 className="text-[24px] font-bold leading-tight tracking-tight text-black truncate">
-                            Iran War
+                            {title}
                         </h1>
                         <div className={cn(
                             "transition-transform duration-200 text-gray-400",
@@ -70,7 +74,7 @@ export function CombinedMarketList({ selectedMarkets, onToggleMarket }: Combined
                 isExpanded ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
             )}>
                 <div className="p-1 pb-2">
-                    {COMBINED_MARKETS.map((market) => (
+                    {markets.map((market) => (
                         <div
                             key={market.id}
                             className="flex items-center justify-between p-3 px-4 hover:bg-blue-50/50 rounded-lg cursor-pointer transition-colors group"
@@ -89,6 +93,22 @@ export function CombinedMarketList({ selectedMarkets, onToggleMarket }: Combined
                                 <span className="text-[15px] font-medium text-gray-700 truncate group-hover:text-gray-900 transition-colors">
                                     {market.title}
                                 </span>
+
+                                {market.livePrice && market.targetPrice && (
+                                    <div className="mt-1">
+                                        <CryptoPriceStrip
+                                            currentPrice={market.livePrice}
+                                            targetPrice={market.targetPrice}
+                                            priceChange24h={market.priceChange24h}
+                                        />
+                                    </div>
+                                )}
+
+                                {market.livePrice && !market.targetPrice && (
+                                    <span className="ml-2 text-[13px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
+                                        ${market.livePrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </span>
+                                )}
                             </div>
 
                             {/* Blue Tick Checkbox on the Right */}
