@@ -1,0 +1,11 @@
+[package]
+name = "prediction_market"
+edition = "2024"
+
+[dependencies]
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "61dcfdbe2ddc7ad05d27fc10cd09d4c6cc151acd" }
+enclave = { local = "../enclave" }
+usdc = { local = "../usdc" }
+
+[addresses]
+app = "0x0"
