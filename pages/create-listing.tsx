@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useCurrentAccount, useSignAndExecuteTransaction, useSuiClient } from '@mysten/dapp-kit';
-import { Transaction } from '@mysten/sui/transactions';
+import { createListingTx } from '../lib/listing';
 import { LISTING_CONFIG } from '../lib/config';
 import { Header } from '../components/header';
 
@@ -46,20 +46,11 @@ export default function CreateListing() {
         setSuccess('');
 
         try {
-            const tx = new Transaction();
-
-            const submarketTitles = submarkets.map(s => s.title);
-            const submarketImages = submarkets.map(s => s.image);
-
-            tx.moveCall({
-                target: `${LISTING_CONFIG.PACKAGE_ID}::${LISTING_CONFIG.MODULE_NAME}::create_listing`,
-                arguments: [
-                    tx.pure.string(title),
-                    tx.pure.string(description),
-                    tx.pure.string(imageUrl),
-                    tx.pure.vector('string', submarketTitles),
-                    tx.pure.vector('string', submarketImages),
-                ],
+            const tx = createListingTx({
+                title,
+                description,
+                imageUrl,
+                submarkets
             });
 
             const result = await signAndExecuteTransaction({
