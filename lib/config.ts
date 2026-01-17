@@ -35,17 +35,4 @@ export const VAULT_CONFIG = {
     VAULT_ID: "0xe15931d233831ef86894d072b1767103ddf0b13a470b03d96812c2768faee17e",
 };
 
-// LMSR (Logarithmic Market Scoring Rule) Contract Configuration
-export const LMSR_CONFIG = {
-    // Package ID for the deployed LMSR module (Testnet)
-    PACKAGE_ID: "0x28ee6a080f6ecd59cf28fbedaae71fe45e17f04853bdc21e09322fba394b655a",
 
-    // Module name
-    MODULE_NAME: "lmsr",
-
-    // Number of outcomes
-    OUTCOMES: 8,
-
-    // Fixed-point scale (9 decimals)
-    SCALE: 1_000_000_000,
-};

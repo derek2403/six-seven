@@ -164,16 +164,37 @@ function LMSRMarketSection() {
     const [isCreating, setIsCreating] = useState(false);
     const [txStatus, setTxStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
+    // Query USDC coins for the connected wallet
+    const { data: usdcCoins, refetch: refetchCoins } = useSuiClientQuery(
+        'getCoins',
+        {
+            owner: account?.address ?? '',
+            coinType: USDC_COIN_TYPE,
+        },
+        {
+            enabled: !!account?.address,
+        }
+    );
+
     // Create market from listing using smart contract
     const handleCreateMarket = useCallback(async () => {
-        if (!selectedListing || !account) return;
+        if (!selectedListing || !account || !usdcCoins?.data?.length) {
+            setTxStatus({ type: 'error', message: 'No USDC coins available' });
+            return;
+        }
 
         setIsCreating(true);
         setTxStatus(null);
 
         try {
             const b = BigInt(Math.floor(Number(poolAmount) * SCALE));
-            const tx = buildCreateAmmTransaction(b);
+            const initialAmount = BigInt(Math.floor(Number(poolAmount) * SCALE)); // Same as pool amount for initial shares
+            const paymentAmount = BigInt(Math.floor(Number(poolAmount) * SCALE)); // Payment to deposit into reserve
+
+            // Get all USDC coin IDs
+            const coinIds = usdcCoins.data.map(coin => coin.coinObjectId);
+
+            const tx = buildCreateAmmTransaction(b, initialAmount, coinIds, paymentAmount);
 
             signAndExecute(
                 { transaction: tx },
@@ -183,20 +204,24 @@ function LMSRMarketSection() {
 
                         // For demo purposes, create a local market state
                         // In production, you'd query the created object ID from the transaction
+                        // Note: Each outcome now starts with initialAmount shares (maker gets shares for all 8 outcomes)
                         const newMarket: Market = {
                             id: result.digest, // Use tx digest as temporary ID
                             title: selectedListing.title,
                             description: selectedListing.description,
                             b: b,
-                            q: Array(N).fill(BigInt(0)),
+                            q: Array(N).fill(initialAmount), // All 8 outcomes initialized with initial shares
                         };
 
                         setActiveMarket(newMarket);
                         setSelectedListing(null);
                         setTxStatus({
                             type: 'success',
-                            message: `Market created! Tx: ${result.digest.slice(0, 16)}...`,
+                            message: result.digest,
                         });
+
+                        // Refetch coins to update balance
+                        await refetchCoins();
                         setIsCreating(false);
                     },
                     onError: (error) => {
@@ -215,7 +240,7 @@ function LMSRMarketSection() {
             });
             setIsCreating(false);
         }
-    }, [selectedListing, account, poolAmount, signAndExecute, suiClient]);
+    }, [selectedListing, account, poolAmount, usdcCoins, signAndExecute, suiClient, refetchCoins]);
 
     // Get events for selected listing
     const selectedEvents = selectedListing?.events || LISTINGS[0].events;
@@ -296,7 +321,22 @@ function LMSRMarketSection() {
                         ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
                         : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
                         }`}>
-                        {txStatus.message}
+                        {txStatus.type === 'success' ? (
+                            <div>
+                                <div className="font-medium mb-1">✅ Market Created!</div>
+                                <div className="font-mono text-xs break-all">{txStatus.message}</div>
+                                <a
+                                    href={`https://suiscan.xyz/testnet/tx/${txStatus.message}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-block mt-2 text-blue-600 dark:text-blue-400 hover:underline"
+                                >
+                                    View on Suiscan →
+                                </a>
+                            </div>
+                        ) : (
+                            txStatus.message
+                        )}
                     </div>
                 )}
 
@@ -335,8 +375,27 @@ function LMSRMarketSection() {
 
 // ============ Taker Panel Component ============
 function TakerPanel({ market, setMarket, events }: { market: Market; setMarket: (m: Market) => void; events: string[] }) {
+    const account = useCurrentAccount();
+    const suiClient = useSuiClient();
+    const { mutate: signAndExecute } = useSignAndExecuteTransaction();
+
     const [buyAmount, setBuyAmount] = useState<string>('10');
     const [hoveredOutcome, setHoveredOutcome] = useState<number | null>(null);
+    const [isBuying, setIsBuying] = useState(false);
+    const [buyingOutcome, setBuyingOutcome] = useState<number | null>(null);
+    const [txStatus, setTxStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+    // Query USDC coins for the connected wallet
+    const { data: usdcCoins, refetch: refetchCoins } = useSuiClientQuery(
+        'getCoins',
+        {
+            owner: account?.address ?? '',
+            coinType: USDC_COIN_TYPE,
+        },
+        {
+            enabled: !!account?.address,
+        }
+    );
 
     // Current prices (0-1 floats representing probabilities)
     const currentPrices = useMemo(() => calculatePrices(market.q, market.b), [market.q, market.b]);
@@ -351,13 +410,73 @@ function TakerPanel({ market, setMarket, events }: { market: Market; setMarket: 
         return simulatePriceAfterBuy(market.q, market.b, hoveredOutcome, amount);
     }, [market.q, market.b, hoveredOutcome, buyAmount]);
 
-    // Handle buy (local simulation - in production would call smart contract)
-    const handleBuy = (outcome: number) => {
-        const amount = BigInt(Math.floor(Number(buyAmount) * SCALE));
-        const newQ = [...market.q];
-        newQ[outcome] += amount;
-        setMarket({ ...market, q: newQ });
-    };
+    // Handle buy - execute on-chain transaction
+    const handleBuy = useCallback(async (outcome: number) => {
+        if (!account || !usdcCoins?.data?.length) {
+            setTxStatus({ type: 'error', message: 'No USDC coins available' });
+            return;
+        }
+
+        setIsBuying(true);
+        setBuyingOutcome(outcome);
+        setTxStatus(null);
+
+        try {
+            const amount = BigInt(Math.floor(Number(buyAmount) * SCALE));
+            // Estimate max payment (for now, use a generous amount - the contract refunds excess)
+            const maxPayment = BigInt(Math.floor(Number(buyAmount) * SCALE * 2)); // 2x as buffer
+
+            // Get all USDC coin IDs
+            const coinIds = usdcCoins.data.map(coin => coin.coinObjectId);
+
+            const tx = buildBuyTransaction(
+                market.id,
+                outcome,
+                amount,
+                coinIds,
+                maxPayment
+            );
+
+            signAndExecute(
+                { transaction: tx },
+                {
+                    onSuccess: async (result) => {
+                        await suiClient.waitForTransaction({ digest: result.digest });
+
+                        // Update local state to reflect the purchase
+                        const newQ = [...market.q];
+                        newQ[outcome] += amount;
+                        setMarket({ ...market, q: newQ });
+
+                        // Refetch coins to update balance
+                        await refetchCoins();
+
+                        setTxStatus({
+                            type: 'success',
+                            message: result.digest,
+                        });
+                        setIsBuying(false);
+                        setBuyingOutcome(null);
+                    },
+                    onError: (error) => {
+                        setTxStatus({
+                            type: 'error',
+                            message: `Failed: ${error.message}`,
+                        });
+                        setIsBuying(false);
+                        setBuyingOutcome(null);
+                    },
+                }
+            );
+        } catch (error) {
+            setTxStatus({
+                type: 'error',
+                message: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            });
+            setIsBuying(false);
+            setBuyingOutcome(null);
+        }
+    }, [account, usdcCoins, buyAmount, market, signAndExecute, suiClient, setMarket, refetchCoins]);
 
     // Format price as percentage
     const formatPrice = (price: number): string => {
@@ -409,12 +528,13 @@ function TakerPanel({ market, setMarket, events }: { market: Market; setMarket: 
             {/* 8 Outcome Price Visualization (World Table) */}
             <div className="space-y-2">
                 <h3 className="font-semibold text-violet-700 dark:text-violet-300">
-                    World Table (8 Joint Outcomes) - Click to Buy
+                    World Table (8 Joint Outcomes) - Click to Buy (On-Chain)
                 </h3>
                 <div className="grid grid-cols-2 gap-2">
                     {WORLD_TABLE.map((world, index) => {
                         const priceChange = getPriceChange(index);
                         const isHovered = hoveredOutcome === index;
+                        const isThisBuying = isBuying && buyingOutcome === index;
 
                         return (
                             <button
@@ -422,17 +542,20 @@ function TakerPanel({ market, setMarket, events }: { market: Market; setMarket: 
                                 onMouseEnter={() => setHoveredOutcome(index)}
                                 onMouseLeave={() => setHoveredOutcome(null)}
                                 onClick={() => handleBuy(index)}
+                                disabled={isBuying || !account}
                                 className={`relative p-3 rounded-lg border-2 text-left transition-all ${isHovered
                                     ? 'border-violet-500 scale-105 shadow-lg'
                                     : 'border-zinc-200 dark:border-zinc-700'
-                                    } bg-white dark:bg-zinc-800`}
+                                    } bg-white dark:bg-zinc-800 ${isBuying ? 'opacity-60 cursor-not-allowed' : ''} ${isThisBuying ? 'animate-pulse' : ''}`}
                             >
                                 {/* Color indicator */}
                                 <div className={`absolute top-0 left-0 w-2 h-full rounded-l-lg ${OUTCOME_COLORS[index]}`} />
 
                                 <div className="ml-3">
                                     <div className="font-mono text-xs text-zinc-500 dark:text-zinc-400">{world.code}</div>
-                                    <div className="font-medium text-sm text-black dark:text-white">{world.short}</div>
+                                    <div className="font-medium text-sm text-black dark:text-white">
+                                        {isThisBuying ? '⏳ Buying...' : world.short}
+                                    </div>
                                     <div className="text-lg font-bold text-violet-700 dark:text-violet-300">
                                         {formatPrice(currentPrices[index])}
                                     </div>
@@ -457,6 +580,31 @@ function TakerPanel({ market, setMarket, events }: { market: Market; setMarket: 
                     })}
                 </div>
             </div>
+
+            {/* Transaction Status */}
+            {txStatus && (
+                <div className={`p-3 rounded-lg text-sm ${txStatus.type === 'success'
+                    ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                    : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                    }`}>
+                    {txStatus.type === 'success' ? (
+                        <div>
+                            <div className="font-medium mb-1">✅ Buy Successful!</div>
+                            <div className="font-mono text-xs break-all">{txStatus.message}</div>
+                            <a
+                                href={`https://suiscan.xyz/testnet/tx/${txStatus.message}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-block mt-2 text-blue-600 dark:text-blue-400 hover:underline"
+                            >
+                                View on Suiscan →
+                            </a>
+                        </div>
+                    ) : (
+                        txStatus.message
+                    )}
+                </div>
+            )}
 
             {/* Price Sum Verification */}
             <div className="text-center text-xs text-zinc-500 dark:text-zinc-400 mt-2">
