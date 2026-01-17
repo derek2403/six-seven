@@ -89,13 +89,13 @@ function Cube({ position, prob, state, isHovered, isSelected, onHover, onClick }
                 <meshPhysicalMaterial
                     transparent
                     opacity={isHovered ? 0.9 : isSelected ? 0.8 : 0.3 * intensity + 0.1}
-                    color={isSelected ? "#3b82f6" : isMostProbable ? "#facc15" : "#60a5fa"}
+                    color={isSelected ? "#3b82f6" : "#60a5fa"}
                     roughness={0.1}
                     metalness={0.2}
                     transmission={0.5}
                     thickness={1}
                     clearcoat={1}
-                    emissive={isSelected ? "#3b82f6" : isMostProbable ? "#facc15" : "#60a5fa"}
+                    emissive={isSelected ? "#3b82f6" : "#60a5fa"}
                     emissiveIntensity={isSelected ? 0.5 + Math.sin(pulsePhase) * 0.3 : isHovered ? 0.6 : 0.2 * intensity}
                 />
 
@@ -133,14 +133,14 @@ function Cube({ position, prob, state, isHovered, isSelected, onHover, onClick }
                     }}>
                         {/* Probability */}
                         <div style={{
-                            background: isMostProbable ? '#fbbf24' : '#2563eb',
-                            color: 'black',
+                            background: 'transparent',
+                            color: '#2563eb',
                             fontWeight: 'bold',
-                            fontSize: '18px',
+                            fontSize: '40px',
                             padding: '6px 12px',
                             borderRadius: '4px',
                             textAlign: 'center',
-                            marginBottom: '10px',
+                            marginBottom: '4px',
                         }}>
                             {prob}%
                         </div>
