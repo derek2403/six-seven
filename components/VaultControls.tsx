@@ -10,6 +10,7 @@ import {
     buildWithdrawAllTransaction,
     parseUserAccountData,
     VAULT_ID,
+    LEDGER_ID,
     type CoinData
 } from '../lib/vault';
 import { USDC_COIN_TYPE } from '../lib/usdc';
@@ -49,15 +50,15 @@ export function VaultControls() {
 function VaultTrigger({ isOpen, onClick }: { isOpen: boolean; onClick: () => void }) {
     const account = useCurrentAccount();
 
-    // 1. Get Vault Object to find the accounts table ID
-    const { data: vaultData } = useSuiClientQuery(
+    // 1. Get Ledger Object to find the accounts table ID
+    const { data: ledgerData } = useSuiClientQuery(
         'getObject',
-        { id: VAULT_ID, options: { showContent: true } }
+        { id: LEDGER_ID, options: { showContent: true } }
     );
 
     // Extract accounts table ID
-    const accountsTableId = vaultData?.data?.content && 'fields' in vaultData.data.content
-        ? (vaultData.data.content.fields as any).accounts?.fields?.id?.id
+    const accountsTableId = ledgerData?.data?.content && 'fields' in ledgerData.data.content
+        ? (ledgerData.data.content.fields as any).accounts?.fields?.id?.id
         : null;
 
     // 2. Query the user's account from the table using Dynamic Field
@@ -123,12 +124,13 @@ function VaultActions({ onClose }: { onClose: () => void }) {
     );
 
     // Also fetch user vault balance for the withdraw tab
-    const { data: vaultData } = useSuiClientQuery(
+    // Use LEDGER_ID for accounts table
+    const { data: ledgerData } = useSuiClientQuery(
         'getObject',
-        { id: VAULT_ID, options: { showContent: true } }
+        { id: LEDGER_ID, options: { showContent: true } }
     );
-    const accountsTableId = vaultData?.data?.content && 'fields' in vaultData.data.content
-        ? (vaultData.data.content.fields as any).accounts?.fields?.id?.id
+    const accountsTableId = ledgerData?.data?.content && 'fields' in ledgerData.data.content
+        ? (ledgerData.data.content.fields as any).accounts?.fields?.id?.id
         : null;
     const { data: userAccountData, refetch: refetchUserVault } = useSuiClientQuery(
         'getDynamicFieldObject',
@@ -223,8 +225,8 @@ function VaultActions({ onClose }: { onClose: () => void }) {
                         key={tab}
                         onClick={() => { setActiveTab(tab); setStatus(null); }}
                         className={`flex-1 rounded-md py-1.5 text-sm font-medium capitalize transition-colors ${activeTab === tab
-                                ? 'bg-white text-black shadow-sm dark:bg-zinc-700 dark:text-white'
-                                : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'
+                            ? 'bg-white text-black shadow-sm dark:bg-zinc-700 dark:text-white'
+                            : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'
                             }`}
                     >
                         {tab}
@@ -254,8 +256,8 @@ function VaultActions({ onClose }: { onClose: () => void }) {
                     onClick={handleAction}
                     disabled={isLoading}
                     className={`w-full rounded-lg py-2 text-sm font-semibold text-white transition-colors ${activeTab === 'deposit'
-                            ? 'bg-green-600 hover:bg-green-700'
-                            : 'bg-orange-600 hover:bg-orange-700'
+                        ? 'bg-green-600 hover:bg-green-700'
+                        : 'bg-orange-600 hover:bg-orange-700'
                         } disabled:opacity-50`}
                 >
                     {isLoading ? 'Processing...' : activeTab === 'deposit' ? 'Deposit' : 'Withdraw'}
