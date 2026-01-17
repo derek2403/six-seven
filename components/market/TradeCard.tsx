@@ -85,7 +85,7 @@ export function TradeCard({ markets, marketSelections, onMarketSelectionsChange,
                                             className="rounded-full object-cover border border-gray-100"
                                         />
                                     </div>
-                                    <p className="text-[13px] font-medium text-gray-800 line-clamp-2 leading-tight flex-1">
+                                    <p className="text-[13px] font-medium text-gray-800 whitespace-nowrap flex-1">
                                         {marketItem.title}
                                     </p>
                                 </div>
@@ -145,7 +145,7 @@ export function TradeCard({ markets, marketSelections, onMarketSelectionsChange,
                                 className="rounded-full object-cover border border-gray-100"
                             />
                         </div>
-                        <h2 className="text-[16px] font-bold text-black tracking-tight line-clamp-2 leading-snug">{market.title}</h2>
+                        <h2 className="text-[16px] font-bold text-black tracking-tight leading-snug">{market.title}</h2>
                     </div>
                     <div className="grid grid-cols-2 gap-2.5">
                         <button className="flex items-center justify-center gap-1.5 h-[52px] bg-[#22c55e] hover:bg-[#16a34a] text-white rounded-xl transition-all">

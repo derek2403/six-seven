@@ -80,8 +80,8 @@ export function CombinedMarketList({ title, avatar, markets, selectedMarkets, on
                             className="flex items-center justify-between p-3 px-4 hover:bg-blue-50/50 rounded-lg cursor-pointer transition-colors group"
                             onClick={(e) => toggleMarket(market.id, e)}
                         >
-                            {/* Left: Avatar + Title (fixed width) */}
-                            <div className="flex items-center gap-3 w-[220px] flex-shrink-0">
+                            {/* Left: Avatar + Title (flexible width to avoid truncation) */}
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
                                 <div className="relative h-7 w-7 flex-shrink-0">
                                     <Image
                                         src={market.avatar}
@@ -91,7 +91,7 @@ export function CombinedMarketList({ title, avatar, markets, selectedMarkets, on
                                         className="rounded-full object-cover border border-gray-100"
                                     />
                                 </div>
-                                <span className="text-[15px] font-medium text-gray-700 truncate group-hover:text-gray-900 transition-colors">
+                                <span className="text-[15px] font-medium text-gray-700 group-hover:text-gray-900 transition-colors whitespace-nowrap">
                                     {market.title}
                                 </span>
                             </div>
