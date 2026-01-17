@@ -8,11 +8,12 @@ import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const ENCLAVE_PACKAGE = '0x8b46d0f2d32974451336e0ede960ccd1714d6b9c3580715863bb2e303fa4795a';
-const MARKET_PACKAGE = '0x3757c5b83a2d4606659e17a8130cc3022e398cb092830fe93a186171d4d2cdb8';
-const ENCLAVE_CONFIG_ID = '0x48e625408db3aa995ed216f9e273956a7cba6e9ac9604a458df493a49591d7e4';
+// Synced with lib/pm.ts
+const ENCLAVE_PACKAGE = '0x3a0c541676d4844f1296e92b28163ea079f45b77867599724f141322ff3e8a41';
+const MARKET_PACKAGE = '0x327d01aa4fdc8cba53596b225510a6b5afc5d2266227654574fe6347a45d3973';
+const ENCLAVE_CONFIG_ID = '0x15a2d73dbecf428e2856ff88db6648bb7bb6716129b2c8347c9ff50e6b4163e5';
 
-const TEE_URL = 'http://44.211.226.223:3000';
+const TEE_URL = 'http://100.24.10.33:3000';
 
 async function main() {
     // Load keypair from Sui config
@@ -43,32 +44,28 @@ async function main() {
     console.log('Attestation length:', attestation.length);
 
     // Convert hex string to bytes
-    const attestationBytes: number[] = [];
-    for (let i = 0; i < attestation.length; i += 2) {
-        attestationBytes.push(parseInt(attestation.substring(i, i + 2), 16));
-    }
+    // Get PK from TEE health check
+    console.log('Fetching PK from TEE health check...');
+    const pkResponse = await fetch(`${TEE_URL}/health_check`);
+    const { pk } = await pkResponse.json();
+    console.log('Enclave PK:', pk);
 
-    console.log('Attestation bytes:', attestationBytes.length);
+    // Convert hex string to bytes
+    const pkBytes: number[] = [];
+    for (let i = 0; i < pk.length; i += 2) {
+        pkBytes.push(parseInt(pk.substring(i, i + 2), 16));
+    }
 
     // Build transaction
     const tx = new Transaction();
 
-    // 1. Load attestation document
-    const [attestationDoc] = tx.moveCall({
-        target: '0x2::nitro_attestation::load_nitro_attestation',
-        arguments: [
-            tx.pure.vector('u8', attestationBytes),
-            tx.object('0x6'),
-        ],
-    });
-
-    // 2. Register enclave with the document
+    // Register enclave with raw PK (Debug Mode)
     tx.moveCall({
-        target: `${ENCLAVE_PACKAGE}::enclave::register_enclave`,
-        typeArguments: [`${MARKET_PACKAGE}::market::MARKET`],
+        target: `${ENCLAVE_PACKAGE}::enclave::register_enclave_debug`,
+        typeArguments: [`${MARKET_PACKAGE}::pm::PM`],
         arguments: [
             tx.object(ENCLAVE_CONFIG_ID),
-            attestationDoc,
+            tx.pure.vector('u8', pkBytes),
         ],
     });
 

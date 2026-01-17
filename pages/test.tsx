@@ -2,8 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useCurrentAccount, useSignAndExecuteTransaction, useSuiClient } from '@mysten/dapp-kit';
 import { Transaction } from '@mysten/sui/transactions';
-import { PlaceBetRequest, PlaceBetResponse, ResolveRequest, ResolveResponse, AttestationRequest, AttestationResponse } from '../lib/tee';
-import { PM_CONFIG } from '../lib/pm';
+import { PlaceBetRequest, PlaceBetResponse, ResolveRequest, ResolveResponse, AttestationRequest, AttestationResponse, PM_CONFIG } from '../lib/tee';
 import { VAULT_CONFIG, WORLD_CONFIG, USDC_CONFIG } from '../lib/config';
 import { buildMint1000UsdcTransaction, USDC_COIN_TYPE } from '../lib/usdc';
 import { buildDepositTransaction, CoinData, parseUserAccountData } from '../lib/vault';
@@ -418,13 +417,52 @@ export default function TestPage() {
 
             const data = await response.json();
 
-            if (data.response?.data) {
+            if (data.attestation) {
+                log(`✅ Attestation Received! Length: ${data.attestation.length}`);
+                log(`Doc (truncated): ${data.attestation.slice(0, 80)}...`);
+            } else if (data.response?.data) {
                 const attData: AttestationResponse = data.response.data;
                 log(`✅ Attestation Received! Length: ${attData.attestation_doc.length}`);
                 log(`Doc (truncated): ${attData.attestation_doc.slice(0, 50)}...`);
             } else {
                 log(`❌ Error: ${JSON.stringify(data.error || data)}`);
             }
+        } catch (err: any) {
+            log(`❌ Error: ${err.message}`);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Test 7: Get Positions
+    const testListPositions = async () => {
+        setLoading(true);
+        log('--- TEST: Get Active Positions ---');
+
+        try {
+            const poolIdNum = parseInt(poolId);
+            log(`Fetching positions for Pool ID: ${poolIdNum}`);
+
+            const response = await fetch('/api/tee-proxy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    endpoint: 'positions',
+                    payload: { pool_id: poolIdNum }
+                }),
+            });
+
+            const data = await response.json();
+
+            if (Array.isArray(data)) {
+                log(`✅ Found ${data.length} positions`);
+                data.forEach((pos: any, i) => {
+                    log(`[${i}] Wallet: ...${pos.wallet.slice(-6)} | Outcome: ${pos.outcome} | Shares: ${pos.shares}`);
+                });
+            } else {
+                log(`Response: ${JSON.stringify(data)}`);
+            }
+
         } catch (err: any) {
             log(`❌ Error: ${err.message}`);
         } finally {
@@ -538,6 +576,13 @@ export default function TestPage() {
                         className="bg-cyan-600 hover:bg-cyan-700 px-4 py-2 rounded-lg font-semibold disabled:opacity-50"
                     >
                         6. Get Attestation
+                    </button>
+                    <button
+                        onClick={testListPositions}
+                        disabled={loading}
+                        className="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg font-semibold disabled:opacity-50"
+                    >
+                        7. Get Positions
                     </button>
                     <button
                         onClick={fetchUserData}

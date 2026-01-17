@@ -3,8 +3,9 @@
 //! Stores user positions (wallet, pool, outcome, shares) in memory.
 
 use std::collections::HashMap;
+use serde::Serialize;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Position {
     pub wallet: String,
     pub pool_id: u64,
@@ -33,6 +34,19 @@ impl PositionStore {
         self.positions
             .iter()
             .filter(|((_, pid, out), _)| *pid == pool_id && *out == winning_outcome)
+            .map(|((wallet, pid, out), shares)| Position {
+                wallet: wallet.clone(),
+                pool_id: *pid,
+                outcome: *out,
+                shares: *shares,
+            })
+            .collect()
+    }
+
+    pub fn get_positions_by_pool(&self, pool_id: u64) -> Vec<Position> {
+        self.positions
+            .iter()
+            .filter(|((_, pid, _), _)| *pid == pool_id)
             .map(|((wallet, pid, out), shares)| Position {
                 wallet: wallet.clone(),
                 pool_id: *pid,
