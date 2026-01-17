@@ -54,7 +54,7 @@ function VaultTrigger({ isOpen, onClick }: { isOpen: boolean; onClick: () => voi
     );
 
     const stats = parseVaultStats(vaultData as Parameters<typeof parseVaultStats>[0]);
-    const balance = stats ? formatBalance(stats.balance) : '0.00';
+    const balance = stats ? formatBalance(stats.withdrawable) : '0.00';
 
     return (
         <button
@@ -64,7 +64,7 @@ function VaultTrigger({ isOpen, onClick }: { isOpen: boolean; onClick: () => voi
                 : 'border-zinc-200 hover:border-zinc-300 dark:border-zinc-800 dark:hover:border-zinc-700'
                 }`}
         >
-            <div className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Total Balance:</div>
+            <div className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Balance:</div>
             <div className="font-bold text-black dark:text-white">{balance} USDC</div>
             <svg
                 className={`h-4 w-4 text-zinc-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
