@@ -15,7 +15,7 @@ import {
 } from '../lib/vault';
 import { USDC_COIN_TYPE } from '../lib/usdc';
 
-export function VaultControls() {
+export function VaultControls({ customTrigger }: { customTrigger?: React.ReactNode }) {
     const account = useCurrentAccount();
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -37,9 +37,16 @@ export function VaultControls() {
 
     return (
         <div className="relative" ref={dropdownRef}>
-            <VaultTrigger isOpen={isOpen} onClick={() => setIsOpen(!isOpen)} />
+            {customTrigger ? (
+                <div onClick={() => setIsOpen(!isOpen)} className="cursor-pointer">
+                    {customTrigger}
+                </div>
+            ) : (
+                <VaultTrigger isOpen={isOpen} onClick={() => setIsOpen(!isOpen)} />
+            )}
+
             {isOpen && (
-                <div className="absolute right-0 top-full mt-2 w-80 rounded-xl border border-zinc-200 bg-white p-4 shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
+                <div className="absolute right-0 top-full mt-2 w-80 rounded-xl border border-zinc-200 bg-white p-4 shadow-xl dark:border-zinc-800 dark:bg-zinc-900 z-50">
                     <VaultActions onClose={() => setIsOpen(false)} />
                 </div>
             )}
