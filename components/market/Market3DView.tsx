@@ -323,6 +323,7 @@ export default function Market3DView({ marketSelections, onMarketSelectionsChang
     onMarketSelectionsChange?: (selections: Record<string, MarketSelection>) => void;
     probabilities?: Record<string, number>;
 }) {
+    console.log("Market3DView probabilities:", probabilities);
     // Default probs if not provided
     const safeProbabilities = probabilities || {
         "000": 2.0, "001": 2.0, "010": 2.0, "011": 88.0,

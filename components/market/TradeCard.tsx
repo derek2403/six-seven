@@ -18,9 +18,10 @@ interface TradeCardProps {
     focusedMarket?: string | null;
     // Old prop for legacy compatibility
     market?: CombinedMarketItem;
+    onTrade?: (amount: string, outcome: number) => Promise<void>;
 }
 
-export function TradeCard({ markets, marketSelections, onMarketSelectionsChange, focusedMarket, market }: TradeCardProps) {
+export function TradeCard({ markets, marketSelections, onMarketSelectionsChange, focusedMarket, market, onTrade }: TradeCardProps) {
     // Use provided markets or fallback to COMBINED_MARKETS (Iran)
     const displayMarkets = markets || COMBINED_MARKETS;
     const [tab, setTab] = React.useState<"buy" | "sell">("buy");
@@ -215,9 +216,11 @@ export function TradeCard({ markets, marketSelections, onMarketSelectionsChange,
 
                     // Simple validation: Ensure no 'any' or null if we want precise outcome
                     // For now we assume if 'no', it adds 0. If 'yes', it adds bit.
-                    // What if 'any'? We might not support 'any' for this specific backend integration yet.
-                    // Let's assume user selects valid Yes/No for all 3 for now, or we default to NO (0) which might be risky.
-
+                    if (marketSelections) {
+                        if (marketSelections.m1 === 'yes') outcome += 4;
+                        if (marketSelections.m2 === 'yes') outcome += 2;
+                        if (marketSelections.m3 === 'yes') outcome += 1;
+                    }
                     onTrade(amount, outcome);
                 }}
                 disabled={!amount || !onTrade}

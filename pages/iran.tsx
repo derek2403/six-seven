@@ -1,10 +1,11 @@
+import { useRouter } from 'next/router';
 import { CombinedMarketList } from "@/components/market/CombinedMarketList";
 import { MarketTimeFilter } from "@/components/market/MarketTimeFilter";
 import { MarketLegend } from "@/components/market/MarketLegend";
 import { MarketCombinedChart } from "@/components/market/MarketCombinedChart";
 import { TradeCard } from "@/components/market/TradeCard";
-import { MARKET_DATA } from "@/lib/mock/combined-markets";
 import { WalletConnect } from "@/components/WalletConnect";
+import { COMBINED_MARKETS, DEFAULT_MARKET_DATA } from "@/lib/mock/combined-markets";
 import React from 'react';
 import { useCurrentAccount, useSignAndExecuteTransaction, useSuiClient } from '@mysten/dapp-kit';
 import { Transaction } from '@mysten/sui/transactions';
@@ -13,15 +14,31 @@ import { VAULT_CONFIG, WORLD_CONFIG } from '@/lib/config';
 
 type MarketSelection = "yes" | "no" | "any" | null;
 
-export default function IranPage() {
-    const marketData = MARKET_DATA.iran;
+export default function MarketPage() {
+    const router = useRouter();
+    const { slug } = router.query;
 
-    const [selectedMarkets, setSelectedMarkets] = React.useState<Record<string, boolean>>({});
+    // Sui Hooks
+    const account = useCurrentAccount();
+    const client = useSuiClient();
+    const { mutate: signAndExecute } = useSignAndExecuteTransaction();
+
+    // Backend State
+    const [probabilities, setProbabilities] = React.useState<Record<string, number> | null>(null);
+    const [vaultBalance, setVaultBalance] = React.useState<string>('0');
+    const [maker, setMaker] = React.useState<string>('');
+    const [isLoading, setIsLoading] = React.useState(false);
+
+    // Initial State
+    const [selectedMarkets, setSelectedMarkets] = React.useState<Record<string, boolean>>(
+        Object.fromEntries(COMBINED_MARKETS.map(m => [m.id, true]))
+    );
     const [view, setView] = React.useState("Default");
 
     // Fetch Pool 0 Data
     const fetchPoolData = async () => {
         try {
+
             // Get World Object
             const worldObj = await client.getObject({
                 id: WORLD_CONFIG.WORLD_ID,
@@ -32,7 +49,10 @@ export default function IranPage() {
                 ? (worldObj.data.content.fields as any).pools?.fields?.id?.id
                 : null;
 
-            if (!poolsTableId) return;
+            if (!poolsTableId) {
+                console.error("Pools table ID not found in World object");
+                return;
+            }
 
             // Get Pool 0 (assuming we only care about pool 0 for now as per instructions)
             // Ideally we find the pool ID from dynamic fields value... hardcoded pool ID '0' might not work directly if using object IDs as keys
@@ -52,16 +72,41 @@ export default function IranPage() {
                     const probFields = await client.getDynamicFields({ parentId: probsTableId });
                     const newProbs: Record<string, number> = {};
 
+
+
                     for (const pf of probFields.data) {
                         const pItem = await client.getObject({ id: pf.objectId, options: { showContent: true } });
                         if (pItem.data?.content && 'fields' in pItem.data.content) {
                             const val = (pItem.data.content.fields as any).value;
                             // val is basis points (10000 = 100%)
-                            newProbs[pf.name.value as string] = parseInt(val) / 100;
+                            const parsedVal = parseInt(val) / 100;
+
+                            // Convert key (0-7) to 3-bit binary string (e.g. "0" -> "000", "7" -> "111")
+                            const keyInt = parseInt(pf.name.value as string);
+                            const binaryKey = keyInt.toString(2).padStart(3, '0');
+
+                            console.log(`Converted key ${keyInt} -> "${binaryKey}" with value ${parsedVal}%`);
+                            newProbs[binaryKey] = parsedVal;
                         }
                     }
-                    setProbabilities(newProbs);
+
+                    if (Object.keys(newProbs).length > 0) {
+                        console.log("Setting probabilities state:", newProbs);
+                        setProbabilities(newProbs);
+                    } else {
+                        console.warn("No probabilities found, using defaults");
+                        // If empty, set to null so defaults trigger? Or maybe user wants defaults if fails.
+                        // But if we have default props, let's let that handle it.
+                        // But if we setProbabilities({}), the default in MarketCombinedChart (probabilities || DEFAULT) might see {} as truthy depending on implementation?
+                        // In MarketCombinedChart: probabilities || DEFAULT_PROBS. {} is truthy.
+                        // So we should set null if empty.
+                        setProbabilities(null);
+                    }
+                } else {
+                    console.error("Probs table ID not found in Pool 0");
                 }
+            } else {
+                console.error("Pool 0 not found");
             }
 
             // Also fetch Maker for Pool 0
@@ -250,15 +295,6 @@ export default function IranPage() {
         }));
     };
 
-    // Initialize selected markets when marketData changes
-    React.useEffect(() => {
-        if (marketData) {
-            setSelectedMarkets(
-                Object.fromEntries(marketData.markets.map(m => [m.id, true]))
-            );
-        }
-    }, [marketData]);
-
     // Auto-switch to 3D view when all 3 markets have yes/no selections
     // Auto-switch back to 2D when any market becomes "any" or null
     React.useEffect(() => {
@@ -283,7 +319,7 @@ export default function IranPage() {
 
     return (
         <div className="min-h-screen bg-white font-sans">
-
+            {/* Site Header */}
             <WalletConnect />
 
             <main className="max-w-[1400px] mx-auto px-4 md:px-6 pt-32 pb-16">
@@ -291,9 +327,9 @@ export default function IranPage() {
                     {/* Left Column: All Content */}
                     <div className="flex-1 min-w-0">
                         <CombinedMarketList
-                            title={marketData.title}
-                            avatar={marketData.avatar}
-                            markets={marketData.markets}
+                            title={DEFAULT_MARKET_DATA.title}
+                            avatar={DEFAULT_MARKET_DATA.avatar}
+                            markets={DEFAULT_MARKET_DATA.markets}
                             selectedMarkets={selectedMarkets}
                             onToggleMarket={toggleMarket}
                         />
@@ -315,7 +351,7 @@ export default function IranPage() {
 
                         <div className="mt-8">
                             <MarketLegend
-                                items={marketData.legendItems}
+                                items={DEFAULT_MARKET_DATA.legendItems}
                                 selectedMarkets={selectedMarkets}
                                 view={view}
                                 onViewChange={setView}
@@ -338,7 +374,6 @@ export default function IranPage() {
                     {/* Right Side: Trade Card */}
                     <div className="w-full md:w-[400px] flex-shrink-0 sticky top-20">
                         <TradeCard
-                            markets={marketData.markets}
                             marketSelections={marketSelections}
                             onMarketSelectionsChange={setMarketSelections}
                             focusedMarket={focusedMarket}

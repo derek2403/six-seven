@@ -276,6 +276,7 @@ const ConfusionMatrix = ({ selectedMarkets, marketSelections, onMarketSelections
     onMarketSelectionsChange: (selections: Record<string, MarketSelection>) => void;
     probabilities: Record<string, number>;
 }) => {
+    console.log("ConfusionMatrix probabilities:", probabilities);
     const activeMarkets = COMBINED_MARKETS.filter(m => selectedMarkets[m.id]);
 
     // State for tracking which market is where
@@ -325,8 +326,8 @@ const ConfusionMatrix = ({ selectedMarkets, marketSelections, onMarketSelections
 
     if (!topMarketId || !leftMarketId) return null;
 
-    const mTop = markets.find(m => m.id === topMarketId)!;
-    const mLeft = markets.find(m => m.id === leftMarketId)!;
+    const mTop = COMBINED_MARKETS.find(m => m.id === topMarketId)!;
+    const mLeft = COMBINED_MARKETS.find(m => m.id === leftMarketId)!;
 
     const mTopName = MARKET_NAMES[`value${mTop.id.slice(1)}`];
     const mLeftName = MARKET_NAMES[`value${mLeft.id.slice(1)}`];
@@ -615,7 +616,8 @@ interface MarketCombinedChartProps {
     onFocusedMarketChange?: (marketId: string | null) => void;
 }
 
-export function MarketCombinedChart({ selectedMarkets, view, marketSelections, onMarketSelectionsChange, focusedMarket, onFocusedMarketChange, probabilities }: MarketCombinedChartProps & { probabilities?: Record<string, number> }) {
+export function MarketCombinedChart({ data, selectedMarkets, view, marketSelections, onMarketSelectionsChange, focusedMarket, onFocusedMarketChange, probabilities, markets = COMBINED_MARKETS }: MarketCombinedChartProps & { probabilities?: Record<string, number> }) {
+    console.log("MarketCombinedChart probabilities prop:", probabilities);
     const selectedCount = Object.values(selectedMarkets).filter(Boolean).length;
 
     // Handle line click to focus/unfocus a market
@@ -862,6 +864,7 @@ export function MarketCombinedChart({ selectedMarkets, view, marketSelections, o
                         <Market3DView
                             marketSelections={marketSelections}
                             onMarketSelectionsChange={onMarketSelectionsChange}
+                            probabilities={probabilities || undefined}
                         />
                         <p className="text-[11px] text-gray-400 mt-12 text-center italic font-medium px-4">
                             Probabilities derived from the joint-outcome AMM world table.
