@@ -12,15 +12,22 @@
     "@mysten/dapp-kit": "^0.20.0",
     "@mysten/sui": "^1.45.2",
     "@tanstack/react-query": "^5.90.18",
+    "cubic-spline": "^3.0.3",
+    "d3": "^7.9.0",
+    "framer-motion": "^12.26.2",
     "next": "16.1.2",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "ws": "^8.19.0",
+    "zod": "^4.3.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/d3": "^7.4.3",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/ws": "^8.18.1",
     "eslint": "^9",
     "eslint-config-next": "16.1.2",
     "tailwindcss": "^4",
