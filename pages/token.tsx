@@ -301,7 +301,7 @@ function AdminActions() {
         if (!account || !targetAddress || !amount) return;
 
         const parsedAmount = parseAmount(amount);
-        if (parsedAmount < 0n) { // Allow 0
+        if (parsedAmount < 0) { // Allow 0
             setStatus({ type: 'error', message: 'Invalid amount' });
             return;
         }
