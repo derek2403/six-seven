@@ -2,15 +2,8 @@
 
 import { cn } from "../lib/utils";
 import { AnimatedList } from "./AnimatedList";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import dynamic from 'next/dynamic';
-
-// Dynamic import to avoid SSR issues with THREE.js
-const GradientGridDistortion = dynamic(() => import('./GradientGridDistortion'), {
-    ssr: false,
-    loading: () => <div className="w-full h-full bg-[#93BFEF]" />
-});
 
 export interface Item {
     name: string;
@@ -109,11 +102,26 @@ const ArrowWithDot = ({ isActive, startDot }: { isActive: boolean; startDot: boo
 
 
             <svg width="500" height="600" viewBox="-200 0 500 600" fill="none" className="overflow-visible">
-                {/* Arrow path - same color as container (#93BFEF) */}
+                {/* Gradient definition for arrow matching distord.png colors */}
+                <defs>
+                    <linearGradient id="arrowGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#0f0f3d" />
+                        <stop offset="25%" stopColor="#1e3a8a" />
+                        <stop offset="50%" stopColor="#3b82f6" />
+                        <stop offset="75%" stopColor="#7c3aed" />
+                        <stop offset="100%" stopColor="#c4b5fd" />
+                    </linearGradient>
+                    <linearGradient id="dotGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#3b82f6" />
+                        <stop offset="50%" stopColor="#7c3aed" />
+                        <stop offset="100%" stopColor="#c4b5fd" />
+                    </linearGradient>
+                </defs>
+                {/* Arrow path - gradient matching distorted image */}
                 <motion.path
                     d={arrowPath}
-                    stroke="#93BFEF"
-                    strokeWidth="2.5"
+                    stroke="url(#arrowGradient)"
+                    strokeWidth="3"
                     fill="none"
                     initial={{ pathLength: 0 }}
                     animate={isActive ? { pathLength: 1 } : { pathLength: 0 }}
@@ -122,8 +130,8 @@ const ArrowWithDot = ({ isActive, startDot }: { isActive: boolean; startDot: boo
                 {/* Arrow head */}
                 <motion.path
                     d="M-160 570 L-150 590 L-140 570"
-                    stroke="#93BFEF"
-                    strokeWidth="2.5"
+                    stroke="url(#arrowGradient)"
+                    strokeWidth="3"
                     fill="none"
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -131,11 +139,11 @@ const ArrowWithDot = ({ isActive, startDot }: { isActive: boolean; startDot: boo
                     animate={isActive ? { opacity: 1 } : { opacity: 0 }}
                     transition={{ delay: 1.3, duration: 0.3 }}
                 />
-                {/* Moving dot */}
+                {/* Moving dot with gradient */}
                 {startDot && (
                     <motion.circle
                         r="6"
-                        fill="#93BFEF"
+                        fill="url(#dotGradient)"
                         initial={{ offsetDistance: "0%" }}
                         animate={{ offsetDistance: "100%" }}
                         transition={{
@@ -241,7 +249,7 @@ export function AnimatedListDemo({
                 <AnimatePresence>
                     {showLock && (
                         <>
-                            {/* Grid Distortion Background */}
+                            {/* Static Distortion Background Image */}
                             <motion.div
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
@@ -249,11 +257,10 @@ export function AnimatedListDemo({
                                 transition={{ duration: 0.5 }}
                                 className="absolute inset-0 z-15 rounded-3xl overflow-hidden"
                             >
-                                <GradientGridDistortion
-                                    grid={10}
-                                    mouse={0.12}
-                                    strength={0.18}
-                                    relaxation={0.85}
+                                <img
+                                    src="/distord.png"
+                                    alt="Distortion background"
+                                    className="w-full h-full object-cover"
                                 />
                             </motion.div>
 
