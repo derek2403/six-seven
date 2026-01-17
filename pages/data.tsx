@@ -43,9 +43,9 @@ const EventCard = ({ event }: { event: any }) => {
     const marketsToDisplay = event.markets.slice(0, 3); // Limit to 3 for space
 
     return (
-        <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between h-full">
+        <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm hover:shadow-lg transition-all duration-200 flex flex-col justify-between h-full group">
             <div>
-                <div className="flex items-start justify-between mb-3">
+                <div className="flex items-start justify-between mb-4">
                     <div className="flex items-start space-x-3">
                         <img
                             src={event.image || event.icon}
@@ -53,7 +53,7 @@ const EventCard = ({ event }: { event: any }) => {
                             className="w-10 h-10 rounded-full object-cover"
                             onError={(e) => { (e.target as HTMLImageElement).src = 'https://polymarket.com/static/error/image-error.png' }}
                         />
-                        <h3 className="text-sm font-semibold text-gray-900 line-clamp-3 leading-tight">
+                        <h3 className="text-sm font-semibold text-gray-900 line-clamp-3 leading-snug tracking-tight group-hover:text-blue-600 transition-colors">
                             {event.title}
                         </h3>
                     </div>
@@ -128,24 +128,24 @@ export default function DataPage() {
 
             <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                        <span className="text-xl font-bold tracking-tight">Polymarket</span>
-                        <div className="hidden md:flex space-x-1 bg-gray-100 p-1 rounded-lg">
-                            <span className="px-3 py-1 bg-white shadow-sm rounded-md text-sm font-medium">All</span>
-                            <span className="px-3 py-1 text-gray-500 text-sm font-medium">Sports</span>
-                            <span className="px-3 py-1 text-gray-500 text-sm font-medium">Politics</span>
-                            <span className="px-3 py-1 text-gray-500 text-sm font-medium">Crypto</span>
+                    <div className="flex items-center space-x-8">
+                        <span className="text-xl font-bold tracking-tight">six-seven</span>
+                        <div className="hidden md:flex space-x-6">
+                            <span className="text-gray-900 font-medium cursor-pointer">All</span>
+                            <span className="text-gray-500 hover:text-gray-900 font-medium cursor-pointer transition-colors">Sports</span>
+                            <span className="text-gray-500 hover:text-gray-900 font-medium cursor-pointer transition-colors">Politics</span>
+                            <span className="text-gray-500 hover:text-gray-900 font-medium cursor-pointer transition-colors">Crypto</span>
                         </div>
                     </div>
                     <div className="flex items-center space-x-4">
                         <span className="text-emerald-600 font-medium">$12.17</span>
-                        <button className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">Deposit</button>
+                        <button className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">Deposit</button>
                     </div>
                 </div>
             </header>
 
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {allEvents.map((event: any) => (
                         <EventCard key={event.id} event={event} />
                     ))}
