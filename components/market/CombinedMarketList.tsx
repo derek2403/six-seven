@@ -80,7 +80,8 @@ export function CombinedMarketList({ title, avatar, markets, selectedMarkets, on
                             className="flex items-center justify-between p-3 px-4 hover:bg-blue-50/50 rounded-lg cursor-pointer transition-colors group"
                             onClick={(e) => toggleMarket(market.id, e)}
                         >
-                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                            {/* Left: Avatar + Title (fixed width) */}
+                            <div className="flex items-center gap-3 w-[220px] flex-shrink-0">
                                 <div className="relative h-7 w-7 flex-shrink-0">
                                     <Image
                                         src={market.avatar}
@@ -93,27 +94,28 @@ export function CombinedMarketList({ title, avatar, markets, selectedMarkets, on
                                 <span className="text-[15px] font-medium text-gray-700 truncate group-hover:text-gray-900 transition-colors">
                                     {market.title}
                                 </span>
+                            </div>
 
+                            {/* Middle: Price Strip (takes remaining space, right-aligned content) */}
+                            <div className="flex-1 flex justify-end">
                                 {market.livePrice && market.targetPrice && (
-                                    <div className="mt-1">
-                                        <CryptoPriceStrip
-                                            currentPrice={market.livePrice}
-                                            targetPrice={market.targetPrice}
-                                            priceChange24h={market.priceChange24h}
-                                        />
-                                    </div>
+                                    <CryptoPriceStrip
+                                        currentPrice={market.livePrice}
+                                        targetPrice={market.targetPrice}
+                                        priceChange24h={market.priceChange24h}
+                                    />
                                 )}
 
                                 {market.livePrice && !market.targetPrice && (
-                                    <span className="ml-2 text-[13px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
+                                    <span className="text-[13px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
                                         ${market.livePrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </span>
                                 )}
                             </div>
 
-                            {/* Blue Tick Checkbox on the Right */}
+                            {/* Right: Checkbox */}
                             <div className={cn(
-                                "flex items-center justify-center h-5 w-5 rounded border transition-all duration-200",
+                                "flex items-center justify-center h-5 w-5 rounded border transition-all duration-200 ml-4",
                                 selectedMarkets[market.id]
                                     ? "bg-blue-600 border-blue-600 shadow-sm"
                                     : "bg-white border-gray-300"

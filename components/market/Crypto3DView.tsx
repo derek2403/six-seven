@@ -11,22 +11,20 @@ interface WorldData {
     prob: number;
 }
 
+// Crypto-specific world states
+// state[0] = BTC > $100k (m1)
+// state[1] = ETH > $4k (m2)
+// state[2] = SUI > $5 (m3)
 const WORLDS: WorldData[] = [
-    { state: "000", meaning: "Khamenei No, US No, Israel No", prob: 20.4 },
-    { state: "001", meaning: "Khamenei No, US No, Israel Yes", prob: 1.2 },
-    { state: "010", meaning: "Khamenei No, US Yes, Israel No", prob: 0.8 },
-    { state: "011", meaning: "Khamenei No, US Yes, Israel Yes", prob: 0.6 },
-    { state: "100", meaning: "Khamenei Yes, US No, Israel No", prob: 75.2 },
-    { state: "101", meaning: "Khamenei Yes, US No, Israel Yes", prob: 1.0 },
-    { state: "110", meaning: "Khamenei Yes, US Yes, Israel No", prob: 0.5 },
-    { state: "111", meaning: "Khamenei Yes, US Yes, Israel Yes", prob: 0.3 },
+    { state: "000", meaning: "BTC No, ETH No, SUI No", prob: 8.5 },
+    { state: "001", meaning: "BTC No, ETH No, SUI Yes", prob: 5.2 },
+    { state: "010", meaning: "BTC No, ETH Yes, SUI No", prob: 4.8 },
+    { state: "011", meaning: "BTC No, ETH Yes, SUI Yes", prob: 3.5 },
+    { state: "100", meaning: "BTC Yes, ETH No, SUI No", prob: 35.0 },
+    { state: "101", meaning: "BTC Yes, ETH No, SUI Yes", prob: 18.5 },
+    { state: "110", meaning: "BTC Yes, ETH Yes, SUI No", prob: 12.5 },
+    { state: "111", meaning: "BTC Yes, ETH Yes, SUI Yes", prob: 12.0 },
 ];
-
-
-// Mapping based on "state" string format from WorldTable in MarketCombinedChart.tsx
-// state[0] = Khamenei (m1)
-// state[1] = US (m2)
-// state[2] = Israel (m3)
 
 const COLORS = ["#60a5fa", "#2563eb", "#facc15"];
 
@@ -41,12 +39,12 @@ function Cube({ position, prob, state, isHovered, onHover }: {
 
     // Intensity based on probability
     const intensity = 0.1 + (prob / 100) * 0.9;
-    const isMostProbable = prob > 50;
+    const isMostProbable = prob > 30;
 
     // Detailed breakdown for hover
-    const khameneiVal = state[0] === '1' ? 'YES' : 'NO';
-    const usVal = state[1] === '1' ? 'YES' : 'NO';
-    const israelVal = state[2] === '1' ? 'YES' : 'NO';
+    const btcVal = state[0] === '1' ? 'YES' : 'NO';
+    const ethVal = state[1] === '1' ? 'YES' : 'NO';
+    const suiVal = state[2] === '1' ? 'YES' : 'NO';
 
     return (
         <group position={position}>
@@ -76,7 +74,7 @@ function Cube({ position, prob, state, isHovered, onHover }: {
                 />
 
                 {/* Always-visible probability on the cube */}
-                {prob > 0.5 && !isHovered && (
+                {prob > 5 && !isHovered && (
                     <Billboard>
                         <Text
                             fontSize={0.22}
@@ -91,7 +89,7 @@ function Cube({ position, prob, state, isHovered, onHover }: {
                 )}
             </mesh>
 
-            {/* Detailed Info on Hover - Using Html for reliable rendering */}
+            {/* Detailed Info on Hover */}
             {isHovered && (
                 <Html
                     position={[0, 0, 0.8]}
@@ -110,7 +108,7 @@ function Cube({ position, prob, state, isHovered, onHover }: {
                         {/* Probability */}
                         <div style={{
                             background: isMostProbable ? '#fbbf24' : '#2563eb',
-                            color: 'black',
+                            color: isMostProbable ? 'black' : 'white',
                             fontWeight: 'bold',
                             fontSize: '18px',
                             padding: '6px 12px',
@@ -125,15 +123,15 @@ function Cube({ position, prob, state, isHovered, onHover }: {
                         <div style={{ color: 'black', fontSize: '12px', lineHeight: '1.6' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
                                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: COLORS[0], display: 'inline-block' }}></span>
-                                <span>Khamenei out: <strong>{khameneiVal}</strong></span>
+                                <span>BTC &gt; $100k: <strong>{btcVal}</strong></span>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
                                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: COLORS[1], display: 'inline-block' }}></span>
-                                <span>US Strikes Iran: <strong>{usVal}</strong></span>
+                                <span>ETH &gt; $4k: <strong>{ethVal}</strong></span>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: COLORS[2], display: 'inline-block' }}></span>
-                                <span>Israel Strikes Iran: <strong>{israelVal}</strong></span>
+                                <span>SUI &gt; $5: <strong>{suiVal}</strong></span>
                             </div>
                         </div>
                     </div>
@@ -148,7 +146,7 @@ function Cube({ position, prob, state, isHovered, onHover }: {
 function Labels() {
     return (
         <group>
-            {/* Axis A: Bottom Edge (X-axis) */}
+            {/* Axis A: Bottom Edge (X-axis) - BTC */}
             <group position={[0, -1.3, 1.2]}>
                 <Billboard position={[-0.55, 0, 0]}>
                     <Text fontSize={0.14} color="#9ca3af" fontWeight="bold">No</Text>
@@ -157,11 +155,11 @@ function Labels() {
                     <Text fontSize={0.14} color="#9ca3af" fontWeight="bold">Yes</Text>
                 </Billboard>
                 <Billboard position={[0, -0.25, 0]}>
-                    <Text fontSize={0.2} color="#1f2937" fontWeight="black">A: Khamenei out</Text>
+                    <Text fontSize={0.2} color="#1f2937" fontWeight="black">A: BTC &gt; $100k</Text>
                 </Billboard>
             </group>
 
-            {/* Axis B: Left Edge (Y-axis) */}
+            {/* Axis B: Left Edge (Y-axis) - ETH */}
             <group position={[-1.3, 0, 1.2]}>
                 <Billboard position={[0, -0.55, 0]}>
                     <Text fontSize={0.14} color="#9ca3af" fontWeight="bold">No</Text>
@@ -170,11 +168,11 @@ function Labels() {
                     <Text fontSize={0.14} color="#9ca3af" fontWeight="bold">Yes</Text>
                 </Billboard>
                 <Billboard position={[-0.4, 0, 0]}>
-                    <Text fontSize={0.2} color="#1f2937" fontWeight="black">B: US strikes Iran</Text>
+                    <Text fontSize={0.2} color="#1f2937" fontWeight="black">B: ETH &gt; $4k</Text>
                 </Billboard>
             </group>
 
-            {/* Axis C: Depth Edge (Z-axis) */}
+            {/* Axis C: Depth Edge (Z-axis) - SUI */}
             <group position={[1.2, -1.3, 0]}>
                 <Billboard position={[0, 0, -0.55]}>
                     <Text fontSize={0.14} color="#9ca3af" fontWeight="bold">No</Text>
@@ -183,7 +181,7 @@ function Labels() {
                     <Text fontSize={0.14} color="#9ca3af" fontWeight="bold">Yes</Text>
                 </Billboard>
                 <Billboard position={[0.5, 0.3, 0]}>
-                    <Text fontSize={0.2} color="#1f2937" fontWeight="black">C: Israel next strikes</Text>
+                    <Text fontSize={0.2} color="#1f2937" fontWeight="black">C: SUI &gt; $5</Text>
                 </Billboard>
             </group>
         </group>
@@ -241,11 +239,11 @@ function Scene() {
     );
 }
 
-export default function Market3DView() {
+export default function Crypto3DView() {
     return (
         <div className="w-full h-[500px] bg-white rounded-2xl border border-gray-100 shadow-sm relative overflow-hidden">
             <div className="absolute top-6 left-6 z-10">
-                <h2 className="text-[14px] font-black text-gray-900 uppercase tracking-[0.2em]">3D Market Matrix</h2>
+                <h2 className="text-[14px] font-black text-gray-900 uppercase tracking-[0.2em]">3D Crypto Matrix</h2>
                 <p className="text-[11px] text-gray-400 mt-1 font-medium italic">8 joint-outcome possibilities</p>
             </div>
 

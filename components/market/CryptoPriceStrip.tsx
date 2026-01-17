@@ -23,7 +23,7 @@ export function CryptoPriceStrip({ targetPrice, currentPrice, priceChange24h = 0
     return (
         <div className="flex items-center gap-6 mt-1.5 ml-0.5">
             {/* Price To Beat Section */}
-            <div className="flex flex-col">
+            <div className="flex flex-col min-w-[120px]">
                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-0.5">
                     Price To Beat
                 </span>
