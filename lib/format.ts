@@ -10,7 +10,12 @@ export const formatBalance = (balance: string): string => {
     const decimals = BigInt(10 ** USDC_CONFIG.DECIMALS);
     const whole = num / decimals;
     const fraction = num % decimals;
-    return `${whole}.${fraction.toString().padStart(USDC_CONFIG.DECIMALS, '0')}`;
+
+    const fullString = `${whole}.${fraction.toString().padStart(USDC_CONFIG.DECIMALS, '0')}`;
+    const asNumber = parseFloat(fullString);
+
+    // Format to max 2 decimals, removing trailing zeros if whole number
+    return (+asNumber.toFixed(2)).toString();
 };
 
 /**
