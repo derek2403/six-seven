@@ -13,6 +13,7 @@ const safeParse = (str: string) => {
 };
 
 const formatMoney = (amount: number) => {
+    if (!amount) return '$0';
     if (amount >= 1000000) {
         return `$${(amount / 1000000).toFixed(1)}m`;
     }
