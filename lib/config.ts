@@ -35,4 +35,20 @@ export const VAULT_CONFIG = {
     VAULT_ID: "0xe15931d233831ef86894d072b1767103ddf0b13a470b03d96812c2768faee17e",
 };
 
+// MAKER (Prediction Market Pool) Contract Configuration
+export const MAKER_CONFIG = {
+    // Package ID for the deployed maker module (Testnet)
+    PACKAGE_ID: "0xc5197765b0597ec1f3d744d08188d1bf084c4fb3cf3bffcc7b0530b0bfff46b5",
 
+    // Module name
+    MODULE_NAME: "maker",
+
+    // Number of outcomes (8 worlds for 3 binary events)
+    OUTCOMES: 8,
+
+    // Fixed-point scale (9 decimals)
+    SCALE: 1_000_000_000,
+
+    // Initial probability for each outcome: 12.5%
+    INITIAL_PROBABILITY: 125_000_000,
+};
