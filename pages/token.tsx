@@ -93,7 +93,7 @@ const OUTCOME_COLORS = [
 // ============ LMSR Math Functions (Frontend Implementation) ============
 // Calculate LMSR prices using softmax (matches smart contract logic)
 function calculatePrices(q: bigint[], b: bigint): number[] {
-    if (b === 0n) return Array(N).fill(1 / N);
+    if (b === BigInt(0)) return Array(N).fill(1 / N);
 
     const exps: number[] = [];
     let sum = 0;
@@ -154,25 +154,71 @@ export default function TokenPage() {
 
 // ============ LMSR Market Component ============
 function LMSRMarketSection() {
+    const account = useCurrentAccount();
+    const suiClient = useSuiClient();
+    const { mutate: signAndExecute } = useSignAndExecuteTransaction();
+
     const [activeMarket, setActiveMarket] = useState<Market | null>(null);
     const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
     const [poolAmount, setPoolAmount] = useState<string>('100');
+    const [isCreating, setIsCreating] = useState(false);
+    const [txStatus, setTxStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-    // Create market from listing
-    const handleCreateMarket = () => {
-        if (!selectedListing) return;
+    // Create market from listing using smart contract
+    const handleCreateMarket = useCallback(async () => {
+        if (!selectedListing || !account) return;
 
-        const b = Number(poolAmount) * SCALE; // Convert to fixed-point
-        const newMarket: Market = {
-            id: `market-${selectedListing.id}-${Date.now()}`,
-            title: selectedListing.title,
-            description: selectedListing.description,
-            b: b,
-            q: Array(N).fill(0), // Initialize all quantities to 0
-        };
-        setActiveMarket(newMarket);
-        setSelectedListing(null);
-    };
+        setIsCreating(true);
+        setTxStatus(null);
+
+        try {
+            const b = BigInt(Math.floor(Number(poolAmount) * SCALE));
+            const tx = buildCreateAmmTransaction(b);
+
+            signAndExecute(
+                { transaction: tx },
+                {
+                    onSuccess: async (result) => {
+                        await suiClient.waitForTransaction({ digest: result.digest });
+
+                        // For demo purposes, create a local market state
+                        // In production, you'd query the created object ID from the transaction
+                        const newMarket: Market = {
+                            id: result.digest, // Use tx digest as temporary ID
+                            title: selectedListing.title,
+                            description: selectedListing.description,
+                            b: b,
+                            q: Array(N).fill(BigInt(0)),
+                        };
+
+                        setActiveMarket(newMarket);
+                        setSelectedListing(null);
+                        setTxStatus({
+                            type: 'success',
+                            message: `Market created! Tx: ${result.digest.slice(0, 16)}...`,
+                        });
+                        setIsCreating(false);
+                    },
+                    onError: (error) => {
+                        setTxStatus({
+                            type: 'error',
+                            message: `Failed: ${error.message}`,
+                        });
+                        setIsCreating(false);
+                    },
+                }
+            );
+        } catch (error) {
+            setTxStatus({
+                type: 'error',
+                message: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            });
+            setIsCreating(false);
+        }
+    }, [selectedListing, account, poolAmount, signAndExecute, suiClient]);
+
+    // Get events for selected listing
+    const selectedEvents = selectedListing?.events || LISTINGS[0].events;
 
     return (
         <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -182,8 +228,14 @@ function LMSRMarketSection() {
                     <span className="text-3xl">🏭</span> Maker Section
                 </h2>
                 <p className="text-sm text-emerald-600 dark:text-emerald-400 mb-4">
-                    Select a listing and provide liquidity to create a market
+                    Select a listing and provide liquidity to create a market on-chain
                 </p>
+
+                {!account && (
+                    <div className="p-4 rounded-lg bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 text-sm mb-4">
+                        Connect your wallet to create markets
+                    </div>
+                )}
 
                 {/* Listings */}
                 <div className="space-y-3 mb-4">
@@ -199,6 +251,13 @@ function LMSRMarketSection() {
                         >
                             <div className="font-bold text-black dark:text-white">{listing.title}</div>
                             <div className="text-sm text-zinc-500 dark:text-zinc-400">{listing.description}</div>
+                            <div className="mt-2 flex flex-wrap gap-1">
+                                {listing.events.map((event, i) => (
+                                    <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-emerald-200 dark:bg-emerald-700 text-emerald-800 dark:text-emerald-200">
+                                        {event}
+                                    </span>
+                                ))}
+                            </div>
                         </button>
                     ))}
                 </div>
@@ -223,19 +282,31 @@ function LMSRMarketSection() {
                         </div>
                         <button
                             onClick={handleCreateMarket}
-                            className="w-full py-3 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold hover:from-emerald-600 hover:to-teal-600 transition-all shadow-lg"
+                            disabled={isCreating || !account}
+                            className="w-full py-3 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold hover:from-emerald-600 hover:to-teal-600 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            Create Market with 8 Outcomes
+                            {isCreating ? 'Creating Market...' : 'Create Market with 8 Outcomes (On-Chain)'}
                         </button>
+                    </div>
+                )}
+
+                {/* Transaction Status */}
+                {txStatus && (
+                    <div className={`mt-4 p-3 rounded-lg text-sm ${txStatus.type === 'success'
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                        : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                        }`}>
+                        {txStatus.message}
                     </div>
                 )}
 
                 {/* Active Market Display */}
                 {activeMarket && (
                     <div className="mt-4 p-4 rounded-lg bg-white dark:bg-zinc-800 border border-emerald-200 dark:border-emerald-700">
-                        <div className="text-sm text-emerald-600 dark:text-emerald-400">Active Market Created</div>
+                        <div className="text-sm text-emerald-600 dark:text-emerald-400">Active Market (On-Chain)</div>
                         <div className="font-bold text-black dark:text-white">{activeMarket.title}</div>
-                        <div className="text-sm text-zinc-500">Pool: {(activeMarket.b / SCALE).toLocaleString()} USDC</div>
+                        <div className="text-sm text-zinc-500">Pool: {(Number(activeMarket.b) / SCALE).toLocaleString()} USDC</div>
+                        <div className="text-xs text-zinc-400 font-mono mt-1 truncate">ID: {activeMarket.id}</div>
                     </div>
                 )}
             </div>
@@ -250,7 +321,7 @@ function LMSRMarketSection() {
                 </p>
 
                 {activeMarket ? (
-                    <TakerPanel market={activeMarket} setMarket={setActiveMarket} />
+                    <TakerPanel market={activeMarket} setMarket={setActiveMarket} events={selectedEvents} />
                 ) : (
                     <div className="text-center py-12 text-zinc-500 dark:text-zinc-400">
                         <div className="text-4xl mb-3">⏳</div>
@@ -263,23 +334,26 @@ function LMSRMarketSection() {
 }
 
 // ============ Taker Panel Component ============
-function TakerPanel({ market, setMarket }: { market: Market; setMarket: (m: Market) => void }) {
+function TakerPanel({ market, setMarket, events }: { market: Market; setMarket: (m: Market) => void; events: string[] }) {
     const [buyAmount, setBuyAmount] = useState<string>('10');
     const [hoveredOutcome, setHoveredOutcome] = useState<number | null>(null);
 
-    // Current prices
+    // Current prices (0-1 floats representing probabilities)
     const currentPrices = useMemo(() => calculatePrices(market.q, market.b), [market.q, market.b]);
+
+    // Derived marginal probabilities
+    const marginals = useMemo(() => calculateMarginals(currentPrices), [currentPrices]);
 
     // Simulated prices after hover
     const simulatedPrices = useMemo(() => {
         if (hoveredOutcome === null) return null;
-        const amount = Number(buyAmount) * SCALE;
+        const amount = BigInt(Math.floor(Number(buyAmount) * SCALE));
         return simulatePriceAfterBuy(market.q, market.b, hoveredOutcome, amount);
     }, [market.q, market.b, hoveredOutcome, buyAmount]);
 
-    // Handle buy
+    // Handle buy (local simulation - in production would call smart contract)
     const handleBuy = (outcome: number) => {
-        const amount = Number(buyAmount) * SCALE;
+        const amount = BigInt(Math.floor(Number(buyAmount) * SCALE));
         const newQ = [...market.q];
         newQ[outcome] += amount;
         setMarket({ ...market, q: newQ });
@@ -287,13 +361,13 @@ function TakerPanel({ market, setMarket }: { market: Market; setMarket: (m: Mark
 
     // Format price as percentage
     const formatPrice = (price: number): string => {
-        return ((price / SCALE) * 100).toFixed(2) + '%';
+        return (price * 100).toFixed(2) + '%';
     };
 
     // Calculate price change
     const getPriceChange = (index: number): { value: number; direction: 'up' | 'down' | 'neutral' } => {
         if (!simulatedPrices) return { value: 0, direction: 'neutral' };
-        const change = ((simulatedPrices[index] - currentPrices[index]) / SCALE) * 100;
+        const change = (simulatedPrices[index] - currentPrices[index]) * 100;
         return {
             value: Math.abs(change),
             direction: change > 0.01 ? 'up' : change < -0.01 ? 'down' : 'neutral'
@@ -302,6 +376,22 @@ function TakerPanel({ market, setMarket }: { market: Market; setMarket: (m: Mark
 
     return (
         <div className="space-y-4">
+            {/* Derived Marginal Probabilities */}
+            <div className="grid grid-cols-3 gap-2 p-3 rounded-lg bg-violet-100 dark:bg-violet-900/30">
+                <div className="text-center">
+                    <div className="text-xs text-violet-600 dark:text-violet-400">{events[0]?.split(':')[0] || 'A'}</div>
+                    <div className="font-bold text-violet-800 dark:text-violet-200">{formatPrice(marginals.A)}</div>
+                </div>
+                <div className="text-center">
+                    <div className="text-xs text-violet-600 dark:text-violet-400">{events[1]?.split(':')[0] || 'B'}</div>
+                    <div className="font-bold text-violet-800 dark:text-violet-200">{formatPrice(marginals.B)}</div>
+                </div>
+                <div className="text-center">
+                    <div className="text-xs text-violet-600 dark:text-violet-400">{events[2]?.split(':')[0] || 'C'}</div>
+                    <div className="font-bold text-violet-800 dark:text-violet-200">{formatPrice(marginals.C)}</div>
+                </div>
+            </div>
+
             {/* Buy Amount Input */}
             <div>
                 <label className="block text-sm font-medium text-violet-700 dark:text-violet-300 mb-1">
@@ -316,13 +406,13 @@ function TakerPanel({ market, setMarket }: { market: Market; setMarket: (m: Mark
                 />
             </div>
 
-            {/* 8 Outcome Price Visualization */}
+            {/* 8 Outcome Price Visualization (World Table) */}
             <div className="space-y-2">
                 <h3 className="font-semibold text-violet-700 dark:text-violet-300">
-                    8 Outcomes - Click to Buy
+                    World Table (8 Joint Outcomes) - Click to Buy
                 </h3>
                 <div className="grid grid-cols-2 gap-2">
-                    {OUTCOME_LABELS.map((label, index) => {
+                    {WORLD_TABLE.map((world, index) => {
                         const priceChange = getPriceChange(index);
                         const isHovered = hoveredOutcome === index;
 
@@ -341,7 +431,8 @@ function TakerPanel({ market, setMarket }: { market: Market; setMarket: (m: Mark
                                 <div className={`absolute top-0 left-0 w-2 h-full rounded-l-lg ${OUTCOME_COLORS[index]}`} />
 
                                 <div className="ml-3">
-                                    <div className="font-medium text-sm text-black dark:text-white">{label}</div>
+                                    <div className="font-mono text-xs text-zinc-500 dark:text-zinc-400">{world.code}</div>
+                                    <div className="font-medium text-sm text-black dark:text-white">{world.short}</div>
                                     <div className="text-lg font-bold text-violet-700 dark:text-violet-300">
                                         {formatPrice(currentPrices[index])}
                                     </div>
@@ -358,7 +449,7 @@ function TakerPanel({ market, setMarket }: { market: Market; setMarket: (m: Mark
 
                                     {/* Quantity display */}
                                     <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                                        Shares: {(market.q[index] / SCALE).toFixed(0)}
+                                        Shares: {(Number(market.q[index]) / SCALE).toFixed(0)}
                                     </div>
                                 </div>
                             </button>
@@ -369,7 +460,7 @@ function TakerPanel({ market, setMarket }: { market: Market; setMarket: (m: Mark
 
             {/* Price Sum Verification */}
             <div className="text-center text-xs text-zinc-500 dark:text-zinc-400 mt-2">
-                Sum of all probabilities: {(currentPrices.reduce((a, b) => a + b, 0) / SCALE * 100).toFixed(2)}%
+                Sum of all probabilities: {(currentPrices.reduce((a, b) => a + b, 0) * 100).toFixed(2)}%
             </div>
 
             {/* Price Chart Visualization */}
@@ -377,7 +468,7 @@ function TakerPanel({ market, setMarket }: { market: Market; setMarket: (m: Mark
                 <h4 className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Price Distribution</h4>
                 <div className="flex items-end gap-1 h-24">
                     {currentPrices.map((price, index) => {
-                        const height = (price / SCALE) * 100;
+                        const height = price * 100;
                         const isHovered = hoveredOutcome === index;
                         return (
                             <div
@@ -385,15 +476,15 @@ function TakerPanel({ market, setMarket }: { market: Market; setMarket: (m: Mark
                                 className={`flex-1 rounded-t transition-all ${OUTCOME_COLORS[index]} ${isHovered ? 'opacity-100' : 'opacity-70'
                                     }`}
                                 style={{ height: `${Math.max(height, 5)}%` }}
-                                title={`${OUTCOME_LABELS[index]}: ${formatPrice(price)}`}
+                                title={`${WORLD_TABLE[index].code}: ${formatPrice(price)}`}
                             />
                         );
                     })}
                 </div>
                 <div className="flex gap-1 mt-1">
-                    {OUTCOME_LABELS.map((_, index) => (
-                        <div key={index} className="flex-1 text-center text-[10px] text-zinc-500">
-                            {index + 1}
+                    {WORLD_TABLE.map((world, index) => (
+                        <div key={index} className="flex-1 text-center text-[10px] text-zinc-500 font-mono">
+                            {world.code}
                         </div>
                     ))}
                 </div>

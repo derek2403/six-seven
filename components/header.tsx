@@ -1,18 +1,10 @@
 'use client';
 
-import { Dispatch, SetStateAction } from 'react';
 import { WalletConnect } from "./WalletConnect";
 import { VaultControls } from "./VaultControls";
 import Link from "next/link";
 
-type FilterType = 'All' | 'Sports' | 'Politics' | 'Crypto';
-
-interface HeaderProps {
-    activeFilter: FilterType;
-    setActiveFilter: Dispatch<SetStateAction<FilterType>>;
-}
-
-export function Header({ activeFilter, setActiveFilter }: HeaderProps) {
+export function Header() {
     return (
         <header className="sticky top-0 z-50 w-full border-b border-zinc-200 bg-white/80 backdrop-blur-md dark:border-zinc-800 dark:bg-black/80">
             <div className="container mx-auto flex h-16 items-center justify-between px-4">

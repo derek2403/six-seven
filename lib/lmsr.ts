@@ -141,7 +141,7 @@ export const calculatePrices = (q: bigint[], b: bigint): number[] => {
     const scale = BigInt(LMSR_CONFIG.SCALE);
     const n = LMSR_CONFIG.OUTCOMES;
 
-    if (b === 0n) {
+    if (b === BigInt(0)) {
         return Array(n).fill(1 / n);
     }
 
