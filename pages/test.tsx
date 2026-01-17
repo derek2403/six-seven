@@ -2,8 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useCurrentAccount, useSignAndExecuteTransaction, useSuiClient } from '@mysten/dapp-kit';
 import { Transaction } from '@mysten/sui/transactions';
-import { PlaceBetRequest, PlaceBetResponse, ResolveRequest, ResolveResponse, AttestationRequest, AttestationResponse } from '../lib/tee';
-import { PM_CONFIG } from '../lib/pm';
+import { PlaceBetRequest, PlaceBetResponse, ResolveRequest, ResolveResponse, AttestationRequest, AttestationResponse, PM_CONFIG } from '../lib/tee';
 import { VAULT_CONFIG, WORLD_CONFIG, USDC_CONFIG } from '../lib/config';
 import { buildMint1000UsdcTransaction, USDC_COIN_TYPE } from '../lib/usdc';
 import { buildDepositTransaction, CoinData, parseUserAccountData } from '../lib/vault';
@@ -418,7 +417,10 @@ export default function TestPage() {
 
             const data = await response.json();
 
-            if (data.response?.data) {
+            if (data.attestation) {
+                log(`✅ Attestation Received! Length: ${data.attestation.length}`);
+                log(`Doc (truncated): ${data.attestation.slice(0, 80)}...`);
+            } else if (data.response?.data) {
                 const attData: AttestationResponse = data.response.data;
                 log(`✅ Attestation Received! Length: ${attData.attestation_doc.length}`);
                 log(`Doc (truncated): ${attData.attestation_doc.slice(0, 50)}...`);
@@ -445,9 +447,8 @@ export default function TestPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    endpoint: `positions?pool_id=${poolIdNum}`,
-                    method: 'GET',
-                    payload: {}
+                    endpoint: 'positions',
+                    payload: { pool_id: poolIdNum }
                 }),
             });
 
