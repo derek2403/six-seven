@@ -2,8 +2,10 @@
 
 import React, { useRef, useState, useMemo } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { OrbitControls, PerspectiveCamera, Text, Float, ContactShadows, Environment, Billboard } from "@react-three/drei";
+import { OrbitControls, PerspectiveCamera, Text, Float, ContactShadows, Environment, Billboard, Html } from "@react-three/drei";
 import * as THREE from "three";
+
+type MarketSelection = "yes" | "no" | "any" | null;
 
 interface WorldData {
     state: string; // "000", "001", etc.
@@ -30,19 +32,36 @@ const WORLDS: WorldData[] = [
 
 const COLORS = ["#60a5fa", "#2563eb", "#facc15"];
 
-function Cube({ position, prob, state, isHovered, onHover }: {
+function Cube({ position, prob, state, isHovered, isSelected, onHover, onClick }: {
     position: [number, number, number],
     prob: number,
     state: string,
     isHovered: boolean,
-    onHover: (hover: boolean) => void
+    isSelected: boolean,
+    onHover: (hover: boolean) => void,
+    onClick: () => void
 }) {
     const mesh = useRef<THREE.Mesh>(null!);
+    const [pulsePhase, setPulsePhase] = useState(0);
+
+    // Pulsing animation for selected cube
+    useFrame((state, delta) => {
+        if (isSelected) {
+            setPulsePhase(prev => (prev + delta * 2) % (Math.PI * 2));
+            if (mesh.current) {
+                // Pulse scale
+                const scale = 1 + Math.sin(pulsePhase) * 0.05;
+                mesh.current.scale.setScalar(scale);
+            }
+        } else if (mesh.current) {
+            mesh.current.scale.setScalar(1);
+        }
+    });
 
     // Intensity based on probability
     const intensity = 0.1 + (prob / 100) * 0.9;
     const isMostProbable = prob > 50;
-    
+
     // Detailed breakdown for hover
     const khameneiVal = state[0] === '1' ? 'YES' : 'NO';
     const usVal = state[1] === '1' ? 'YES' : 'NO';
@@ -60,19 +79,24 @@ function Cube({ position, prob, state, isHovered, onHover }: {
                     e.stopPropagation();
                     onHover(false);
                 }}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onClick();
+                }}
+                style={{ cursor: 'pointer' }}
             >
                 <boxGeometry args={[1, 1, 1]} />
                 <meshPhysicalMaterial
                     transparent
-                    opacity={isHovered ? 0.9 : 0.3 * intensity + 0.1}
-                    color={isMostProbable ? "#facc15" : "#60a5fa"}
+                    opacity={isHovered ? 0.9 : isSelected ? 0.8 : 0.3 * intensity + 0.1}
+                    color={isSelected ? "#3b82f6" : isMostProbable ? "#facc15" : "#60a5fa"}
                     roughness={0.1}
                     metalness={0.2}
                     transmission={0.5}
                     thickness={1}
                     clearcoat={1}
-                    emissive={isMostProbable ? "#facc15" : "#60a5fa"}
-                    emissiveIntensity={isHovered ? 0.6 : 0.2 * intensity}
+                    emissive={isSelected ? "#3b82f6" : isMostProbable ? "#facc15" : "#60a5fa"}
+                    emissiveIntensity={isSelected ? 0.5 + Math.sin(pulsePhase) * 0.3 : isHovered ? 0.6 : 0.2 * intensity}
                 />
 
                 {/* Always-visible probability on the cube */}
@@ -91,136 +115,53 @@ function Cube({ position, prob, state, isHovered, onHover }: {
                 )}
             </mesh>
 
-            {/* Detailed Info on Hover - Solid White Modal Design */}
+            {/* Detailed Info on Hover - Using Html for reliable rendering */}
             {isHovered && (
-                <Billboard position={[0, 0, 1.5]} follow={true}>
-                    <group renderOrder={9998}>
-                        {/* Border (Black) */}
-                        <mesh position={[0, 0, -0.01]} renderOrder={9998}>
-                            <planeGeometry args={[1.82, 1.32]} />
-                            <meshBasicMaterial color="#000000" depthTest={false} depthWrite={false} toneMapped={false} side={THREE.DoubleSide} transparent={true} opacity={1} />
-                        </mesh>
-                        {/* Modal Background (White) */}
-                        <mesh position={[0, 0, 0]} renderOrder={9999}>
-                            <planeGeometry args={[1.8, 1.3]} />
-                            <meshBasicMaterial color="#ffffff" depthTest={false} depthWrite={false} toneMapped={false} side={THREE.DoubleSide} transparent={true} opacity={1} />
-                        </mesh>
-
-                        {/* Probability Header */}
-                        <group position={[0, 0.35, 0.1]}>
-                            <mesh>
-                                <planeGeometry args={[0.7, 0.45]} />
-                                <meshBasicMaterial color={isMostProbable ? "#fbbf24" : "#2563eb"} depthTest={false} depthWrite={false} toneMapped={false} />
-                            </mesh>
-                            <Text
-                                fontSize={0.18}
-                                anchorX="center"
-                                anchorY="middle"
-                                renderOrder={10001}
-                            >
-                                <meshBasicMaterial
-                                    attach="material"
-                                    color="#000000"
-                                    toneMapped={false}
-                                    depthTest={false}
-                                    depthWrite={false}
-                                />
-                                {prob}%
-                            </Text>
-                        </group>
+                <Html
+                    position={[0, 0, 0.8]}
+                    center
+                    distanceFactor={3}
+                    style={{ pointerEvents: 'none' }}
+                >
+                    <div style={{
+                        background: 'white',
+                        border: '2px solid black',
+                        borderRadius: '8px',
+                        padding: '12px 16px',
+                        minWidth: '180px',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                    }}>
+                        {/* Probability */}
+                        <div style={{
+                            background: isMostProbable ? '#fbbf24' : '#2563eb',
+                            color: 'black',
+                            fontWeight: 'bold',
+                            fontSize: '18px',
+                            padding: '6px 12px',
+                            borderRadius: '4px',
+                            textAlign: 'center',
+                            marginBottom: '10px',
+                        }}>
+                            {prob}%
+                        </div>
 
                         {/* Market Results */}
-                        {/* Market Results */}
-                        <group position={[-0.8, 0.05, 0.2]}>
-                            {/* Line 1: Khamenei (m1 - Light Blue) */}
-                            <group position={[0, 0, 0]}>
-                                <mesh position={[-0.08, -0.04, 0]} renderOrder={20000}>
-                                    <circleGeometry args={[0.04, 32]} />
-                                    <meshBasicMaterial
-                                        color={COLORS[0]}
-                                        depthTest={false}
-                                        depthWrite={false}
-                                        toneMapped={false}
-                                    />
-                                </mesh>
-                                <Text
-                                    position={[0, 0, 0]}
-                                    fontSize={0.10}
-                                    anchorX="left"
-                                    anchorY="top"
-                                    renderOrder={10001}
-                                >
-                                    <meshBasicMaterial
-                                        attach="material"
-                                        color="#000000"
-                                        toneMapped={false}
-                                        depthTest={false}
-                                        depthWrite={false}
-                                    />
-                                    Khamenei out: {khameneiVal}
-                                </Text>
-                            </group>
-
-                            {/* Line 2: US (m2 - Dark Blue) */}
-                            <group position={[0, -0.22, 0]}>
-                                <mesh position={[-0.08, -0.04, 0]} renderOrder={20000}>
-                                    <circleGeometry args={[0.04, 32]} />
-                                    <meshBasicMaterial
-                                        color={COLORS[1]}
-                                        depthTest={false}
-                                        depthWrite={false}
-                                        toneMapped={false}
-                                    />
-                                </mesh>
-                                <Text
-                                    position={[0, 0, 0]}
-                                    fontSize={0.10}
-                                    anchorX="left"
-                                    anchorY="top"
-                                    renderOrder={10001}
-                                >
-                                    <meshBasicMaterial
-                                        attach="material"
-                                        color="#000000"
-                                        toneMapped={false}
-                                        depthTest={false}
-                                        depthWrite={false}
-                                    />
-                                    Us Strikes Iran: {usVal}
-                                </Text>
-                            </group>
-
-                            {/* Line 3: Israel (m3 - Yellow) */}
-                            <group position={[0, -0.44, 0]}>
-                                <mesh position={[-0.08, -0.04, 0]} renderOrder={20000}>
-                                    <circleGeometry args={[0.04, 32]} />
-                                    <meshBasicMaterial
-                                        color={COLORS[2]}
-                                        depthTest={false}
-                                        depthWrite={false}
-                                        toneMapped={false}
-                                    />
-                                </mesh>
-                                <Text
-                                    position={[0, 0, 0]}
-                                    fontSize={0.10}
-                                    anchorX="left"
-                                    anchorY="top"
-                                    renderOrder={10001}
-                                >
-                                    <meshBasicMaterial
-                                        attach="material"
-                                        color="#000000"
-                                        toneMapped={false}
-                                        depthTest={false}
-                                        depthWrite={false}
-                                    />
-                                    Israel Strikes Iran: {israelVal}
-                                </Text>
-                            </group>
-                        </group>
-                    </group>
-                </Billboard>
+                        <div style={{ color: 'black', fontSize: '12px', lineHeight: '1.6' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: COLORS[0], display: 'inline-block' }}></span>
+                                <span>Khamenei out: <strong>{khameneiVal}</strong></span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: COLORS[1], display: 'inline-block' }}></span>
+                                <span>US Strikes Iran: <strong>{usVal}</strong></span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: COLORS[2], display: 'inline-block' }}></span>
+                                <span>Israel Strikes Iran: <strong>{israelVal}</strong></span>
+                            </div>
+                        </div>
+                    </div>
+                </Html>
             )}
 
         </group>
@@ -275,8 +216,54 @@ function Labels() {
 
 
 
-function Scene() {
+function Scene({ marketSelections, onMarketSelectionsChange }: {
+    marketSelections?: Record<string, MarketSelection>;
+    onMarketSelectionsChange?: (selections: Record<string, MarketSelection>) => void;
+}) {
     const [hoveredState, setHoveredState] = useState<string | null>(null);
+    const [selectedState, setSelectedState] = useState<string | null>(null);
+
+    // Auto-select cube when all 3 markets have yes/no selections
+    React.useEffect(() => {
+        if (!marketSelections) return;
+
+        const m1 = marketSelections.m1;
+        const m2 = marketSelections.m2;
+        const m3 = marketSelections.m3;
+
+        // If all 3 markets have yes or no (not null, not "any"), auto-select cube
+        if (m1 !== null && m1 !== "any" &&
+            m2 !== null && m2 !== "any" &&
+            m3 !== null && m3 !== "any") {
+            // Build the state string: "0" for no, "1" for yes
+            const state = (
+                (m1 === "yes" ? "1" : "0") +
+                (m2 === "yes" ? "1" : "0") +
+                (m3 === "yes" ? "1" : "0")
+            );
+            setSelectedState(state);
+        }
+    }, [marketSelections]);
+
+    const handleCubeClick = (state: string) => {
+        // Toggle selection
+        if (selectedState === state) {
+            setSelectedState(null);
+        } else {
+            setSelectedState(state);
+        }
+
+        if (!onMarketSelectionsChange) return;
+
+        // Map state characters to yes/no for each market
+        const newSelections: Record<string, MarketSelection> = {
+            m1: state[0] === '1' ? 'yes' : 'no',  // Khamenei
+            m2: state[1] === '1' ? 'yes' : 'no',  // US Strikes
+            m3: state[2] === '1' ? 'yes' : 'no',  // Israel Strikes
+        };
+
+        onMarketSelectionsChange(newSelections);
+    };
 
     const cubes = useMemo(() => {
         return WORLDS.map((w) => {
@@ -303,7 +290,9 @@ function Scene() {
                             prob={c.prob}
                             state={c.state}
                             isHovered={hoveredState === c.state}
+                            isSelected={selectedState === c.state}
                             onHover={(h) => setHoveredState(h ? c.state : null)}
+                            onClick={() => handleCubeClick(c.state)}
                         />
                     ))}
 
@@ -324,17 +313,23 @@ function Scene() {
     );
 }
 
-export default function Market3DView() {
+export default function Market3DView({ marketSelections, onMarketSelectionsChange }: {
+    marketSelections?: Record<string, MarketSelection>;
+    onMarketSelectionsChange?: (selections: Record<string, MarketSelection>) => void;
+}) {
     return (
         <div className="w-full h-[500px] bg-white rounded-2xl border border-gray-100 shadow-sm relative overflow-hidden">
             <div className="absolute top-6 left-6 z-10">
                 <h2 className="text-[14px] font-black text-gray-900 uppercase tracking-[0.2em]">3D Market Matrix</h2>
-                <p className="text-[11px] text-gray-400 mt-1 font-medium italic">8 joint-outcome possibilities</p>
+                <p className="text-[13px] text-gray-400 mt-1 font-medium italic">8 joint-outcome possibilities</p>
             </div>
 
             <Canvas shadows dpr={[1, 2]}>
                 <PerspectiveCamera makeDefault position={[0, 0, 5]} fov={50} />
-                <Scene />
+                <Scene
+                    marketSelections={marketSelections}
+                    onMarketSelectionsChange={onMarketSelectionsChange}
+                />
             </Canvas>
 
             <div className="absolute bottom-6 right-6 text-right z-10 pointer-events-none">

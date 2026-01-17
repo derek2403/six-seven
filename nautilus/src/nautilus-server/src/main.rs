@@ -4,7 +4,7 @@
 use anyhow::Result;
 use axum::{routing::get, routing::post, Router};
 use fastcrypto::{ed25519::Ed25519KeyPair, traits::KeyPair};
-use nautilus_server::app::{process_data, resolve};
+use nautilus_server::app::{process_data, resolve, get_positions_handler};
 use nautilus_server::common::{get_attestation, health_check};
 use nautilus_server::AppState;
 use std::sync::Arc;
@@ -19,7 +19,7 @@ async fn main() -> Result<()> {
     // Answer `y` to `Do you want to use a secret?` and finish. Otherwise, uncomment this code to use a hardcoded value.
     // let api_key = "045a27812dbe456392913223221306".to_string();
     #[cfg(not(feature = "seal-example"))]
-    let api_key = std::env::var("API_KEY").expect("API_KEY must be set");
+    let api_key = std::env::var("API_KEY").unwrap_or_else(|_| "no-api-key".to_string());
 
     // NOTE: if built with `seal-example` flag the `process_data` does not use this api_key from AppState, instead
     // it uses SEAL_API_KEY initialized with two phase bootstrap. Modify this as needed for your application.
@@ -42,6 +42,7 @@ async fn main() -> Result<()> {
         .route("/get_attestation", get(get_attestation))
         .route("/process_data", post(process_data))
         .route("/resolve", post(resolve))
+        .route("/positions", get(get_positions_handler))
         .route("/health_check", get(health_check))
         .with_state(state)
         .layer(cors);
