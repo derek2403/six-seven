@@ -8,10 +8,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     try {
-        const response = await fetch(`${TEE_URL}/process_data`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(req.body),
+        // Support dynamic endpoint: process_data, resolve, health_check, etc.
+        const endpoint = req.body.endpoint || 'process_data';
+        const payload = req.body.payload || req.body;
+
+        // health_check is a GET endpoint, others are POST
+        const isHealthCheck = endpoint === 'health_check';
+
+        const response = await fetch(`${TEE_URL}/${endpoint}`, {
+            method: isHealthCheck ? 'GET' : 'POST',
+            headers: isHealthCheck ? {} : { 'Content-Type': 'application/json' },
+            body: isHealthCheck ? undefined : JSON.stringify({ payload }),
         });
 
         const data = await response.json();

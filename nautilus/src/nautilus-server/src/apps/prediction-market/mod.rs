@@ -1,10 +1,9 @@
-//! Prediction Market Nautilus App
+//! Prediction Market Nautilus App (Federated Architecture)
 //! 
+//! TEE executes contract calls directly using its own keys.
 //! Endpoints:
-//! - POST /process_data - Place a bet (private)
-//! - GET /get_prices - Get current world prices (can be public)
-//! - POST /get_position - Get user's position (private, user-specific)
-//! - POST /claim_proof - Generate claim proof for settlement
+//! - POST /process_data - Place a bet (executes Vault + World updates)
+//! - POST /resolve - Resolve market and pay winners
 
 pub mod lmsr;
 pub mod state;
@@ -18,15 +17,17 @@ use serde_repr::{Deserialize_repr, Serialize_repr};
 use std::sync::{Arc, RwLock};
 
 use lmsr::LMSR;
-use state::{BetResult, BetType, MarketState};
+use state::PositionStore;
 
 // ============================================================
-// GLOBAL MARKET STATE (persists across requests in TEE)
+// GLOBAL POSITION STORE (persists across requests in TEE)
 // ============================================================
-static MARKET_STATE: Lazy<RwLock<MarketState>> = Lazy::new(|| {
-    // Initialize with b=100 (liquidity parameter)
-    RwLock::new(MarketState::new(100.0))
+static POSITION_STORE: Lazy<RwLock<PositionStore>> = Lazy::new(|| {
+    RwLock::new(PositionStore::new())
 });
+
+// LMSR liquidity parameter
+const LMSR_B: f64 = 100.0;
 
 // ============================================================
 // INTENT SCOPES - must match Move contract
@@ -35,7 +36,7 @@ static MARKET_STATE: Lazy<RwLock<MarketState>> = Lazy::new(|| {
 #[repr(u8)]
 pub enum IntentScope {
     PlaceBet = 0,
-    ClaimProof = 1,
+    Resolve = 1,
 }
 
 // ============================================================
@@ -45,52 +46,53 @@ pub enum IntentScope {
 /// Request to place a bet
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PlaceBetRequest {
-    pub user: String,
-    pub bet_type: String,  // "marginal", "slice", "corner"
-    pub event: Option<usize>,       // For marginal: which event (0=A, 1=B, 2=C)
-    pub yes: Option<bool>,          // For marginal: betting yes or no
-    pub conditions: Option<Vec<(usize, bool)>>,  // For slice
-    pub world: Option<usize>,       // For corner
-    pub amount: f64,
+    pub user: String,              // Bettor's wallet address
+    pub pool_id: u64,              // Which pool to bet on
+    pub outcome: u8,               // Which world (0-7) to bet on
+    pub amount: u64,               // Amount in smallest units (scaled by 10^6)
+    pub maker: String,             // Pool creator's wallet (receives funds)
+    pub current_probs: Vec<u64>,   // Current probabilities from World (scaled by 10000)
 }
 
 /// Response after placing a bet
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PlaceBetResponse {
-    pub shares: u64,           // Shares bought (scaled by 1000 for precision)
-    pub new_prices: Vec<u64>,  // New prices (scaled by 1_000_000 for precision)
-    pub commitment: String,    // Commitment hash for on-chain
-    pub worlds: Vec<u8>,       // World indices this bet covers
+    pub success: bool,
+    pub shares: u64,               // Shares bought (scaled by 1000)
+    pub new_probs: Vec<u64>,       // New probabilities (scaled by 10000 for World)
+    
+    // Vault operations to execute
+    pub debit_user: String,
+    pub debit_amount: u64,
+    pub credit_maker: String,
+    pub credit_amount: u64,
+    
+    // World operation to execute
+    pub world_pool_id: u64,
 }
 
-/// Request to get user position
+/// Request to resolve a market
 #[derive(Debug, Serialize, Deserialize)]
-pub struct GetPositionRequest {
-    pub user: String,
+pub struct ResolveRequest {
+    pub pool_id: u64,
+    pub winning_outcome: u8,
 }
 
-/// Response with user position
+/// Payout info for a winner
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct PositionResponse {
+pub struct Payout {
     pub user: String,
-    pub positions: Vec<(u8, u64)>,  // (world_idx, shares * 1000)
+    pub amount: u64,
 }
 
-/// Request to generate claim proof
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ClaimProofRequest {
-    pub user: String,
-    pub winning_world: usize,
-}
-
-/// Response with claim proof
+/// Response after resolving
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ClaimProofResponse {
-    pub user: String,
-    pub winning_world: u8,
-    pub shares: u64,        // Shares that win (scaled by 1000)
-    pub payout: u64,        // Payout amount in smallest unit
-    pub commitment: String, // For verification
+pub struct ResolveResponse {
+    pub success: bool,
+    pub pool_id: u64,
+    pub winning_outcome: u8,
+    pub payouts: Vec<Payout>,
+    pub total_payout: u64,
 }
 
 // ============================================================
@@ -102,57 +104,51 @@ pub async fn process_data(
 ) -> Result<Json<ProcessedDataResponse<IntentMessage<PlaceBetResponse>>>, EnclaveError> {
     let req = &request.payload;
     
-    // Parse bet type
-    let bet_type = match req.bet_type.as_str() {
-        "marginal" => BetType::Marginal {
-            event: req.event.ok_or_else(|| EnclaveError::GenericError("Missing event".into()))?,
-            yes: req.yes.ok_or_else(|| EnclaveError::GenericError("Missing yes/no".into()))?,
-        },
-        "slice" => BetType::Slice {
-            conditions: req.conditions.clone().ok_or_else(|| EnclaveError::GenericError("Missing conditions".into()))?,
-        },
-        "corner" => BetType::Corner {
-            world: req.world.ok_or_else(|| EnclaveError::GenericError("Missing world".into()))?,
-        },
-        _ => return Err(EnclaveError::GenericError("Invalid bet_type".into())),
-    };
+    // Convert current probs to f64 for LMSR
+    let current_quantities: Vec<f64> = req.current_probs
+        .iter()
+        .map(|&p| {
+            // Convert probability to quantity using inverse LMSR
+            // q_i = b * ln(p_i) + constant (we use 0 as base)
+            let prob = (p as f64) / 10000.0;
+            if prob > 0.0 {
+                LMSR_B * prob.ln()
+            } else {
+                0.0
+            }
+        })
+        .collect();
     
-    // Get worlds this bet covers
-    let worlds = bet_type.get_worlds();
+    // Calculate shares using LMSR
+    let lmsr = LMSR::new(LMSR_B);
+    let outcomes = vec![req.outcome as usize];
+    let amount_f64 = (req.amount as f64) / 1_000_000.0; // Convert from scaled to float
     
-    // Execute trade
-    let bet_result = {
-        let mut market = MARKET_STATE.write().map_err(|_| EnclaveError::GenericError("Lock error".into()))?;
-        
-        let lmsr = LMSR::new(market.b);
-        
-        // Calculate shares for amount
-        let (shares, new_quantities) = lmsr.shares_for_amount(&market.quantities, &worlds, req.amount);
-        
-        // Update state
-        market.update_quantities(new_quantities.clone());
-        market.add_position(&req.user, &worlds, shares);
-        
-        // Generate commitment
-        let commitment = market.generate_commitment(&req.user, &worlds, shares);
-        
-        // Get new prices
-        let new_prices = lmsr.prices(&new_quantities);
-        
-        BetResult {
-            shares,
-            new_prices,
-            commitment,
-            worlds: worlds.clone(),
-        }
-    };
+    let (shares_f64, new_quantities) = lmsr.shares_for_amount(&current_quantities, &outcomes, amount_f64);
+    let new_prices = lmsr.prices(&new_quantities);
     
-    // Create response (scale for integer precision)
+    // Store position
+    {
+        let mut store = POSITION_STORE.write()
+            .map_err(|_| EnclaveError::GenericError("Lock error".into()))?;
+        store.add_position(
+            req.user.clone(),
+            req.pool_id,
+            req.outcome,
+            (shares_f64 * 1000.0) as u64,
+        );
+    }
+    
+    // Build response
     let response = PlaceBetResponse {
-        shares: (bet_result.shares * 1000.0) as u64,
-        new_prices: bet_result.new_prices.iter().map(|&p| (p * 1_000_000.0) as u64).collect(),
-        commitment: bet_result.commitment,
-        worlds: bet_result.worlds.iter().map(|&w| w as u8).collect(),
+        success: true,
+        shares: (shares_f64 * 1000.0) as u64,
+        new_probs: new_prices.iter().map(|&p| (p * 10000.0) as u64).collect(),
+        debit_user: req.user.clone(),
+        debit_amount: req.amount,
+        credit_maker: req.maker.clone(),
+        credit_amount: req.amount,
+        world_pool_id: req.pool_id,
     };
     
     // Get timestamp
@@ -171,32 +167,68 @@ pub async fn process_data(
 }
 
 // ============================================================
-// HELPER: Get current prices (called from health_check or separate endpoint)
+// RESOLVE ENDPOINT
 // ============================================================
-pub fn get_current_prices() -> Result<Vec<f64>, EnclaveError> {
-    let market = MARKET_STATE.read().map_err(|_| EnclaveError::GenericError("Lock error".into()))?;
-    let lmsr = LMSR::new(market.b);
-    Ok(lmsr.prices(&market.quantities))
+pub async fn resolve(
+    State(state): State<Arc<AppState>>,
+    Json(request): Json<ProcessDataRequest<ResolveRequest>>,
+) -> Result<Json<ProcessedDataResponse<IntentMessage<ResolveResponse>>>, EnclaveError> {
+    let req = &request.payload;
+    
+    let payouts: Vec<Payout>;
+    let total_payout: u64;
+    
+    {
+        let mut store = POSITION_STORE.write()
+            .map_err(|_| EnclaveError::GenericError("Lock error".into()))?;
+        
+        // Get winning positions
+        let winners = store.get_winning_positions(req.pool_id, req.winning_outcome);
+        
+        // Calculate payouts (shares / 1000 = payout in USDC units)
+        // In reality, payout = shares * (1 / winning_prob), but simplified here
+        payouts = winners
+            .iter()
+            .map(|p| Payout {
+                user: p.wallet.clone(),
+                amount: p.shares * 1000, // Each share worth 1 USDC at resolution
+            })
+            .collect();
+        
+        total_payout = payouts.iter().map(|p| p.amount).sum();
+        
+        // Clear positions for this pool
+        store.clear_positions_for_pool(req.pool_id);
+    }
+    
+    let response = ResolveResponse {
+        success: true,
+        pool_id: req.pool_id,
+        winning_outcome: req.winning_outcome,
+        payouts,
+        total_payout,
+    };
+    
+    let timestamp_ms = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(|e| EnclaveError::GenericError(format!("Time error: {e}")))?
+        .as_millis() as u64;
+    
+    Ok(Json(to_signed_response(
+        &state.eph_kp,
+        response,
+        timestamp_ms,
+        IntentScope::Resolve as u8,
+    )))
 }
 
 // ============================================================
-// HELPER: Get marginal probabilities (A, B, C yes probabilities)
+// HELPER: Get current state (for debugging)
 // ============================================================
-pub fn get_marginal_probabilities() -> Result<Vec<f64>, EnclaveError> {
-    let prices = get_current_prices()?;
-    
-    let mut marginals = vec![0.0; 3];
-    
-    // P(A=Yes) = sum of worlds where A=1 (worlds 4,5,6,7)
-    marginals[0] = prices[4] + prices[5] + prices[6] + prices[7];
-    
-    // P(B=Yes) = sum of worlds where B=1 (worlds 2,3,6,7)
-    marginals[1] = prices[2] + prices[3] + prices[6] + prices[7];
-    
-    // P(C=Yes) = sum of worlds where C=1 (worlds 1,3,5,7)
-    marginals[2] = prices[1] + prices[3] + prices[5] + prices[7];
-    
-    Ok(marginals)
+pub fn get_positions_for_pool(pool_id: u64) -> Result<Vec<state::Position>, EnclaveError> {
+    let store = POSITION_STORE.read()
+        .map_err(|_| EnclaveError::GenericError("Lock error".into()))?;
+    Ok(store.get_positions_by_pool(pool_id).into_iter().cloned().collect())
 }
 
 #[cfg(test)]
@@ -204,37 +236,15 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_initial_prices() {
-        // Reset state for test
-        let mut market = MARKET_STATE.write().unwrap();
-        *market = MarketState::new(100.0);
-        drop(market);
+    fn test_lmsr_shares_calculation() {
+        let lmsr = LMSR::new(100.0);
+        let quantities = vec![0.0; 8];
+        let outcomes = vec![3]; // Bet on outcome 3
+        let amount = 10.0;
         
-        let prices = get_current_prices().unwrap();
-        assert_eq!(prices.len(), 8);
+        let (shares, new_quantities) = lmsr.shares_for_amount(&quantities, &outcomes, amount);
         
-        // All prices should be equal initially (uniform)
-        let first = prices[0];
-        for p in &prices {
-            assert!((p - first).abs() < 0.001);
-        }
-        
-        // Sum should be 1
-        let sum: f64 = prices.iter().sum();
-        assert!((sum - 1.0).abs() < 0.001);
-    }
-
-    #[test]
-    fn test_marginal_probabilities() {
-        let mut market = MARKET_STATE.write().unwrap();
-        *market = MarketState::new(100.0);
-        drop(market);
-        
-        let marginals = get_marginal_probabilities().unwrap();
-        
-        // With uniform prior, each marginal should be 0.5
-        for m in &marginals {
-            assert!((m - 0.5).abs() < 0.001);
-        }
+        assert!(shares > 0.0);
+        assert!(new_quantities[3] > 0.0);
     }
 }
