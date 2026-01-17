@@ -5,6 +5,8 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, PerspectiveCamera, Text, Float, ContactShadows, Environment, Billboard, Html } from "@react-three/drei";
 import * as THREE from "three";
 
+type MarketSelection = "yes" | "no" | "any" | null;
+
 interface WorldData {
     state: string; // "000", "001", etc.
     meaning: string;
@@ -30,12 +32,13 @@ const WORLDS: WorldData[] = [
 
 const COLORS = ["#60a5fa", "#2563eb", "#facc15"];
 
-function Cube({ position, prob, state, isHovered, onHover }: {
+function Cube({ position, prob, state, isHovered, onHover, onClick }: {
     position: [number, number, number],
     prob: number,
     state: string,
     isHovered: boolean,
-    onHover: (hover: boolean) => void
+    onHover: (hover: boolean) => void,
+    onClick: () => void
 }) {
     const mesh = useRef<THREE.Mesh>(null!);
 
@@ -60,6 +63,11 @@ function Cube({ position, prob, state, isHovered, onHover }: {
                     e.stopPropagation();
                     onHover(false);
                 }}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onClick();
+                }}
+                style={{ cursor: 'pointer' }}
             >
                 <boxGeometry args={[1, 1, 1]} />
                 <meshPhysicalMaterial
@@ -192,8 +200,24 @@ function Labels() {
 
 
 
-function Scene() {
+function Scene({ marketSelections, onMarketSelectionsChange }: {
+    marketSelections?: Record<string, MarketSelection>;
+    onMarketSelectionsChange?: (selections: Record<string, MarketSelection>) => void;
+}) {
     const [hoveredState, setHoveredState] = useState<string | null>(null);
+
+    const handleCubeClick = (state: string) => {
+        if (!onMarketSelectionsChange) return;
+
+        // Map state characters to yes/no for each market
+        const newSelections: Record<string, MarketSelection> = {
+            m1: state[0] === '1' ? 'yes' : 'no',  // Khamenei
+            m2: state[1] === '1' ? 'yes' : 'no',  // US Strikes
+            m3: state[2] === '1' ? 'yes' : 'no',  // Israel Strikes
+        };
+
+        onMarketSelectionsChange(newSelections);
+    };
 
     const cubes = useMemo(() => {
         return WORLDS.map((w) => {
@@ -221,6 +245,7 @@ function Scene() {
                             state={c.state}
                             isHovered={hoveredState === c.state}
                             onHover={(h) => setHoveredState(h ? c.state : null)}
+                            onClick={() => handleCubeClick(c.state)}
                         />
                     ))}
 
@@ -241,7 +266,10 @@ function Scene() {
     );
 }
 
-export default function Market3DView() {
+export default function Market3DView({ marketSelections, onMarketSelectionsChange }: {
+    marketSelections?: Record<string, MarketSelection>;
+    onMarketSelectionsChange?: (selections: Record<string, MarketSelection>) => void;
+}) {
     return (
         <div className="w-full h-[500px] bg-white rounded-2xl border border-gray-100 shadow-sm relative overflow-hidden">
             <div className="absolute top-6 left-6 z-10">
@@ -251,7 +279,10 @@ export default function Market3DView() {
 
             <Canvas shadows dpr={[1, 2]}>
                 <PerspectiveCamera makeDefault position={[0, 0, 5]} fov={50} />
-                <Scene />
+                <Scene
+                    marketSelections={marketSelections}
+                    onMarketSelectionsChange={onMarketSelectionsChange}
+                />
             </Canvas>
 
             <div className="absolute bottom-6 right-6 text-right z-10 pointer-events-none">

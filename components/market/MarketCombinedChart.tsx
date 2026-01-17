@@ -705,7 +705,10 @@ export function MarketCombinedChart({ selectedMarkets, view, marketSelections, o
 
                 {view === "3D" && (
                     <div className="flex flex-col py-4">
-                        <Market3DView />
+                        <Market3DView
+                            marketSelections={marketSelections}
+                            onMarketSelectionsChange={onMarketSelectionsChange}
+                        />
                         <p className="text-[11px] text-gray-400 mt-12 text-center italic font-medium px-4">
                             Probabilities derived from the joint-outcome AMM world table.
                         </p>
