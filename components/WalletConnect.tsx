@@ -5,15 +5,19 @@
 
 import { ConnectButton, useCurrentAccount, useSuiClientQuery } from '@mysten/dapp-kit';
 
+interface WalletConnectProps {
+    showDetails?: boolean;
+}
+
 // Main wallet component - shows connect button and account info
-export function WalletConnect() {
+export function WalletConnect({ showDetails = false }: WalletConnectProps) {
     return (
         <div className="flex flex-col items-center gap-8">
             {/* Wallet connect button from dapp-kit */}
             <ConnectButton />
 
-            {/* Show connected account details */}
-            <ConnectedAccount />
+            {/* Show connected account details only if requested */}
+            {showDetails && <ConnectedAccount />}
         </div>
     );
 }
