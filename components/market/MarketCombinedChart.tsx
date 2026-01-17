@@ -774,7 +774,7 @@ export function MarketCombinedChart({ selectedMarkets, view, marketSelections, o
                                         dot={(props: any) => {
                                             const { key, onClick, ...rest } = props;
                                             return (
-                                                <g onClick={() => handleLineClick("m1")} style={{ cursor: 'pointer' }}>
+                                                <g onClick={(e) => { e.stopPropagation(); handleLineClick("m1"); }} style={{ cursor: 'pointer' }}>
                                                     <CustomDot key={key} {...rest} color={focusedMarket === null || focusedMarket === "m1" ? "#60a5fa" : "#d1d5db"} lastIndex={COMBINED_CHART_DATA.length - 1} />
                                                 </g>
                                             );
@@ -796,7 +796,7 @@ export function MarketCombinedChart({ selectedMarkets, view, marketSelections, o
                                         dot={(props: any) => {
                                             const { key, onClick, ...rest } = props;
                                             return (
-                                                <g onClick={() => handleLineClick("m2")} style={{ cursor: 'pointer' }}>
+                                                <g onClick={(e) => { e.stopPropagation(); handleLineClick("m2"); }} style={{ cursor: 'pointer' }}>
                                                     <CustomDot key={key} {...rest} color={focusedMarket === null || focusedMarket === "m2" ? "#2563eb" : "#d1d5db"} lastIndex={COMBINED_CHART_DATA.length - 1} />
                                                 </g>
                                             );
@@ -818,7 +818,7 @@ export function MarketCombinedChart({ selectedMarkets, view, marketSelections, o
                                         dot={(props: any) => {
                                             const { key, onClick, ...rest } = props;
                                             return (
-                                                <g onClick={() => handleLineClick("m3")} style={{ cursor: 'pointer' }}>
+                                                <g onClick={(e) => { e.stopPropagation(); handleLineClick("m3"); }} style={{ cursor: 'pointer' }}>
                                                     <CustomDot key={key} {...rest} color={focusedMarket === null || focusedMarket === "m3" ? "#facc15" : "#d1d5db"} lastIndex={COMBINED_CHART_DATA.length - 1} />
                                                 </g>
                                             );
