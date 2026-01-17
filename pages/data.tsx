@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import Head from 'next/head';
-import allEvents from '../data/metadata/all_events.json';
+import politicsEvents from '../data/metadata/politics_events.json';
+import sportsEvents from '../data/metadata/sports.json';
 
 // Helper to parse JSON strings that might be in the data
 const safeParse = (str: string) => {
@@ -22,24 +23,6 @@ const formatMoney = (amount: number) => {
 };
 
 const EventCard = ({ event }: { event: any }) => {
-    // Use the first market for the main display if available, or aggregate
-    // The picture shows some cards with multiple rows (outcomes).
-    // We'll iterate through markets or outcomes.
-
-    // Flatten markets to get all outcomes if needed, or just show the first market's outcomes.
-    // For the "Portugal" example, it looks like one event with multiple outcomes/candidates.
-    // In Polymarket data, often one event has one market with "Yes/No", or multiple markets for candidates.
-    // Let's check the structure. If 'markets' has multiple items, we list them?
-    // Or if one market has multiple outcomes?
-
-    // In the JSON provided:
-    // "markets": [ { "outcomes": "[\"Yes\", \"No\"]", ... } ]
-    // It seems mostly Yes/No markets.
-
-    // Let's try to handle both single Yes/No and multiple options if possible, 
-    // but based on the JSON snippet, they look like Yes/No markets.
-    // If an event has multiple markets (like "Who will Trump nominate..."), we should show them.
-
     const marketsToDisplay = event.markets.slice(0, 3); // Limit to 3 for space
 
     return (
@@ -81,7 +64,7 @@ const EventCard = ({ event }: { event: any }) => {
                                     </span>
                                 )}
 
-                                <div className="flex space-x-1 w-full">
+                                <div className={`flex w-full ${outcomes.some((o: string) => o.length > 20) ? 'flex-col space-y-2' : 'space-x-1'}`}>
                                     {outcomes.map((outcome: string, idx: number) => {
                                         const price = prices && prices[idx] ? Math.round(parseFloat(prices[idx]) * 100) : 0;
                                         const isYesOrUp = outcome === 'Yes' || outcome === 'Up';
@@ -92,7 +75,7 @@ const EventCard = ({ event }: { event: any }) => {
                                         if (isNoOrDown) colorClass = "bg-red-50 hover:bg-red-100 text-red-700";
 
                                         return (
-                                            <button key={idx} className={`flex-1 ${colorClass} text-sm font-medium py-1.5 px-3 rounded transition-colors flex justify-between items-center`}>
+                                            <button key={idx} className={`flex-1 ${colorClass} text-sm font-medium py-1.5 px-3 rounded transition-colors flex justify-between items-center w-full`}>
                                                 <span className="truncate mr-1">{outcome}</span>
                                                 <span>{price}%</span>
                                             </button>
@@ -119,10 +102,21 @@ const EventCard = ({ event }: { event: any }) => {
 };
 
 export default function DataPage() {
+    const [activeFilter, setActiveFilter] = useState<'All' | 'Sports' | 'Politics' | 'Crypto'>('All');
+
+    const filteredEvents = useMemo(() => {
+        const politics = politicsEvents.map((e: any) => ({ ...e, category: 'Politics' }));
+        const sports = sportsEvents.map((e: any) => ({ ...e, category: 'Sports' }));
+        const all = [...politics, ...sports];
+
+        if (activeFilter === 'All') return all;
+        return all.filter((e: any) => e.category === activeFilter);
+    }, [activeFilter]);
+
     return (
         <div className="min-h-screen bg-gray-50 text-gray-900 font-sans">
             <Head>
-                <title>Polymarket Events</title>
+                <title>SixSeven Events</title>
                 <meta name="description" content="Polymarket events data" />
             </Head>
 
@@ -131,10 +125,18 @@ export default function DataPage() {
                     <div className="flex items-center space-x-8">
                         <span className="text-xl font-bold tracking-tight">six-seven</span>
                         <div className="hidden md:flex space-x-6">
-                            <span className="text-gray-900 font-medium cursor-pointer">All</span>
-                            <span className="text-gray-500 hover:text-gray-900 font-medium cursor-pointer transition-colors">Sports</span>
-                            <span className="text-gray-500 hover:text-gray-900 font-medium cursor-pointer transition-colors">Politics</span>
-                            <span className="text-gray-500 hover:text-gray-900 font-medium cursor-pointer transition-colors">Crypto</span>
+                            {['All', 'Sports', 'Politics', 'Crypto'].map((filter) => (
+                                <span
+                                    key={filter}
+                                    onClick={() => setActiveFilter(filter as any)}
+                                    className={`font-medium cursor-pointer transition-colors ${activeFilter === filter
+                                            ? 'text-gray-900 font-bold'
+                                            : 'text-gray-500 hover:text-gray-900'
+                                        }`}
+                                >
+                                    {filter}
+                                </span>
+                            ))}
                         </div>
                     </div>
                     <div className="flex items-center space-x-4">
@@ -146,7 +148,7 @@ export default function DataPage() {
 
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {allEvents.map((event: any) => (
+                    {filteredEvents.map((event: any) => (
                         <EventCard key={event.id} event={event} />
                     ))}
                 </div>
