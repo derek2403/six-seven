@@ -11,53 +11,89 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-export function MarketTimeFilter() {
-    const [selectedPill, setSelectedPill] = React.useState("jan-31");
+import { RainbowButton } from "@/components/ui/rainbow-button";
 
+interface MarketTimeFilterProps {
+    selectedMarkets: Record<string, boolean>;
+    view: string;
+    onViewChange: (view: string) => void;
+}
+
+export function MarketTimeFilter({ selectedMarkets, view, onViewChange }: MarketTimeFilterProps) {
+    const selectedCount = Object.values(selectedMarkets).filter(Boolean).length;
     const commonBtnClasses = "h-[36px] !rounded-full px-4 text-sm font-bold transition-all flex items-center justify-center gap-1";
+
+    let availableDimensions: string[] = [];
+    if (selectedCount >= 1) availableDimensions.push("1D");
+    if (selectedCount >= 2) availableDimensions.push("2D");
+    if (selectedCount >= 3) availableDimensions.push("3D");
+
+    const isDimensionView = ["1D", "2D", "3D"].includes(view);
 
     return (
         <div className="flex flex-wrap items-center gap-2 pl-0">
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <button className={cn(commonBtnClasses, "bg-gray-100 text-gray-700 hover:bg-gray-200")}>
-                        Past <ChevronDown className="h-4 w-4 opacity-50" />
-                    </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent><DropdownMenuItem>Past 24h</DropdownMenuItem></DropdownMenuContent>
-            </DropdownMenu>
-
-            {/* Set spacing={1} to prevent ToggleGroupItem from applying segmented-control logic (rounded-none) */}
             <ToggleGroup
                 type="single"
-                value={selectedPill}
-                onValueChange={(v) => v && setSelectedPill(v)}
+                value={view === "Default" || view === "Table" ? view : ""}
+                onValueChange={(v) => v && onViewChange(v)}
                 className="gap-2"
-                spacing={1}
             >
-                {["Jan 31", "Feb 28", "Mar 31", "Jun 30"].map((date) => (
+                {["Default", "Table"].map((v) => (
                     <ToggleGroupItem
-                        key={date}
-                        value={date.toLowerCase().replace(' ', '-')}
+                        key={v}
+                        value={v}
                         className={cn(
                             commonBtnClasses,
                             "data-[state=on]:bg-black data-[state=on]:text-white data-[state=on]:hover:bg-black",
                             "data-[state=off]:bg-gray-100 data-[state=off]:text-gray-500 hover:bg-gray-200"
                         )}
                     >
-                        {date}
+                        {v}
                     </ToggleGroupItem>
                 ))}
             </ToggleGroup>
 
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <button className={cn(commonBtnClasses, "bg-gray-100 text-gray-700 hover:bg-gray-200")}>
-                        More <ChevronDown className="h-4 w-4 opacity-50" />
-                    </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent><DropdownMenuItem>Future</DropdownMenuItem></DropdownMenuContent>
-            </DropdownMenu>
-        </div>
+            {availableDimensions.length > 0 && (
+                isDimensionView ? (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <div className="relative group">
+                                <RainbowButton
+                                    variant="default"
+                                    className={cn(
+                                        "h-[36px] text-sm font-bold px-5 flex items-center gap-2 rounded-full transition-transform active:scale-95"
+                                    )}
+                                >
+                                    {view}
+                                    <ChevronDown className="size-4 opacity-70" />
+                                </RainbowButton>
+                            </div>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-[120px] bg-white border border-gray-100 shadow-sm rounded-xl p-1">
+                            {availableDimensions.map((d) => (
+                                <DropdownMenuItem
+                                    key={d}
+                                    onClick={() => onViewChange(d)}
+                                    className={`font-bold text-[13px] cursor-pointer hover:bg-gray-50 rounded-lg px-3 py-2 justify-center ${view === d ? "text-blue-600 bg-blue-50/50" : "text-gray-900"}`}
+                                >
+                                    {d}
+                                </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                ) : (
+                    <RainbowButton
+                        onClick={() => onViewChange(availableDimensions[0])}
+                        variant="outline"
+                        className={cn(
+                            "h-[36px] text-sm font-bold px-5 flex items-center gap-2 rounded-full transition-transform active:scale-95"
+                        )}
+                    >
+                        {availableDimensions[0]}
+                        <ChevronDown className="size-4 opacity-70" />
+                    </RainbowButton>
+                )
+            )}
+                </div>
     );
 }

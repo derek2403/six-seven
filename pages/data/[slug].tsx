@@ -4,11 +4,24 @@ import { MarketTimeFilter } from "@/components/market/MarketTimeFilter";
 import { MarketLegend } from "@/components/market/MarketLegend";
 import { MarketCombinedChart } from "@/components/market/MarketCombinedChart";
 import { TradeCard } from "@/components/market/TradeCard";
+import { COMBINED_MARKETS } from "@/lib/mock/combined-markets";
 import React from 'react';
 
 export default function MarketPage() {
     const router = useRouter();
     const { slug } = router.query;
+
+    const [selectedMarkets, setSelectedMarkets] = React.useState<Record<string, boolean>>(
+        Object.fromEntries(COMBINED_MARKETS.map(m => [m.id, true]))
+    );
+    const [view, setView] = React.useState("Default");
+
+    const toggleMarket = (id: string) => {
+        setSelectedMarkets(prev => ({
+            ...prev,
+            [id]: !prev[id]
+        }));
+    };
 
     return (
         <div className="min-h-screen bg-white font-sans">
@@ -41,18 +54,32 @@ export default function MarketPage() {
                 <div className="flex flex-col md:flex-row gap-10 items-start">
                     {/* Left Column: All Content */}
                     <div className="flex-1 min-w-0">
-                        <CombinedMarketList />
+                        <CombinedMarketList
+                            selectedMarkets={selectedMarkets}
+                            onToggleMarket={toggleMarket}
+                        />
 
                         <div className="mt-8 text-gray-500">
-                            <MarketTimeFilter />
+                            <MarketTimeFilter
+                                selectedMarkets={selectedMarkets}
+                                view={view}
+                                onViewChange={setView}
+                            />
                         </div>
 
                         <div className="mt-8">
-                            <MarketLegend />
+                            <MarketLegend
+                                selectedMarkets={selectedMarkets}
+                                view={view}
+                                onViewChange={setView}
+                            />
                         </div>
 
                         <div className="mt-4">
-                            <MarketCombinedChart />
+                            <MarketCombinedChart
+                                selectedMarkets={selectedMarkets}
+                                view={view}
+                            />
                         </div>
                     </div>
 
