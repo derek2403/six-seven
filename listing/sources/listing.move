@@ -17,6 +17,7 @@ module listing::listing {
     public struct Listing has key, store {
         id: UID,
         title: String,
+        description: String,
         image_url: String,
         submarkets: vector<Submarket>,
     }
@@ -26,6 +27,7 @@ module listing::listing {
     /// Create a new listing with exactly 3 submarkets
     public entry fun create_listing(
         title: vector<u8>,
+        description: vector<u8>,
         image_url: vector<u8>,
         submarket_titles: vector<vector<u8>>,
         submarket_images: vector<vector<u8>>,
@@ -53,6 +55,7 @@ module listing::listing {
         let listing = Listing {
             id: object::new(ctx),
             title: string::utf8(title),
+            description: string::utf8(description),
             image_url: string::utf8(image_url),
             submarkets,
         };
@@ -64,6 +67,10 @@ module listing::listing {
 
     public fun get_title(listing: &Listing): String {
         listing.title
+    }
+
+    public fun get_description(listing: &Listing): String {
+        listing.description
     }
 
     public fun get_image_url(listing: &Listing): String {

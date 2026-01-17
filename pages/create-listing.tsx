@@ -15,6 +15,7 @@ export default function CreateListing() {
 
     // Form State
     const [title, setTitle] = useState('');
+    const [description, setDescription] = useState('');
     const [imageUrl, setImageUrl] = useState('');
 
     const [submarkets, setSubmarkets] = useState([
@@ -35,7 +36,7 @@ export default function CreateListing() {
             return;
         }
 
-        if (!title || !imageUrl || submarkets.some(s => !s.title || !s.image)) {
+        if (!title || !description || !imageUrl || submarkets.some(s => !s.title || !s.image)) {
             setError('Please fill in all fields');
             return;
         }
@@ -54,6 +55,7 @@ export default function CreateListing() {
                 target: `${LISTING_CONFIG.PACKAGE_ID}::${LISTING_CONFIG.MODULE_NAME}::create_listing`,
                 arguments: [
                     tx.pure.string(title),
+                    tx.pure.string(description),
                     tx.pure.string(imageUrl),
                     tx.pure.vector('string', submarketTitles),
                     tx.pure.vector('string', submarketImages),
@@ -69,6 +71,7 @@ export default function CreateListing() {
 
             // Reset form
             setTitle('');
+            setDescription('');
             setImageUrl('');
             setSubmarkets([
                 { title: '', image: '' },
@@ -107,6 +110,16 @@ export default function CreateListing() {
                                 value={title}
                                 onChange={(e) => setTitle(e.target.value)}
                                 placeholder="e.g. Premier League Matchday 1"
+                            />
+                        </div>
+                        <div className="mb-4">
+                            <label className="block mb-2 text-sm font-medium text-gray-600">Description</label>
+                            <textarea
+                                className="w-full p-3 rounded-lg border border-gray-300 bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
+                                placeholder="Describe the listing..."
+                                rows={3}
                             />
                         </div>
                         <div className="mb-4">
@@ -257,6 +270,7 @@ function CreatedListings() {
                     return {
                         id: obj.data.objectId,
                         title: fields.title,
+                        description: fields.description,
                         imageUrl: fields.image_url,
                         submarkets: submarkets
                     };
@@ -308,7 +322,10 @@ function CreatedListings() {
                                 />
                                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
                                     <h3 className="text-white font-bold text-xl truncate">{listing.title}</h3>
-                                    <p className="text-gray-300 text-xs font-mono">{listing.id.slice(0, 10)}...</p>
+                                    {listing.description && (
+                                        <p className="text-gray-200 text-sm truncate mt-1">{listing.description}</p>
+                                    )}
+                                    <p className="text-gray-300 text-xs font-mono mt-1">{listing.id.slice(0, 10)}...</p>
                                 </div>
                             </div>
 
