@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import Head from 'next/head';
 import politicsEvents from '../data/metadata/politics_events.json';
 import sportsEvents from '../data/metadata/sports.json';
-import Header from '../components/header';
+import { Header } from '../components/header';
 
 // Helper to parse JSON strings that might be in the data
 const safeParse = (str: string) => {

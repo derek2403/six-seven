@@ -2,8 +2,8 @@
 
 import { Geist, Geist_Mono } from "next/font/google";
 import { useCurrentAccount, useSignAndExecuteTransaction, useSuiClient, useSuiClientQuery } from "@mysten/dapp-kit";
-import { USDC_CONFIG, VAULT_CONFIG } from "../lib/config";
-import { useState, useEffect } from "react";
+import { USDC_CONFIG, VAULT_CONFIG, LMSR_CONFIG } from "../lib/config";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { formatBalance } from "../lib/format";
 import { buildMint1000UsdcTransaction, USDC_COIN_TYPE } from "../lib/usdc";
 import {
@@ -11,6 +11,15 @@ import {
     VAULT_ID,
     type VaultStats
 } from "../lib/vault";
+import {
+    buildCreateAmmTransaction,
+    buildBuyTransaction,
+    LMSR_AMM_TYPE,
+    LMSR_SCALE,
+    LMSR_OUTCOMES,
+    parseLmsrAmm,
+    type LmsrAmmData
+} from "../lib/lmsr";
 
 const geistSans = Geist({
     variable: "--font-geist-sans",
@@ -22,23 +31,373 @@ const geistMono = Geist_Mono({
     subsets: ["latin"],
 });
 
+// ============ LMSR Types & Constants ============
+const SCALE = Number(LMSR_SCALE);
+const N = LMSR_OUTCOMES;
+
+interface Market {
+    id: string;          // Sui object ID of the LMSR AMM
+    title: string;
+    description: string;
+    b: bigint;           // liquidity parameter (from chain)
+    q: bigint[];         // 8 outcome quantities (from chain)
+}
+
+interface Listing {
+    id: string;
+    title: string;
+    description: string;
+    events: string[];    // 3 binary events for this listing
+}
+
+// Hardcoded listings with 3 binary events each
+const LISTINGS: Listing[] = [
+    {
+        id: 'A',
+        title: 'Title A',
+        description: 'Middle East Escalation Events',
+        events: ['A: Israel Strike', 'B: US Involvement', 'C: Iran Response']
+    },
+    {
+        id: 'B',
+        title: 'Title B',
+        description: 'US Election 2024',
+        events: ['A: Trump Wins', 'B: House Flips', 'C: Senate Flips']
+    },
+    {
+        id: 'C',
+        title: 'Title C',
+        description: 'Crypto Market Events',
+        events: ['A: BTC > $100K', 'B: ETH > $5K', 'C: Total MC > $5T']
+    },
+];
+
+// World Table: 8 joint outcomes for 3 binary events (A, B, C)
+// Each outcome represents a specific combination of Yes/No for all 3 events
+const WORLD_TABLE = [
+    { code: '000', meaning: 'A no, B no, C no', short: 'None happen' },
+    { code: '001', meaning: 'A no, B no, C yes', short: 'Only C' },
+    { code: '010', meaning: 'A no, B yes, C no', short: 'Only B' },
+    { code: '011', meaning: 'A no, B yes, C yes', short: 'B & C' },
+    { code: '100', meaning: 'A yes, B no, C no', short: 'Only A' },
+    { code: '101', meaning: 'A yes, B no, C yes', short: 'A & C' },
+    { code: '110', meaning: 'A yes, B yes, C no', short: 'A & B' },
+    { code: '111', meaning: 'A yes, B yes, C yes', short: 'All happen' },
+];
+
+const OUTCOME_COLORS = [
+    'bg-slate-500', 'bg-cyan-500', 'bg-amber-500', 'bg-lime-500',
+    'bg-rose-500', 'bg-fuchsia-500', 'bg-violet-500', 'bg-emerald-500'
+];
+
+// ============ LMSR Math Functions (Frontend Implementation) ============
+// Calculate LMSR prices using softmax (matches smart contract logic)
+function calculatePrices(q: bigint[], b: bigint): number[] {
+    if (b === 0n) return Array(N).fill(1 / N);
+
+    const exps: number[] = [];
+    let sum = 0;
+
+    for (let i = 0; i < N; i++) {
+        const qiOverB = Number(q[i]) / Number(b);
+        const expVal = Math.exp(qiOverB);
+        exps.push(expVal);
+        sum += expVal;
+    }
+
+    return exps.map(e => e / sum);
+}
+
+// Calculate derived marginal probabilities from world table
+function calculateMarginals(prices: number[]): { A: number; B: number; C: number } {
+    // P(A=Yes) = sum of worlds where A=1: {100, 101, 110, 111} = indices {4, 5, 6, 7}
+    const pA = prices[4] + prices[5] + prices[6] + prices[7];
+    // P(B=Yes) = sum of worlds where B=1: {010, 011, 110, 111} = indices {2, 3, 6, 7}
+    const pB = prices[2] + prices[3] + prices[6] + prices[7];
+    // P(C=Yes) = sum of worlds where C=1: {001, 011, 101, 111} = indices {1, 3, 5, 7}
+    const pC = prices[1] + prices[3] + prices[5] + prices[7];
+    return { A: pA, B: pB, C: pC };
+}
+
+// Simulate price after buying shares of a specific outcome
+function simulatePriceAfterBuy(q: bigint[], b: bigint, outcome: number, amount: bigint): number[] {
+    const newQ = [...q];
+    newQ[outcome] += amount;
+    return calculatePrices(newQ, b);
+}
+
 export default function TokenPage() {
     return (
         <div
-            className={`${geistSans.className} ${geistMono.className} flex min-h-screen flex-col items-center justify-center bg-zinc-50 p-8 font-sans dark:bg-black`}
+            className={`${geistSans.className} ${geistMono.className} flex min-h-screen flex-col items-center bg-zinc-50 p-8 font-sans dark:bg-black`}
         >
-            <main className="flex w-full max-w-4xl flex-col items-center gap-8">
+            <main className="flex w-full max-w-6xl flex-col items-center gap-8">
                 <h1 className="text-3xl font-bold text-black dark:text-white">
-                    Mock USDC &amp; Vault Testing
+                    LMSR Prediction Market
                 </h1>
                 <p className="text-zinc-600 dark:text-zinc-400 text-center">
-                    Test minting USDC tokens. Use the header controls to Deposit/Withdraw.
+                    Create markets as a Maker or trade outcomes as a Taker
                 </p>
 
+                {/* LMSR Market Section */}
+                <LMSRMarketSection />
+
+                {/* Original Token Actions */}
                 <div className="w-full rounded-xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+                    <h2 className="text-xl font-bold text-black dark:text-white mb-4">Mock USDC & Vault Testing</h2>
                     <TokenActions />
                 </div>
             </main>
+        </div>
+    );
+}
+
+// ============ LMSR Market Component ============
+function LMSRMarketSection() {
+    const [activeMarket, setActiveMarket] = useState<Market | null>(null);
+    const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
+    const [poolAmount, setPoolAmount] = useState<string>('100');
+
+    // Create market from listing
+    const handleCreateMarket = () => {
+        if (!selectedListing) return;
+
+        const b = Number(poolAmount) * SCALE; // Convert to fixed-point
+        const newMarket: Market = {
+            id: `market-${selectedListing.id}-${Date.now()}`,
+            title: selectedListing.title,
+            description: selectedListing.description,
+            b: b,
+            q: Array(N).fill(0), // Initialize all quantities to 0
+        };
+        setActiveMarket(newMarket);
+        setSelectedListing(null);
+    };
+
+    return (
+        <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Maker Section */}
+            <div className="rounded-xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 p-6 shadow-lg dark:border-emerald-800 dark:from-emerald-900/30 dark:to-teal-900/30">
+                <h2 className="text-2xl font-bold text-emerald-800 dark:text-emerald-300 mb-4 flex items-center gap-2">
+                    <span className="text-3xl">🏭</span> Maker Section
+                </h2>
+                <p className="text-sm text-emerald-600 dark:text-emerald-400 mb-4">
+                    Select a listing and provide liquidity to create a market
+                </p>
+
+                {/* Listings */}
+                <div className="space-y-3 mb-4">
+                    <h3 className="font-semibold text-emerald-700 dark:text-emerald-300">Available Listings</h3>
+                    {LISTINGS.map((listing) => (
+                        <button
+                            key={listing.id}
+                            onClick={() => setSelectedListing(listing)}
+                            className={`w-full p-4 rounded-lg border-2 text-left transition-all ${selectedListing?.id === listing.id
+                                ? 'border-emerald-500 bg-emerald-100 dark:bg-emerald-800/50'
+                                : 'border-zinc-200 bg-white hover:border-emerald-300 dark:border-zinc-700 dark:bg-zinc-800 dark:hover:border-emerald-600'
+                                }`}
+                        >
+                            <div className="font-bold text-black dark:text-white">{listing.title}</div>
+                            <div className="text-sm text-zinc-500 dark:text-zinc-400">{listing.description}</div>
+                        </button>
+                    ))}
+                </div>
+
+                {/* Pool Amount Input */}
+                {selectedListing && (
+                    <div className="space-y-3">
+                        <div>
+                            <label className="block text-sm font-medium text-emerald-700 dark:text-emerald-300 mb-1">
+                                Pool Amount (Liquidity Parameter b)
+                            </label>
+                            <input
+                                type="number"
+                                value={poolAmount}
+                                onChange={(e) => setPoolAmount(e.target.value)}
+                                className="w-full px-4 py-3 rounded-lg border border-emerald-300 bg-white text-black dark:border-emerald-700 dark:bg-zinc-800 dark:text-white"
+                                placeholder="Enter pool amount..."
+                            />
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                                Higher values = more stable prices, lower values = more volatile
+                            </p>
+                        </div>
+                        <button
+                            onClick={handleCreateMarket}
+                            className="w-full py-3 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold hover:from-emerald-600 hover:to-teal-600 transition-all shadow-lg"
+                        >
+                            Create Market with 8 Outcomes
+                        </button>
+                    </div>
+                )}
+
+                {/* Active Market Display */}
+                {activeMarket && (
+                    <div className="mt-4 p-4 rounded-lg bg-white dark:bg-zinc-800 border border-emerald-200 dark:border-emerald-700">
+                        <div className="text-sm text-emerald-600 dark:text-emerald-400">Active Market Created</div>
+                        <div className="font-bold text-black dark:text-white">{activeMarket.title}</div>
+                        <div className="text-sm text-zinc-500">Pool: {(activeMarket.b / SCALE).toLocaleString()} USDC</div>
+                    </div>
+                )}
+            </div>
+
+            {/* Taker Section */}
+            <div className="rounded-xl border border-violet-200 bg-gradient-to-br from-violet-50 to-purple-50 p-6 shadow-lg dark:border-violet-800 dark:from-violet-900/30 dark:to-purple-900/30">
+                <h2 className="text-2xl font-bold text-violet-800 dark:text-violet-300 mb-4 flex items-center gap-2">
+                    <span className="text-3xl">📊</span> Taker Section
+                </h2>
+                <p className="text-sm text-violet-600 dark:text-violet-400 mb-4">
+                    Buy shares and watch prices adjust in real-time
+                </p>
+
+                {activeMarket ? (
+                    <TakerPanel market={activeMarket} setMarket={setActiveMarket} />
+                ) : (
+                    <div className="text-center py-12 text-zinc-500 dark:text-zinc-400">
+                        <div className="text-4xl mb-3">⏳</div>
+                        <p>Create a market first to start trading</p>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+// ============ Taker Panel Component ============
+function TakerPanel({ market, setMarket }: { market: Market; setMarket: (m: Market) => void }) {
+    const [buyAmount, setBuyAmount] = useState<string>('10');
+    const [hoveredOutcome, setHoveredOutcome] = useState<number | null>(null);
+
+    // Current prices
+    const currentPrices = useMemo(() => calculatePrices(market.q, market.b), [market.q, market.b]);
+
+    // Simulated prices after hover
+    const simulatedPrices = useMemo(() => {
+        if (hoveredOutcome === null) return null;
+        const amount = Number(buyAmount) * SCALE;
+        return simulatePriceAfterBuy(market.q, market.b, hoveredOutcome, amount);
+    }, [market.q, market.b, hoveredOutcome, buyAmount]);
+
+    // Handle buy
+    const handleBuy = (outcome: number) => {
+        const amount = Number(buyAmount) * SCALE;
+        const newQ = [...market.q];
+        newQ[outcome] += amount;
+        setMarket({ ...market, q: newQ });
+    };
+
+    // Format price as percentage
+    const formatPrice = (price: number): string => {
+        return ((price / SCALE) * 100).toFixed(2) + '%';
+    };
+
+    // Calculate price change
+    const getPriceChange = (index: number): { value: number; direction: 'up' | 'down' | 'neutral' } => {
+        if (!simulatedPrices) return { value: 0, direction: 'neutral' };
+        const change = ((simulatedPrices[index] - currentPrices[index]) / SCALE) * 100;
+        return {
+            value: Math.abs(change),
+            direction: change > 0.01 ? 'up' : change < -0.01 ? 'down' : 'neutral'
+        };
+    };
+
+    return (
+        <div className="space-y-4">
+            {/* Buy Amount Input */}
+            <div>
+                <label className="block text-sm font-medium text-violet-700 dark:text-violet-300 mb-1">
+                    Buy Amount (shares)
+                </label>
+                <input
+                    type="number"
+                    value={buyAmount}
+                    onChange={(e) => setBuyAmount(e.target.value)}
+                    className="w-full px-4 py-2 rounded-lg border border-violet-300 bg-white text-black dark:border-violet-700 dark:bg-zinc-800 dark:text-white"
+                    placeholder="Enter amount..."
+                />
+            </div>
+
+            {/* 8 Outcome Price Visualization */}
+            <div className="space-y-2">
+                <h3 className="font-semibold text-violet-700 dark:text-violet-300">
+                    8 Outcomes - Click to Buy
+                </h3>
+                <div className="grid grid-cols-2 gap-2">
+                    {OUTCOME_LABELS.map((label, index) => {
+                        const priceChange = getPriceChange(index);
+                        const isHovered = hoveredOutcome === index;
+
+                        return (
+                            <button
+                                key={index}
+                                onMouseEnter={() => setHoveredOutcome(index)}
+                                onMouseLeave={() => setHoveredOutcome(null)}
+                                onClick={() => handleBuy(index)}
+                                className={`relative p-3 rounded-lg border-2 text-left transition-all ${isHovered
+                                    ? 'border-violet-500 scale-105 shadow-lg'
+                                    : 'border-zinc-200 dark:border-zinc-700'
+                                    } bg-white dark:bg-zinc-800`}
+                            >
+                                {/* Color indicator */}
+                                <div className={`absolute top-0 left-0 w-2 h-full rounded-l-lg ${OUTCOME_COLORS[index]}`} />
+
+                                <div className="ml-3">
+                                    <div className="font-medium text-sm text-black dark:text-white">{label}</div>
+                                    <div className="text-lg font-bold text-violet-700 dark:text-violet-300">
+                                        {formatPrice(currentPrices[index])}
+                                    </div>
+
+                                    {/* Price change preview */}
+                                    {isHovered && priceChange.direction !== 'neutral' && (
+                                        <div className={`text-xs font-medium ${priceChange.direction === 'up'
+                                            ? 'text-green-600 dark:text-green-400'
+                                            : 'text-red-600 dark:text-red-400'
+                                            }`}>
+                                            {priceChange.direction === 'up' ? '↑' : '↓'} {priceChange.value.toFixed(2)}%
+                                        </div>
+                                    )}
+
+                                    {/* Quantity display */}
+                                    <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                                        Shares: {(market.q[index] / SCALE).toFixed(0)}
+                                    </div>
+                                </div>
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {/* Price Sum Verification */}
+            <div className="text-center text-xs text-zinc-500 dark:text-zinc-400 mt-2">
+                Sum of all probabilities: {(currentPrices.reduce((a, b) => a + b, 0) / SCALE * 100).toFixed(2)}%
+            </div>
+
+            {/* Price Chart Visualization */}
+            <div className="mt-4 p-4 rounded-lg bg-zinc-100 dark:bg-zinc-800">
+                <h4 className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Price Distribution</h4>
+                <div className="flex items-end gap-1 h-24">
+                    {currentPrices.map((price, index) => {
+                        const height = (price / SCALE) * 100;
+                        const isHovered = hoveredOutcome === index;
+                        return (
+                            <div
+                                key={index}
+                                className={`flex-1 rounded-t transition-all ${OUTCOME_COLORS[index]} ${isHovered ? 'opacity-100' : 'opacity-70'
+                                    }`}
+                                style={{ height: `${Math.max(height, 5)}%` }}
+                                title={`${OUTCOME_LABELS[index]}: ${formatPrice(price)}`}
+                            />
+                        );
+                    })}
+                </div>
+                <div className="flex gap-1 mt-1">
+                    {OUTCOME_LABELS.map((_, index) => (
+                        <div key={index} className="flex-1 text-center text-[10px] text-zinc-500">
+                            {index + 1}
+                        </div>
+                    ))}
+                </div>
+            </div>
         </div>
     );
 }
