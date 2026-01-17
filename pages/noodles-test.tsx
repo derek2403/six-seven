@@ -11,7 +11,7 @@ const geistMono = Geist_Mono({
     subsets: ["latin"],
 });
 
-const REFRESH_INTERVAL_MS = 120000; // 2 minutes - to avoid rate limiting
+const REFRESH_INTERVAL_MS = 1000; // 5 seconds - fetching from local cache is cheap
 
 export default function NoodlesTestPage() {
     const [loading, setLoading] = useState(false);
@@ -43,13 +43,40 @@ export default function NoodlesTestPage() {
         try {
             // Call our own API route with all default coins
             const res = await fetch(`/api/integrations/noodles?coins=${encodeURIComponent(DEFAULT_COINS.join(','))}`);
-            const data = await res.json();
+            const newData = await res.json();
 
             if (!res.ok) {
-                throw new Error(data.error || 'Failed to fetch data');
+                throw new Error(newData.error || 'Failed to fetch data');
             }
 
-            setResponse(data);
+            setResponse((prev: any) => {
+                // If no previous data, just use new data
+                if (!prev || !prev.data) return newData;
+
+                // Merge new data into old data to preserve fields that might be missing in partial updates
+                const mergedList = [...prev.data];
+
+                if (newData.data && Array.isArray(newData.data)) {
+                    newData.data.forEach((newCoinItem: any) => {
+                        const index = mergedList.findIndex((item: any) => item.coin === newCoinItem.coin);
+
+                        if (index !== -1) {
+                            // Merge: New properties overwrite old ones, but missing properties in 'new' are kept from 'old'
+                            // This works because the API seems to omit keys rather than sending nulls for partial updates
+                            mergedList[index] = { ...mergedList[index], ...newCoinItem };
+                        } else {
+                            // New coin we haven't seen before
+                            mergedList.push(newCoinItem);
+                        }
+                    });
+                }
+
+                return {
+                    ...newData,
+                    data: mergedList
+                };
+            });
+
             setLastUpdated(new Date());
         } catch (err: any) {
             setError(err.message);
@@ -116,18 +143,13 @@ export default function NoodlesTestPage() {
                             </div>
                         </div>
 
-                        {/* Progress Bar and Timer */}
-                        <div className="space-y-1.5">
-                            <div className="flex justify-between text-xs text-zinc-500">
-                                <span>Auto-refresh</span>
-                                <span>Next update in {Math.floor(secondsRemaining / 60)}:{Math.floor(secondsRemaining % 60).toString().padStart(2, '0')}</span>
+                        {/* Live Indicator */}
+                        <div className="flex items-center gap-2 text-xs text-zinc-500">
+                            <div className="relative flex h-2.5 w-2.5">
+                                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75 ${loading ? 'duration-500' : 'duration-1000'}`}></span>
+                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
                             </div>
-                            <div className="w-full bg-zinc-100 dark:bg-zinc-800 rounded-full h-1.5 overflow-hidden">
-                                <div
-                                    className="bg-blue-500 h-full rounded-full transition-all duration-1000 ease-linear"
-                                    style={{ width: `${(secondsRemaining / (REFRESH_INTERVAL_MS / 1000)) * 100}%` }}
-                                />
-                            </div>
+                            <span>Auto-refreshing every 1 second</span>
                         </div>
                     </div>
 
@@ -155,9 +177,11 @@ export default function NoodlesTestPage() {
                                             <div key={idx} className="p-4 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700">
                                                 <div className="flex items-center justify-between mb-2">
                                                     <span className="font-bold text-zinc-900 dark:text-zinc-100">{symbol}</span>
-                                                    <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
-                                                        Rank #{item.rank || 'N/A'}
-                                                    </span>
+                                                    {item.rank && (
+                                                        <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
+                                                            Rank #{item.rank}
+                                                        </span>
+                                                    )}
                                                 </div>
                                                 <div className="space-y-1 text-sm">
                                                     <div className="flex justify-between">
