@@ -1,6 +1,7 @@
 'use client';
 
 import { WalletConnect } from "./WalletConnect";
+import { VaultControls } from "./VaultControls";
 import Link from "next/link";
 
 export function Header() {
@@ -16,6 +17,7 @@ export function Header() {
                 </div>
 
                 <div className="flex items-center gap-4">
+                    <VaultControls />
                     <WalletConnect />
                 </div>
             </div>
