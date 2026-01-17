@@ -300,9 +300,62 @@ export default function TestPage() {
         return Array.from(bytes);
     };
 
+    // Helper: Get user's withdrawable balance from ledger
+    const getUserWithdrawableBalance = async (userAddress: string): Promise<bigint> => {
+        try {
+            // 1. Get Ledger object to find accounts table ID
+            const ledgerObj = await client.getObject({
+                id: VAULT_CONFIG.LEDGER_ID,
+                options: { showContent: true }
+            });
+
+            const accountsTableId = ledgerObj.data?.content && 'fields' in ledgerObj.data.content
+                ? (ledgerObj.data.content.fields as any).accounts?.fields?.id?.id
+                : null;
+
+            if (!accountsTableId) {
+                console.log('No accounts table found in ledger');
+                return BigInt(0);
+            }
+
+            // 2. Get dynamic fields from accounts table
+            const fields = await client.getDynamicFields({
+                parentId: accountsTableId,
+            });
+
+            for (const field of fields.data) {
+                if (field.name?.value === userAddress) {
+                    const accountObj = await client.getObject({
+                        id: field.objectId,
+                        options: { showContent: true },
+                    });
+
+                    if (accountObj.data?.content && 'fields' in accountObj.data.content) {
+                        const content = accountObj.data.content.fields as any;
+                        const value = content.value?.fields;
+                        if (value?.withdrawable_amount) {
+                            return BigInt(value.withdrawable_amount);
+                        }
+                    }
+                    break;
+                }
+            }
+        } catch (err) {
+            console.error('Error fetching user balance:', err);
+        }
+        return BigInt(0);
+    };
+
     // Execute PM contract submission
     const executePMSubmitBet = async (betResponse: PlaceBetResponse, timestamp: number, signature: string) => {
         if (!account) return;
+
+        // Fetch maker's current balance BEFORE building transaction
+        const makerAddress = maker || account.address;
+        const makerCurrentBalance = await getUserWithdrawableBalance(makerAddress);
+        const makerNewBalance = makerCurrentBalance + BigInt(betResponse.credit_amount);
+
+        console.log(`Maker ${makerAddress.slice(0, 10)}... balance: ${makerCurrentBalance} + ${betResponse.credit_amount} = ${makerNewBalance}`);
 
         const tx = new Transaction();
 
@@ -326,20 +379,15 @@ export default function TestPage() {
         });
 
         // 2. Debit user (Update Vault)
-        // Note: In a real secure app, vault::set_withdrawable_balance should be protected
-        // and only callable by the PM contract or via a Witness pattern.
-        // Here we chain it in the PTB to simulate "Authorized Execution".
-
-        // Need current balance to calculate new balance
-        // We'll trust the checked balance from fetchUserData or we need to pass it in.
-        // For reliability, we should fetch it here, but we can't async fetch inside the PTB logic easily without breaking flow.
-        // We'll rely on the optimistic calculation or just hardcode for the demo if reading state is hard.
-        // Actually, we can just use the state variable `vaultBalance` if available?
-        // But `executePMSubmitBet` is inside the component, so `vaultBalance` state is accessible!
-
         const currentMIST = BigInt(vaultBalance);
         const betAmountMIST = BigInt(betResponse.debit_amount);
         const newUserBalance = currentMIST - betAmountMIST;
+
+        // Safety check to prevent negative balance
+        if (newUserBalance < 0) {
+            log(`❌ Error: Insufficient balance. Current: ${currentMIST}, Debit: ${betAmountMIST}`);
+            return;
+        }
 
         tx.moveCall({
             target: `${VAULT_CONFIG.PACKAGE_ID}::${VAULT_CONFIG.MODULE_NAME}::set_withdrawable_balance`,
@@ -350,13 +398,13 @@ export default function TestPage() {
             ],
         });
 
-        // 3. Credit Maker
+        // 3. Credit Maker (current balance + credit_amount)
         tx.moveCall({
             target: `${VAULT_CONFIG.PACKAGE_ID}::${VAULT_CONFIG.MODULE_NAME}::set_withdrawable_balance`,
             arguments: [
                 tx.object(VAULT_CONFIG.LEDGER_ID),
-                tx.pure.address(maker || account.address), // Use maker state
-                tx.pure.u64(betResponse.credit_amount),
+                tx.pure.address(makerAddress),
+                tx.pure.u64(makerNewBalance), // Now correctly adds to existing balance
             ],
         });
 
@@ -365,7 +413,7 @@ export default function TestPage() {
             target: `${WORLD_CONFIG.PACKAGE_ID}::${WORLD_CONFIG.MODULE_NAME}::update_prob`,
             arguments: [
                 tx.object(WORLD_CONFIG.WORLD_ID),
-                tx.pure.u64(betResponse.pool_id), // used to be world_pool_id?
+                tx.pure.u64(betResponse.pool_id),
                 tx.pure.vector('u64', betResponse.new_probs),
             ],
         });
