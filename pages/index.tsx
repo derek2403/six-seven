@@ -1,19 +1,46 @@
-import Image from "next/image";
-import { Geist, Geist_Mono } from "next/font/google";
-import { WalletConnect } from "../components/WalletConnect";
+"use client";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+import React, { useState, useMemo } from "react";
+import { Globe } from "@/components/ui/globe";
+import { AnimatedList, AnimatedListItem } from "@/components/ui/animated-list";
+import { cn } from "@/lib/utils";
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+
+const MARKETS = {
+  US: [
+    { name: "Fed rate cut in Feb?", description: "High conviction among analysts.", time: "2m ago", icon: "🇺🇸", color: "#468BE6" },
+    { name: "S&P 500 above 6000?", description: "Market sentiment is bullish.", time: "10m ago", icon: "📈", color: "#468BE6" },
+    { name: "US Tech Regulation Bill?", description: "Senate vote expected soon.", time: "5m ago", icon: "⚖️", color: "#468BE6" }
+  ],
+  Portugal: [
+    { name: "Portugal WC 2026 winner?", description: "Ronaldo's last dance bets.", time: "1m ago", icon: "🇵🇹", color: "#468BE6" },
+    { name: "Lisbon Tech Exit > $1B?", description: "Unicorn hunting season.", time: "12m ago", icon: "🚀", color: "#468BE6" },
+    { name: "Renewable Energy > 90%?", description: "Green grid targets.", time: "1h ago", icon: "🌿", color: "#468BE6" }
+  ],
+  Iran: [
+    { name: "Oil Export Ceiling 2026?", description: "Global supply impact.", time: "8m ago", icon: "🛢️", color: "#468BE6" },
+    { name: "Tehran Stock Index > 2M?", description: "Local currency hedge.", time: "4m ago", icon: "💹", color: "#468BE6" },
+    { name: "Persian Gulf Trade Pack?", description: "New regional alliance.", time: "30m ago", icon: "🤝", color: "#468BE6" }
+  ],
+  Ukraine: [
+    { name: "Reconstruction Fund Goal?", description: "EU-led recovery plan.", time: "3m ago", icon: "🏗️", color: "#468BE6" },
+    { name: "Agriculture Export Record?", description: "Grain corridor stability.", time: "15m ago", icon: "🌾", color: "#468BE6" },
+    { name: "IT Sector Growth > 20%?", description: "Digital resilience.", time: "2h ago", icon: "💻", color: "#468BE6" }
+  ],
+  Australia: [
+    { name: "ASX 200 All-Time High?", description: "Mining sector rally.", time: "6m ago", icon: "🇦🇺", color: "#468BE6" },
+    { name: "Great Barrier Reef Health?", description: "Restoration success.", time: "11m ago", icon: "🪸", color: "#468BE6" },
+    { name: "Australia-UK Trade Deal?", description: "New export quotas.", time: "45m ago", icon: "🚢", color: "#468BE6" }
+  ],
+  Greenland: [
+    { name: "New Nuuk Airport Open?", description: "Tourism expansion.", time: "20m ago", icon: "✈️", color: "#468BE6" },
+    { name: "Ice Shelf Stability 2026?", description: "Arctic research data.", time: "1h ago", icon: "❄️", color: "#468BE6" },
+    { name: "Mineral Export License?", description: "Northern mining rights.", time: "2h ago", icon: "⛏️", color: "#468BE6" }
+  ]
+};
 
 import RotatingEarth from "../components/RotatingEarth";
-import WireframeCard from "../components/WireframeCard";
+import { AnimatedListDemo } from "../components/AnimatedListDemo";
 import { motion, useScroll, useTransform } from "framer-motion";
 // ... imports
 
@@ -28,9 +55,8 @@ export default function Home() {
 
   return (
     <div
-      className={`${geistSans.className} ${geistMono.className} min-h-screen bg-zinc-50 font-sans dark:bg-black`}
+      className={`min-h-screen bg-zinc-50 font-sans dark:bg-black`}
     >
-      <WalletConnect />
 
       <main className="flex min-h-screen w-full flex-col items-center pt-32 px-4 sm:px-16 bg-white dark:bg-black overflow-hidden">
         <div className="w-full flex justify-center items-center h-[600px] fixed top-32 left-0 right-0 pointer-events-none px-10">
@@ -38,12 +64,12 @@ export default function Home() {
             <RotatingEarth />
           </motion.div>
 
-          {/* Wireframe Card */}
+          {/* Animated List Card */}
           <motion.div
             style={{ opacity: cardOpacity, y: cardY }}
-            className="absolute right-[10%] xl:right-[20%] pointer-events-auto z-20"
+            className="absolute right-[5%] xl:right-[15%] pointer-events-auto z-20"
           >
-            <WireframeCard />
+            <AnimatedListDemo className="w-full max-w-[400px] shadow-2xl bg-white/80 dark:bg-black/80 backdrop-blur-md border border-zinc-200 dark:border-zinc-800" />
           </motion.div>
         </div>
 
