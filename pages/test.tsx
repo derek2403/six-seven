@@ -2,7 +2,8 @@
 import { useState, useEffect } from 'react';
 import { useCurrentAccount, useSignAndExecuteTransaction, useSuiClient } from '@mysten/dapp-kit';
 import { Transaction } from '@mysten/sui/transactions';
-import { CONTRACTS, TEE_CONFIG, PlaceBetRequest, PlaceBetResponse, ResolveRequest, ResolveResponse } from '../lib/tee';
+import { PlaceBetRequest, PlaceBetResponse, ResolveRequest, ResolveResponse } from '../lib/tee';
+import { PM_CONFIG } from '../lib/pm';
 import { VAULT_CONFIG, WORLD_CONFIG, USDC_CONFIG } from '../lib/config';
 import { buildMint1000UsdcTransaction, USDC_COIN_TYPE } from '../lib/usdc';
 import { buildDepositTransaction, CoinData, parseUserAccountData } from '../lib/vault';
@@ -208,16 +209,19 @@ export default function TestPage() {
             const data = await response.json();
             log(`TEE Response: ${JSON.stringify(data, null, 2)}`);
 
-            if (data.response?.data) {
+            if (data.response?.data && data.signature) {
                 const betResponse: PlaceBetResponse = data.response.data;
                 log(`✅ TEE calculated: ${betResponse.shares} shares`);
                 log(`New probs: [${betResponse.new_probs.map(p => (p / 100).toFixed(1) + '%').join(', ')}]`);
 
-                // Now execute Vault + World updates
-                log('Executing on-chain updates...');
-                await executeVaultAndWorldUpdates(betResponse);
+                // Check if signature is present
+                log(`Signature: ${data.signature.slice(0, 10)}...`);
+
+                // Now execute PM contract call with signature
+                log('Executing PM contract submission...');
+                await executePMSubmitBet(betResponse, data.response.timestamp_ms, data.signature);
             } else {
-                log(`❌ TEE Error: ${JSON.stringify(data.error || data)}`);
+                log(`❌ TEE Error or missing signature: ${JSON.stringify(data.error || data)}`);
             }
         } catch (err: any) {
             log(`❌ Error: ${err.message}`);
@@ -226,43 +230,36 @@ export default function TestPage() {
         }
     };
 
-    // Execute Vault and World updates after TEE response
-    const executeVaultAndWorldUpdates = async (betResponse: PlaceBetResponse) => {
+    const fromHex = (hex: string) => {
+        const bytes = new Uint8Array(hex.length / 2);
+        for (let i = 0; i < hex.length; i += 2) {
+            bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16);
+        }
+        return Array.from(bytes);
+    };
+
+    // Execute PM contract submission
+    const executePMSubmitBet = async (betResponse: PlaceBetResponse, timestamp: number, signature: string) => {
         if (!account) return;
 
         const tx = new Transaction();
 
-        // 1. Debit user's vault balance
-        // First get current balance
-        const currentBalance = BigInt(vaultBalance);
-        const newUserBalance = currentBalance - BigInt(betResponse.debit_amount);
-
+        // Call pm::submit_bet
         tx.moveCall({
-            target: `${VAULT_CONFIG.PACKAGE_ID}::${VAULT_CONFIG.MODULE_NAME}::set_withdrawable_balance`,
+            target: `${PM_CONFIG.PM_PACKAGE}::pm::submit_bet`,
+            typeArguments: [`${PM_CONFIG.PM_PACKAGE}::pm::PM`],
             arguments: [
-                tx.object(VAULT_CONFIG.LEDGER_ID),
-                tx.pure.address(betResponse.debit_user),
-                tx.pure.u64(newUserBalance),
-            ],
-        });
-
-        // 2. Credit maker's vault balance (simplified - in reality would fetch maker's balance)
-        tx.moveCall({
-            target: `${VAULT_CONFIG.PACKAGE_ID}::${VAULT_CONFIG.MODULE_NAME}::set_withdrawable_balance`,
-            arguments: [
-                tx.object(VAULT_CONFIG.LEDGER_ID),
-                tx.pure.address(betResponse.credit_maker),
-                tx.pure.u64(betResponse.credit_amount),
-            ],
-        });
-
-        // 3. Update World probabilities
-        tx.moveCall({
-            target: `${WORLD_CONFIG.PACKAGE_ID}::${WORLD_CONFIG.MODULE_NAME}::update_prob`,
-            arguments: [
-                tx.object(WORLD_CONFIG.WORLD_ID),
-                tx.pure.u64(betResponse.world_pool_id),
+                tx.object(PM_CONFIG.ENCLAVE_OBJECT_ID), // The registered enclave object
+                // Response data
+                tx.pure.u64(betResponse.shares),
                 tx.pure.vector('u64', betResponse.new_probs),
+                tx.pure.u64(betResponse.pool_id),
+                tx.pure.u8(betResponse.outcome),
+                tx.pure.u64(betResponse.debit_amount),
+                tx.pure.u64(betResponse.credit_amount),
+                // Signature
+                tx.pure.u64(timestamp),
+                tx.pure.vector('u8', fromHex(signature)),
             ],
         });
 
@@ -270,10 +267,10 @@ export default function TestPage() {
             { transaction: tx },
             {
                 onSuccess: (result) => {
-                    log(`✅ On-chain updates complete! TX: ${result.digest}`);
+                    log(`✅ PM contract confirmed! Signature Verified. TX: ${result.digest}`);
                     fetchUserData();
                 },
-                onError: (err) => log(`❌ On-chain update failed: ${err.message}`),
+                onError: (err) => log(`❌ PM submission failed: ${err.message}`),
             }
         );
     };
@@ -485,7 +482,7 @@ export default function TestPage() {
             <div className="mb-6 p-4 bg-zinc-800 rounded-lg">
                 <h2 className="text-xl font-semibold mb-2">Contract IDs</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm font-mono">
-                    <div><span className="text-zinc-400">TEE:</span> {TEE_CONFIG.TEE_URL}</div>
+                    <div><span className="text-zinc-400">TEE:</span> {PM_CONFIG.TEE_URL}</div>
                     <div><span className="text-zinc-400">Vault:</span> {VAULT_CONFIG.VAULT_ID.slice(0, 20)}...</div>
                     <div><span className="text-zinc-400">Ledger:</span> {VAULT_CONFIG.LEDGER_ID.slice(0, 20)}...</div>
                     <div><span className="text-zinc-400">World:</span> {WORLD_CONFIG.WORLD_ID.slice(0, 20)}...</div>

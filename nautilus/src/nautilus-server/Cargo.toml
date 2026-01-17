@@ -38,6 +38,7 @@ weather-example = []
 twitter-example = ["regex"]
 seal-example = ["sui-crypto", "sui-sdk-types", "seal-sdk"]
 prediction-market = ["hex", "sha2", "once_cell"]
+pm = ["once_cell"]
 
 [dependencies.hex]
 version = "0.4"

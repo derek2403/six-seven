@@ -7,10 +7,14 @@ export const TEE_CONFIG = {
     // TEE Endpoint
     TEE_URL: 'http://44.211.226.223:3000',
 
-    // Enclave Package (for signature verification if needed)
+    // TEE Public Key (from /health_check response)
+    // This key is used to verify signed responses client-side if needed
+    TEE_PK: 'd2b51eca83eb1adaf18d72b04251b644d04ca2a66b9ee9a12944e6c2fb8710ba',
+
+    // Enclave Package (for on-chain signature verification - requires production Nitro)
     ENCLAVE_PACKAGE: '0x8b46d0f2d32974451336e0ede960ccd1714d6b9c3580715863bb2e303fa4795a',
     ENCLAVE_CONFIG_ID: '0x48e625408db3aa995ed216f9e273956a7cba6e9ac9604a458df493a49591d7e4',
-    ENCLAVE_OBJECT_ID: '0x9c0e780d4ba223b3e5e8c8a62ba30d9b31fde3105ae6ac914587121c5855d931',
+    ENCLAVE_OBJECT_ID: '', // Skipped - debug mode attestation doesn't work
 };
 
 // Re-export external contract configs for convenience
@@ -55,14 +59,12 @@ export interface PlaceBetRequest {
 }
 
 export interface PlaceBetResponse {
-    success: boolean;
     shares: number;
     new_probs: number[];
-    debit_user: string;
+    pool_id: number;
+    outcome: number;
     debit_amount: number;
-    credit_maker: string;
     credit_amount: number;
-    world_pool_id: number;
 }
 
 export interface ResolveRequest {
