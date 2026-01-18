@@ -529,6 +529,7 @@ The more dimensions, the more specific a bet can be — and the easier it is to 
 ---
 
 ### TEE & PM Packages
+- **TEE_URL:** http://100.24.10.33:3000 
 - **ENCLAVE_PACKAGE:** https://testnet.suivision.xyz/package/0x143e110ae8389ef848783215a1fd4d5a2826e561b2a8624e2c64283cc8299a2d
 - **ENCLAVE_CONFIG_ID:** https://testnet.suivision.xyz/object/0x15a2d73dbecf428e2856ff88db6648bb7bb6716129b2c8347c9ff50e6b4163e5 
 - **ENCLAVE_OBJECT_ID:** https://testnet.suivision.xyz/object/0x9db6f3758c5fd0d8ef9aa4866b43cb4f2b0b9845022d42d4017ec7bb1df6326d
