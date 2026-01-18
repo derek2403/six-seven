@@ -189,7 +189,7 @@ export default function CreateListing() {
                     {/* Category Selection */}
                     <section className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
                         <h2 className="text-xl font-semibold mb-5 text-blue-800 border-b border-blue-200 pb-2">Quick Create from Template</h2>
-                        
+
                         <div className="mb-4">
                             <label className="block mb-2 text-sm font-medium text-blue-700">Select Category</label>
                             <select
@@ -198,8 +198,8 @@ export default function CreateListing() {
                                 onChange={(e) => handleCategoryChange(e.target.value as CategoryType)}
                             >
                                 <option value="">-- Choose a category --</option>
-                                <option value="politics">🏛️ Politics Events</option>
-                                <option value="sports">⚽ Sports</option>
+                                <option value="politics">Politics Events</option>
+                                <option value="sports">Sports</option>
                             </select>
                         </div>
 
@@ -212,11 +212,10 @@ export default function CreateListing() {
                                             key={event.id}
                                             type="button"
                                             onClick={() => handleEventSelect(event)}
-                                            className={`p-4 rounded-lg border-2 text-left transition-all hover:shadow-md ${
-                                                selectedEvent?.id === event.id
+                                            className={`p-4 rounded-lg border-2 text-left transition-all hover:shadow-md ${selectedEvent?.id === event.id
                                                     ? 'border-blue-500 bg-blue-50 shadow-md'
                                                     : 'border-gray-200 bg-white hover:border-blue-300'
-                                            }`}
+                                                }`}
                                         >
                                             <div className="flex items-start gap-3">
                                                 <img
