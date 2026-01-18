@@ -3,7 +3,8 @@ import Head from 'next/head';
 import { useCurrentAccount, useSignAndExecuteTransaction, useSuiClient } from '@mysten/dapp-kit';
 import { createListingTx } from '../lib/listing';
 import { LISTING_CONFIG } from '../lib/config';
-import { Header } from '../components/header';
+import { WalletConnect } from '../components/WalletConnect';
+
 
 // Import JSON data
 import politicsEventsData from '../data/metadata/politics_events.json';
@@ -180,7 +181,7 @@ export default function CreateListing() {
                 <title>Create Listing | Phōcast</title>
             </Head>
 
-            <Header />
+            <WalletConnect />
 
             <main className="max-w-2xl mx-auto px-6 py-12 pt-24">
                 <div className="text-center mb-10">
