@@ -7,7 +7,7 @@ import { Header } from '../components/header';
 import { WalletConnect } from '../components/WalletConnect';
 import { Search, SlidersHorizontal, Bookmark, ChevronRight, ChevronDown, Repeat, Gift } from 'lucide-react';
 import { useSuiClient } from '@mysten/dapp-kit';
-import { WORLD_CONFIG } from '@/lib/config';
+import { WORLD_CONFIG, LISTING_CONFIG } from '@/lib/config';
 
 // Helper to parse JSON strings that might be in the data
 const safeParse = (str: string) => {
@@ -307,7 +307,7 @@ const EventCard = ({ event }: { event: any }) => {
 
 // Topic pills for the scrollable filter bar
 const topicPills = [
-    "All", "Trump", "Iran", "NFL Playoffs", "Greenland", "Portugal Election",
+    "All", "Trump", "Iran", "NFL Playoffs", "Inactive", "Portugal Election",
     "Tariffs", "Fed", "Derivatives", "Venezuela", "Ukraine", "Oscars",
     "Epstein", "Tweet Markets", "Minnesota Unrest", "China", "AI", "Weather",
     "Silver", "Equities", "Primaries", "Midterms", "Movies", "Global Elections",
@@ -329,6 +329,10 @@ export default function DataPage() {
     // Sui client for fetching Pool 0 data
     const client = useSuiClient();
     const [iranProbs, setIranProbs] = useState<{ m1: number; m2: number; m3: number }>({ m1: 0, m2: 0, m3: 0 });
+
+    // State for inactive listings fetched from blockchain
+    const [inactiveListings, setInactiveListings] = useState<any[]>([]);
+    const [inactiveLoading, setInactiveLoading] = useState(false);
 
     // Fetch Pool 0 probabilities for Iran market
     useEffect(() => {
@@ -390,6 +394,85 @@ export default function DataPage() {
         const interval = setInterval(fetchIranData, 10000); // Refresh every 10s
         return () => clearInterval(interval);
     }, [client]);
+
+    // Fetch inactive listings from the blockchain
+    const fetchInactiveListings = async () => {
+        setInactiveLoading(true);
+        try {
+            // Find transactions that called create_listing
+            const txs = await client.queryTransactionBlocks({
+                filter: {
+                    MoveFunction: {
+                        package: LISTING_CONFIG.PACKAGE_ID,
+                        module: LISTING_CONFIG.MODULE_NAME,
+                        function: 'create_listing'
+                    }
+                },
+                options: {
+                    showEffects: true,
+                    showInput: true,
+                },
+                order: 'descending',
+                limit: 20
+            });
+
+            // Extract created object IDs
+            const objectIds = txs.data.flatMap(tx => {
+                return tx.effects?.created?.map(c => c.reference.objectId) || [];
+            });
+
+            if (objectIds.length === 0) {
+                setInactiveListings([]);
+                return;
+            }
+
+            // Fetch object details
+            const objects = await client.multiGetObjects({
+                ids: objectIds,
+                options: { showContent: true }
+            });
+
+            // Parse listings
+            const parsedListings = objects.map(obj => {
+                if (obj.data?.content && 'fields' in obj.data.content) {
+                    const fields = obj.data.content.fields as any;
+
+                    // Handle submarkets
+                    const submarkets = Array.isArray(fields.submarkets)
+                        ? fields.submarkets.map((sub: any) => {
+                            const subFields = sub.fields ? sub.fields : sub;
+                            return {
+                                title: subFields.title,
+                                image_url: subFields.image_url
+                            };
+                        })
+                        : [];
+
+                    return {
+                        id: obj.data.objectId,
+                        title: fields.title,
+                        description: fields.description,
+                        imageUrl: fields.image_url,
+                        submarkets: submarkets
+                    };
+                }
+                return null;
+            }).filter(l => l !== null);
+
+            setInactiveListings(parsedListings);
+        } catch (err) {
+            console.error('Error fetching inactive listings:', err);
+        } finally {
+            setInactiveLoading(false);
+        }
+    };
+
+    // Fetch inactive listings when the Inactive topic is selected
+    useEffect(() => {
+        if (activeTopic === 'Inactive') {
+            fetchInactiveListings();
+        }
+    }, [activeTopic, client]);
 
     // Dynamic politicsFeaturedData with real Iran probabilities
     const dynamicPoliticsFeaturedData = useMemo(() => [
@@ -527,32 +610,80 @@ export default function DataPage() {
             </div>
 
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-                {/* Featured Markets Grid */}
-                <div className="mb-12">
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        {[...dynamicPoliticsFeaturedData, ...cryptoFeaturedData].map((event, idx) => (
-                            <FeaturedEventCard
-                                key={idx}
-                                {...event}
-                                showArrow
-                                layout="compact"
-                            />
-                        ))}
+                {/* Show Inactive Listings when Inactive topic is selected */}
+                {activeTopic === 'Inactive' ? (
+                    <div>
+                        <div className="mb-8 flex items-center justify-between">
+                            <h2 className="text-2xl font-bold text-gray-900">Inactive Listings from Blockchain</h2>
+                            <button
+                                onClick={fetchInactiveListings}
+                                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                            >
+                                Refresh
+                            </button>
+                        </div>
+
+                        {inactiveLoading ? (
+                            <div className="text-center py-16 text-gray-500">
+                                <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                                Loading listings from blockchain...
+                            </div>
+                        ) : inactiveListings.length === 0 ? (
+                            <div className="text-center py-16 text-gray-500">
+                                <p className="text-lg">No inactive listings found.</p>
+                                <p className="text-sm mt-2">Create listings on the <Link href="/create-listing" className="text-blue-600 hover:underline">Create Listing</Link> page.</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                {inactiveListings.map((listing: any) => (
+                                    <FeaturedEventCard
+                                        key={listing.id}
+                                        title={listing.title}
+                                        icon={listing.imageUrl || 'https://placehold.co/48x48?text=?'}
+                                        volume="$0 Vol."
+                                        showArrow
+                                        layout="compact"
+                                        items={listing.submarkets.map((sub: any) => ({
+                                            title: sub.title,
+                                            image: sub.image_url || listing.imageUrl || 'https://placehold.co/32x32?text=?',
+                                            yes: 0,
+                                            no: 0
+                                        }))}
+                                    />
+                                ))}
+                            </div>
+                        )}
                     </div>
-                </div>
+                ) : (
+                    <>
+                        {/* Featured Markets Grid */}
+                        <div className="mb-12">
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                {[...dynamicPoliticsFeaturedData, ...cryptoFeaturedData].map((event, idx) => (
+                                    <FeaturedEventCard
+                                        key={idx}
+                                        {...event}
+                                        showArrow
+                                        layout="compact"
+                                    />
+                                ))}
+                            </div>
+                        </div>
 
-                {/* Regular Events Grid */}
-                <div className="mb-8">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-6">All Events</h2>
-                </div>
+                        {/* Regular Events Grid */}
+                        <div className="mb-8">
+                            <h2 className="text-2xl font-bold text-gray-900 mb-6">All Events</h2>
+                        </div>
 
-                <WalletConnect />
+                        <WalletConnect />
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {filteredEvents.map((event: any) => (
-                        <EventCard key={event.id} event={event} />
-                    ))}
-                </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                            {filteredEvents.map((event: any) => (
+                                <EventCard key={event.id} event={event} />
+                            ))}
+                        </div>
+                    </>
+                )}
             </main>
         </div>
     );
