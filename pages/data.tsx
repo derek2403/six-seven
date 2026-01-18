@@ -3,6 +3,7 @@ import Head from 'next/head';
 import politicsEvents from '../data/metadata/politics_events.json';
 import sportsEvents from '../data/metadata/sports.json';
 import { Header } from '../components/header';
+import { WalletConnect } from '../components/WalletConnect';
 
 // Helper to parse JSON strings that might be in the data
 const safeParse = (str: string) => {
@@ -263,6 +264,9 @@ export default function DataPage() {
                 <div className="mb-8">
                     <h2 className="text-2xl font-bold text-gray-900 mb-6">All Events</h2>
                 </div>
+
+                <WalletConnect />
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {filteredEvents.map((event: any) => (
                         <EventCard key={event.id} event={event} />

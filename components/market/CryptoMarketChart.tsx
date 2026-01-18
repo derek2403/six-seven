@@ -1,0 +1,533 @@
+"use client";
+
+import React from "react";
+import { Line, LineChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
+import { Trophy, Clock, Settings, SlidersHorizontal, ArrowUpDown, Shuffle } from "lucide-react";
+import { CombinedChartPoint, CombinedMarketItem } from "@/lib/mock/combined-markets";
+import Crypto3DView from "./Crypto3DView";
+
+const MARKET_NAMES: Record<string, string> = {
+    value1: "BTC > $100k",
+    value2: "ETH > $4k",
+    value3: "SUI > $5",
+};
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+        return (
+            <div className="pl-2 pointer-events-none transform -translate-y-full mt-[-15px]">
+                <p className="text-[14px] text-gray-400 font-medium whitespace-nowrap">{label}</p>
+            </div>
+        );
+    }
+    return null;
+};
+
+const CustomActiveDot = (props: any) => {
+    const { cx, cy, stroke, payload, dataKey } = props;
+    const value = payload[dataKey];
+    const name = MARKET_NAMES[dataKey] || dataKey;
+
+    const colors: Record<string, string> = {
+        value1: "#60a5fa",
+        value2: "#2563eb",
+        value3: "#facc15",
+    };
+    const pillColor = colors[dataKey] || stroke || "#ccc";
+
+    return (
+        <g>
+            <circle cx={cx} cy={cy} r={4} fill={pillColor} stroke="white" strokeWidth={2} />
+            <foreignObject x={cx + 8} y={cy - 12} width={150} height={24}>
+                <div
+                    className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold text-white whitespace-nowrap shadow-sm"
+                    style={{ backgroundColor: pillColor }}
+                >
+                    {name} {value}%
+                </div>
+            </foreignObject>
+        </g>
+    );
+};
+
+const CustomDot = (props: any) => {
+    const { cx, cy, index, lastIndex, color } = props;
+    if (index === lastIndex) {
+        return <circle cx={cx} cy={cy} r={4} fill={color} stroke="white" strokeWidth={2} />;
+    }
+    return null;
+};
+
+// --- CRYPTO SPECIFIC VIEWS ---
+
+// 1. World Table (matching Iran design with outcome dots)
+const CryptoScenarioTable = () => {
+    // state[0] = BTC > $100k, state[1] = ETH > $4k, state[2] = SUI > $5
+    const worlds = [
+        { state: "000", meaning: "BTC No, ETH No, SUI No", prob: 8.5 },
+        { state: "001", meaning: "BTC No, ETH No, SUI Yes", prob: 5.2 },
+        { state: "010", meaning: "BTC No, ETH Yes, SUI No", prob: 4.8 },
+        { state: "011", meaning: "BTC No, ETH Yes, SUI Yes", prob: 3.5 },
+        { state: "100", meaning: "BTC Yes, ETH No, SUI No", prob: 35.0 },
+        { state: "101", meaning: "BTC Yes, ETH No, SUI Yes", prob: 18.5 },
+        { state: "110", meaning: "BTC Yes, ETH Yes, SUI No", prob: 12.5 },
+        { state: "111", meaning: "BTC Yes, ETH Yes, SUI Yes", prob: 12.0 },
+    ];
+
+    const colors = ["#60a5fa", "#2563eb", "#facc15"]; // BTC, ETH, SUI
+
+    return (
+        <div className="w-full max-w-[800px] mx-auto mt-4 px-4 mb-20">
+            <div className="bg-gray-50/50 rounded-xl border border-gray-100 overflow-hidden shadow-sm">
+                <table className="w-full text-left text-sm border-collapse">
+                    <thead>
+                        <tr className="border-b border-gray-100 bg-white/50">
+                            <th className="px-6 py-4 font-bold text-gray-400 uppercase text-[10px] tracking-wider w-[100px]">Outcome</th>
+                            <th className="px-4 py-4 font-bold text-gray-400 uppercase text-[10px] tracking-wider">Description</th>
+                            <th className="px-6 py-4 font-bold text-gray-400 uppercase text-[10px] tracking-wider text-right w-[120px]">Probability</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50 bg-white">
+                        {worlds.map((w) => (
+                            <tr key={w.state} className="hover:bg-blue-50/10 transition-colors group">
+                                <td className="px-6 py-4 w-[100px]">
+                                    <div className="flex items-center gap-2">
+                                        {w.state.split('').map((char: string, idx: number) => (
+                                            <div
+                                                key={idx}
+                                                className="size-2.5 rounded-full border border-current"
+                                                style={{
+                                                    backgroundColor: char === '1' ? colors[idx] : 'transparent',
+                                                    color: colors[idx],
+                                                    opacity: char === '1' ? 1 : 0.4
+                                                }}
+                                            />
+                                        ))}
+                                    </div>
+                                </td>
+                                <td className="px-4 py-4">
+                                    <span className="text-[13px] font-medium text-gray-600">
+                                        {w.meaning}
+                                    </span>
+                                </td>
+                                <td className="px-6 py-4 text-right w-[120px]">
+                                    <span className="font-black text-gray-900 text-[14px]">{w.prob}%</span>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+
+            {/* Legend for dot indicators */}
+            <div className="mt-6 flex items-center justify-center gap-8 px-4 py-3 bg-gray-50/50 rounded-lg border border-gray-100/50">
+                <div className="flex items-center gap-2.5">
+                    <div className="size-2.5 rounded-full bg-gray-400" />
+                    <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Filled means Yes</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                    <div className="size-2.5 rounded-full border border-gray-400" />
+                    <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Empty means No</span>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// 2. Probability Slider (1D) - Matches Iran OutcomeSlider design exactly
+const CryptoProbabilityDisplay = ({ markets, selectedMarkets }: { markets: CombinedMarketItem[], selectedMarkets: Record<string, boolean> }) => {
+    const activeMarkets = markets.filter(m => selectedMarkets[m.id]);
+
+    // Mocked current probability values
+    const currentValues: Record<string, number> = { m1: 65, m2: 42, m3: 88 };
+
+    // Sort markets by value to determine clumping
+    const sortedMarkets = [...activeMarkets].sort((a, b) => currentValues[a.id] - currentValues[b.id]);
+
+    // Calculate visual positions with a minimum spread
+    const MIN_SPREAD = 7;
+    const visualPositions: Record<string, number> = {};
+
+    if (sortedMarkets.length > 0) {
+        let lastPos = -Infinity;
+        sortedMarkets.forEach((m) => {
+            const actualValue = currentValues[m.id];
+            let visualValue = Math.max(actualValue, lastPos + MIN_SPREAD);
+            visualPositions[m.id] = visualValue;
+            lastPos = visualValue;
+        });
+
+        if (lastPos > 100) {
+            let nextPos = 100;
+            for (let i = sortedMarkets.length - 1; i >= 0; i--) {
+                const m = sortedMarkets[i];
+                visualPositions[m.id] = Math.min(visualPositions[m.id], nextPos);
+                nextPos = visualPositions[m.id] - MIN_SPREAD;
+            }
+        }
+    }
+
+    return (
+        <div className="w-full py-20 px-4 select-none max-w-[800px] mx-auto">
+            <div className="flex items-center justify-between w-full mb-12">
+                <span className="text-[14px] font-bold text-gray-400 uppercase tracking-widest leading-none">Outcome</span>
+            </div>
+
+            <div className="relative w-full h-1 bg-gray-100 rounded-full">
+                {/* Labels at ends */}
+                <div className="absolute -top-8 left-0 text-[13px] font-bold text-gray-400 uppercase tracking-wider">No</div>
+                <div className="absolute -top-8 right-0 text-[13px] font-bold text-gray-400 uppercase tracking-wider">Yes</div>
+
+                {/* Tick Marks below */}
+                <div className="absolute -bottom-6 left-0 text-[11px] font-bold text-gray-300">0%</div>
+                <div className="absolute -bottom-6 right-0 text-[11px] font-bold text-gray-300">100%</div>
+
+                {/* Points for each selected market */}
+                {activeMarkets.map((m) => {
+                    const value = currentValues[m.id];
+                    const visualValue = visualPositions[m.id] ?? value;
+                    const color = m.id === "m1" ? "#60a5fa" : m.id === "m2" ? "#2563eb" : "#facc15";
+                    const shortTitle = MARKET_NAMES[`value${m.id.slice(1)}`] || m.title;
+
+                    return (
+                        <div
+                            key={m.id}
+                            className="absolute top-1/2 -translate-y-1/2 transition-all duration-500 ease-out flex flex-col items-center group/marker"
+                            style={{ left: `${visualValue}%` }}
+                        >
+                            {/* Connector line to actual value if offset is significant */}
+                            {Math.abs(visualValue - value) > 0.1 && (
+                                <div
+                                    className="absolute top-0 w-px bg-gray-200 h-4 -translate-y-full"
+                                    style={{ left: `${(value - visualValue) * (800 / 100)}px` }}
+                                />
+                            )}
+
+                            {/* Tooltip on Hover */}
+                            <div className="absolute bottom-6 opacity-0 group-hover/marker:opacity-100 transition-all duration-300 translate-y-2 group-hover/marker:translate-y-0 pointer-events-none z-10">
+                                <div
+                                    className="px-2.5 py-1 rounded text-[11px] font-bold text-white whitespace-nowrap shadow-md flex items-center gap-1.5"
+                                    style={{ backgroundColor: color }}
+                                >
+                                    {shortTitle} {value}%
+                                </div>
+                            </div>
+
+                            {/* Dot */}
+                            <div
+                                className="size-4 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform relative z-0"
+                                style={{ backgroundColor: color }}
+                            />
+
+                            {/* Value Label below */}
+                            <div className="absolute top-6 text-[13px] font-extrabold tracking-tight whitespace-nowrap" style={{ color }}>
+                                {value}%
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+
+            <p className="text-[11px] text-gray-400 mt-20 text-center italic font-medium">
+                Probabilities derived from option pricing models.
+            </p>
+        </div>
+    );
+};
+
+// Color Legend for Heatmap
+const CryptoHeatmapColorLegend = () => {
+    return (
+        <div className="flex flex-col items-center ml-8">
+            <div className="flex items-start gap-2">
+                <div className="flex flex-col justify-between h-[280px] text-right">
+                    <span className="text-[11px] font-bold text-gray-500">100</span>
+                    <span className="text-[11px] font-bold text-gray-500">75</span>
+                    <span className="text-[11px] font-bold text-gray-500">50</span>
+                    <span className="text-[11px] font-bold text-gray-500">25</span>
+                    <span className="text-[11px] font-bold text-gray-500">0</span>
+                </div>
+                <div
+                    className="w-6 h-[280px] rounded-lg shadow-sm border border-gray-200"
+                    style={{
+                        background: `linear-gradient(to bottom, #0c4a6e, #0284c7, #38bdf8, #7dd3fc, #e0f2fe)`
+                    }}
+                />
+            </div>
+        </div>
+    );
+};
+
+// 3. Joint Probability Heatmap (2D) - Matches Iran ConfusionMatrix design
+const CryptoCorrelationHeatmap = ({ markets, selectedMarkets }: { markets: CombinedMarketItem[], selectedMarkets: Record<string, boolean> }) => {
+    const activeMarkets = markets.filter(m => selectedMarkets[m.id]);
+
+    const [topMarketId, setTopMarketId] = React.useState<string | null>(null);
+    const [leftMarketId, setLeftMarketId] = React.useState<string | null>(null);
+    const [shiningBox, setShiningBox] = React.useState<string | null>(null);
+
+    // Sync state with selected markets
+    React.useEffect(() => {
+        const activeIds = activeMarkets.map(m => m.id);
+        if (!topMarketId || !activeIds.includes(topMarketId)) {
+            setTopMarketId(activeIds[0] || null);
+        }
+        if (!leftMarketId || !activeIds.includes(leftMarketId) || (leftMarketId === topMarketId && activeIds.length > 1)) {
+            const potential = activeIds.find(id => id !== topMarketId);
+            setLeftMarketId(potential || activeIds[0] || null);
+        }
+    }, [selectedMarkets, topMarketId, leftMarketId, activeMarkets]);
+
+    if (activeMarkets.length < 2) {
+        return (
+            <div className="flex items-center justify-center min-h-[300px] text-gray-400 font-medium italic bg-gray-50/50 rounded-xl border border-dashed border-gray-200 mx-4">
+                Select at least 2 assets to view the 2D matrix.
+            </div>
+        );
+    }
+
+    if (!topMarketId || !leftMarketId) return null;
+
+    const mTop = markets.find(m => m.id === topMarketId)!;
+    const mLeft = markets.find(m => m.id === leftMarketId)!;
+
+    const mTopName = MARKET_NAMES[`value${mTop.id.slice(1)}`] || mTop.title.split(' >')[0];
+    const mLeftName = MARKET_NAMES[`value${mLeft.id.slice(1)}`] || mLeft.title.split(' >')[0];
+
+    // Mock joint probability data for crypto
+    const matrix: Record<string, number> = {
+        "11": 28.5, // Both hit target
+        "10": 36.5, // Top hits, Left misses
+        "01": 12.0, // Top misses, Left hits
+        "00": 23.0  // Both miss
+    };
+
+    const probValues = Object.values(matrix);
+    const minProb = Math.min(...probValues);
+    const maxProb = Math.max(...probValues);
+
+    const getHeatmapColor = (prob: number) => {
+        const normalized = maxProb === minProb ? 0.5 : (prob - minProb) / (maxProb - minProb);
+        const colors = [
+            { r: 224, g: 242, b: 254 },
+            { r: 125, g: 211, b: 252 },
+            { r: 56, g: 189, b: 248 },
+            { r: 2, g: 132, b: 199 },
+            { r: 12, g: 74, b: 110 },
+        ];
+        const idx = normalized * (colors.length - 1);
+        const lowerIdx = Math.floor(idx);
+        const upperIdx = Math.ceil(idx);
+        const t = idx - lowerIdx;
+        const r = Math.round(colors[lowerIdx].r + (colors[upperIdx].r - colors[lowerIdx].r) * t);
+        const g = Math.round(colors[lowerIdx].g + (colors[upperIdx].g - colors[lowerIdx].g) * t);
+        const b = Math.round(colors[lowerIdx].b + (colors[upperIdx].b - colors[lowerIdx].b) * t);
+        return `rgb(${r}, ${g}, ${b})`;
+    };
+
+    const HeatmapCell = ({ prob, topLabel, leftLabel }: { prob: number, topLabel: string, leftLabel: string }) => {
+        const bgColor = getHeatmapColor(prob);
+        const normalized = maxProb === minProb ? 0.5 : (prob - minProb) / (maxProb - minProb);
+        const textColor = normalized > 0.5 ? 'white' : '#1e3a5f';
+        const boxId = `${topLabel}${leftLabel}`;
+        const isShining = shiningBox === boxId;
+
+        return (
+            <div
+                className="relative w-full h-full flex flex-col items-center justify-center transition-all duration-300 hover:scale-[1.02] hover:shadow-lg cursor-pointer group overflow-hidden"
+                style={{ backgroundColor: bgColor }}
+                onClick={() => setShiningBox(isShining ? null : boxId)}
+            >
+                {isShining && (
+                    <div className="absolute inset-0 border-2 rounded animate-pulse" style={{ borderColor: '#3b82f6', boxShadow: '0 0 20px rgba(59, 130, 246, 0.8)' }} />
+                )}
+                <span className="text-xl font-bold transition-all duration-200 group-hover:scale-110" style={{ color: textColor }}>
+                    {prob.toFixed(1)}%
+                </span>
+                <span className="text-[10px] font-medium uppercase tracking-wider mt-1 opacity-80" style={{ color: textColor }}>
+                    {leftLabel}/{topLabel}
+                </span>
+            </div>
+        );
+    };
+
+    const handleSwap = () => {
+        setTopMarketId(leftMarketId);
+        setLeftMarketId(topMarketId);
+    };
+
+    const handleShuffleTop = () => {
+        const other = activeMarkets.find(m => m.id !== topMarketId && m.id !== leftMarketId);
+        if (other) setTopMarketId(other.id);
+    };
+
+    const handleShuffleLeft = () => {
+        const other = activeMarkets.find(m => m.id !== topMarketId && m.id !== leftMarketId);
+        if (other) setLeftMarketId(other.id);
+    };
+
+    return (
+        <div className="w-full max-w-[900px] mx-auto mt-4 px-4 pb-20 select-none">
+            <div className="text-center mb-8">
+                <h3 className="text-sm font-semibold text-gray-700 mb-1">Joint Probability Heatmap</h3>
+                <p className="text-xs text-gray-400">{mTopName} vs {mLeftName}</p>
+            </div>
+
+            <div className="flex items-center justify-center gap-4">
+                {/* Left Y-axis Label */}
+                <div className="flex flex-col items-center justify-center h-[280px] mr-2">
+                    <div className="text-xs font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap flex items-center gap-2" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
+                        {mLeftName}
+                        <div className="flex gap-1">
+                            <ArrowUpDown className="size-3 cursor-pointer hover:text-blue-500 transition-colors" onClick={handleSwap} />
+                            <Shuffle className={`size-3 transition-colors ${activeMarkets.length > 2 ? 'cursor-pointer hover:text-blue-500' : 'opacity-20'}`} onClick={handleShuffleLeft} />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Y-axis Labels */}
+                <div className="flex flex-col justify-around h-[280px] mr-3">
+                    <span className="text-[11px] font-semibold text-gray-600 py-[60px]">Yes</span>
+                    <span className="text-[11px] font-semibold text-gray-600 py-[60px]">No</span>
+                </div>
+
+                {/* Heatmap Grid */}
+                <div className="flex flex-col">
+                    <div className="text-center mb-3 flex items-center justify-center gap-2">
+                        <span className="text-xs font-bold text-gray-600 uppercase tracking-wider">{mTopName}</span>
+                        <ArrowUpDown className="size-3 cursor-pointer hover:text-blue-500 transition-colors text-gray-400" onClick={handleSwap} />
+                        <Shuffle className={`size-3 transition-colors text-gray-400 ${activeMarkets.length > 2 ? 'cursor-pointer hover:text-blue-500' : 'opacity-20'}`} onClick={handleShuffleTop} />
+                    </div>
+                    <div className="flex justify-around mb-2" style={{ width: '360px' }}>
+                        <span className="text-[11px] font-semibold text-gray-600 w-[170px] text-center">Yes</span>
+                        <span className="text-[11px] font-semibold text-gray-600 w-[170px] text-center">No</span>
+                    </div>
+                    <div className="grid grid-cols-2 grid-rows-2 gap-1 rounded-lg overflow-hidden shadow-md border border-gray-200" style={{ width: '360px', height: '280px' }}>
+                        <HeatmapCell prob={matrix["11"]} topLabel="Yes" leftLabel="Yes" />
+                        <HeatmapCell prob={matrix["01"]} topLabel="No" leftLabel="Yes" />
+                        <HeatmapCell prob={matrix["10"]} topLabel="Yes" leftLabel="No" />
+                        <HeatmapCell prob={matrix["00"]} topLabel="No" leftLabel="No" />
+                    </div>
+                </div>
+
+                <CryptoHeatmapColorLegend />
+            </div>
+
+            <p className="text-[11px] text-gray-400 mt-12 text-center italic font-medium">
+                Probabilities derived from historical price correlation data.
+            </p>
+        </div>
+    );
+};
+
+
+
+interface CryptoMarketChartProps {
+    data: CombinedChartPoint[];
+    markets: CombinedMarketItem[];
+    selectedMarkets: Record<string, boolean>;
+    view: string;
+}
+
+export function CryptoMarketChart({ data, markets, selectedMarkets, view }: CryptoMarketChartProps) {
+    const selectedCount = Object.values(selectedMarkets).filter(Boolean).length;
+    const availableFilters = ["1H", "6H", "1D", "1W", "1M", "MAX"];
+
+    return (
+        <div className="w-full flex flex-col">
+            <div className="w-full relative min-h-[400px]">
+                {view === "Default" && (
+                    <div className="h-[400px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={data} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+                                <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#e5e7eb" />
+                                <XAxis
+                                    dataKey="date"
+                                    tickLine={false}
+                                    axisLine={false}
+                                    tick={{ fill: "#9ca3af", fontSize: 12 }}
+                                    minTickGap={60}
+                                    tickFormatter={(val) => {
+                                        const [month] = val.split(' ');
+                                        return month;
+                                    }}
+                                />
+                                <YAxis
+                                    orientation="right"
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fill: "#9ca3af", fontSize: 12 }}
+                                    tickFormatter={(val) => `${val}%`}
+                                    domain={[0, 100]}
+                                    ticks={[0, 25, 50, 75, 100]}
+                                />
+                                <Tooltip
+                                    content={<CustomTooltip />}
+                                    cursor={{ stroke: '#e5e7eb', strokeWidth: 1 }}
+                                    coordinate={{ y: 0 }}
+                                    position={{ y: 20 }}
+                                />
+                                {/* Render Lines if selected */}
+                                {selectedMarkets.m1 && (
+                                    <Line type="linear" dataKey="value1" stroke="#60a5fa" strokeWidth={2} dot={(props: any) => { const { key, ...rest } = props; return <CustomDot key={key} {...rest} color="#60a5fa" lastIndex={data.length - 1} />; }} activeDot={<CustomActiveDot />} isAnimationActive={false} />
+                                )}
+                                {selectedMarkets.m2 && (
+                                    <Line type="linear" dataKey="value2" stroke="#2563eb" strokeWidth={2} dot={(props: any) => { const { key, ...rest } = props; return <CustomDot key={key} {...rest} color="#2563eb" lastIndex={data.length - 1} />; }} activeDot={<CustomActiveDot />} isAnimationActive={false} />
+                                )}
+                                {selectedMarkets.m3 && (
+                                    <Line type="linear" dataKey="value3" stroke="#facc15" strokeWidth={2} dot={(props: any) => { const { key, ...rest } = props; return <CustomDot key={key} {...rest} color="#facc15" lastIndex={data.length - 1} />; }} activeDot={<CustomActiveDot />} isAnimationActive={false} />
+                                )}
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </div>
+                )}
+
+                {view === "Table" && <CryptoScenarioTable />}
+
+                {view === "1D" && <CryptoProbabilityDisplay markets={markets} selectedMarkets={selectedMarkets} />}
+
+                {view === "2D" && <CryptoCorrelationHeatmap markets={markets} selectedMarkets={selectedMarkets} />}
+
+                {view === "3D" && (
+                    <div className="flex flex-col py-4">
+                        <Crypto3DView />
+                        <p className="text-[11px] text-gray-400 mt-4 text-center italic font-medium">
+                            3D Visualization of Joint Probability Space
+                        </p>
+                    </div>
+                )}
+            </div>
+
+            {/* Footer Stats and Filters */}
+            <div className="flex items-center justify-between mt-6 px-1 border-t border-gray-50 pt-5">
+                {/* Left side: Stats */}
+                <div className="flex items-center gap-4 text-gray-400">
+                    <div className="flex items-center gap-2">
+                        <Trophy className="size-4 text-gray-900" />
+                        <span className="text-[13px] font-bold text-black tracking-tight">$825,123,597 Vol</span>
+                    </div>
+                    <span className="text-gray-200">|</span>
+                    <div className="flex items-center gap-2">
+                        <Clock className="size-4 opacity-50" />
+                        <span className="text-[13px] font-medium text-gray-400">Jan 31, 2026</span>
+                    </div>
+                </div>
+
+                {/* Right side: Filters & Actions */}
+                <div className="flex items-center gap-5">
+                    <div className="flex items-center gap-3.5 text-[12px] font-bold text-gray-400">
+                        {availableFilters.map((f) => (
+                            <button key={f} className={`hover:text-black transition-colors ${f === "MAX" ? "text-gray-900" : ""}`}>
+                                {f}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="flex items-center gap-3 text-gray-300 border-l border-gray-100 pl-5">
+                        <SlidersHorizontal className="size-4 hover:text-black cursor-pointer transition-colors" />
+                        <Settings className="size-4 hover:text-black cursor-pointer transition-colors" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}

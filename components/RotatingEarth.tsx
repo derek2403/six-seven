@@ -7,15 +7,53 @@ interface RotatingEarthProps {
     width?: number
     height?: number
     className?: string
+    markers?: { lat: number; lng: number; label?: string }[]
+    onMarkerHover?: (marker: { lat: number; lng: number; label?: string } | null) => void
+    onEarthHover?: (isHovered: boolean) => void
 }
 
-export default function RotatingEarth({ width = 800, height = 600, className = "" }: RotatingEarthProps) {
+export default function RotatingEarth({ width = 800, height = 600, className = "", markers = [], onMarkerHover, onEarthHover }: RotatingEarthProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
+    const [landFeatures, setLandFeatures] = useState<any>(null)
+    const onMarkerHoverRef = useRef(onMarkerHover)
+    const onEarthHoverRef = useRef(onEarthHover)
+
+    // Update ref when prop changes
+    useEffect(() => {
+        onMarkerHoverRef.current = onMarkerHover
+    }, [onMarkerHover])
 
     useEffect(() => {
-        if (!canvasRef.current) return
+        onEarthHoverRef.current = onEarthHover
+    }, [onEarthHover])
+
+    // Load data only once
+    useEffect(() => {
+        const loadWorldData = async () => {
+            try {
+                setIsLoading(true)
+
+                const response = await fetch(
+                    "https://raw.githubusercontent.com/martynafford/natural-earth-geojson/refs/heads/master/110m/physical/ne_110m_land.json",
+                )
+                if (!response.ok) throw new Error("Failed to load land data")
+
+                const features = await response.json()
+                setLandFeatures(features)
+                setIsLoading(false)
+            } catch (err) {
+                setError("Failed to load land map data")
+                setIsLoading(false)
+            }
+        }
+
+        loadWorldData()
+    }, [])
+
+    useEffect(() => {
+        if (!canvasRef.current || !landFeatures) return
 
         const canvas = canvasRef.current
         const context = canvas.getContext("2d")
@@ -42,6 +80,7 @@ export default function RotatingEarth({ width = 800, height = 600, className = "
 
         const path = d3.geoPath().projection(projection).context(context)
 
+        // Helper functions
         const pointInPolygon = (point: [number, number], polygon: number[][]): boolean => {
             const [x, y] = point
             let inside = false
@@ -63,23 +102,14 @@ export default function RotatingEarth({ width = 800, height = 600, className = "
 
             if (geometry.type === "Polygon") {
                 const coordinates = geometry.coordinates
-                // Check if point is in outer ring
-                if (!pointInPolygon(point, coordinates[0])) {
-                    return false
-                }
-                // Check if point is in any hole (inner rings)
+                if (!pointInPolygon(point, coordinates[0])) return false
                 for (let i = 1; i < coordinates.length; i++) {
-                    if (pointInPolygon(point, coordinates[i])) {
-                        return false // Point is in a hole
-                    }
+                    if (pointInPolygon(point, coordinates[i])) return false
                 }
                 return true
             } else if (geometry.type === "MultiPolygon") {
-                // Check each polygon in the MultiPolygon
                 for (const polygon of geometry.coordinates) {
-                    // Check if point is in outer ring
                     if (pointInPolygon(point, polygon[0])) {
-                        // Check if point is in any hole
                         let inHole = false
                         for (let i = 1; i < polygon.length; i++) {
                             if (pointInPolygon(point, polygon[i])) {
@@ -87,14 +117,11 @@ export default function RotatingEarth({ width = 800, height = 600, className = "
                                 break
                             }
                         }
-                        if (!inHole) {
-                            return true
-                        }
+                        if (!inHole) return true
                     }
                 }
                 return false
             }
-
             return false
         }
 
@@ -102,44 +129,39 @@ export default function RotatingEarth({ width = 800, height = 600, className = "
             const dots: [number, number][] = []
             const bounds = d3.geoBounds(feature)
             const [[minLng, minLat], [maxLng, maxLat]] = bounds
-
             const stepSize = dotSpacing * 0.08
-            let pointsGenerated = 0
 
             for (let lng = minLng; lng <= maxLng; lng += stepSize) {
                 for (let lat = minLat; lat <= maxLat; lat += stepSize) {
                     const point: [number, number] = [lng, lat]
                     if (pointInFeature(point, feature)) {
                         dots.push(point)
-                        pointsGenerated++
                     }
                 }
             }
-
-            console.log(
-                `[v0] Generated ${pointsGenerated} points for land feature:`,
-                feature.properties?.featurecla || "Land",
-            )
             return dots
         }
 
         interface DotData {
             lng: number
             lat: number
-            visible: boolean
         }
 
         const allDots: DotData[] = []
-        let landFeatures: any
+        landFeatures.features.forEach((feature: any) => {
+            const dots = generateDotsInPolygon(feature, 16)
+            dots.forEach(([lng, lat]) => {
+                allDots.push({ lng, lat })
+            })
+        })
 
         const render = () => {
-            // Clear canvas
             context.clearRect(0, 0, containerWidth, containerHeight)
 
             const currentScale = projection.scale()
             const scaleFactor = currentScale / radius
 
-            // Draw ocean (globe background)
+            // Draw ocean
             context.beginPath()
             context.arc(containerWidth / 2, containerHeight / 2, currentScale, 0, 2 * Math.PI)
             context.fillStyle = "#1A5799"
@@ -148,75 +170,71 @@ export default function RotatingEarth({ width = 800, height = 600, className = "
             context.lineWidth = 2 * scaleFactor
             context.stroke()
 
-            if (landFeatures) {
-                // Draw graticule
-                const graticule = d3.geoGraticule()
-                context.beginPath()
-                path(graticule())
-                context.strokeStyle = "#ffffff"
-                context.lineWidth = 1 * scaleFactor
-                context.globalAlpha = 0.25
-                context.stroke()
-                context.globalAlpha = 1
+            // Draw graticule
+            const graticule = d3.geoGraticule()
+            context.beginPath()
+            path(graticule())
+            context.strokeStyle = "#ffffff"
+            context.lineWidth = 1 * scaleFactor
+            context.globalAlpha = 0.25
+            context.stroke()
+            context.globalAlpha = 1
 
-                // Draw land outlines
-                context.beginPath()
-                landFeatures.features.forEach((feature: any) => {
-                    path(feature)
-                })
-                context.strokeStyle = "#ffffff"
-                context.lineWidth = 1 * scaleFactor
-                context.stroke()
+            // Draw land outlines
+            context.beginPath()
+            landFeatures.features.forEach((feature: any) => {
+                path(feature)
+            })
+            context.strokeStyle = "#ffffff"
+            context.lineWidth = 1 * scaleFactor
+            context.stroke()
 
-                // Draw halftone dots
-                allDots.forEach((dot) => {
-                    const projected = projection([dot.lng, dot.lat])
-                    if (
-                        projected &&
-                        projected[0] >= 0 &&
-                        projected[0] <= containerWidth &&
-                        projected[1] >= 0 &&
-                        projected[1] <= containerHeight
-                    ) {
-                        context.beginPath()
-                        context.arc(projected[0], projected[1], 1.2 * scaleFactor, 0, 2 * Math.PI)
-                        context.fillStyle = "#ffffff"
-                        context.fill()
-                    }
-                })
-            }
+            // Draw halftone dots
+            allDots.forEach((dot) => {
+                const projected = projection([dot.lng, dot.lat])
+                if (
+                    projected &&
+                    projected[0] >= 0 &&
+                    projected[0] <= containerWidth &&
+                    projected[1] >= 0 &&
+                    projected[1] <= containerHeight
+                ) {
+                    context.beginPath()
+                    context.arc(projected[0], projected[1], 1.2 * scaleFactor, 0, 2 * Math.PI)
+                    context.fillStyle = "#ffffff"
+                    context.fill()
+                }
+            })
+
+            // Draw Markers
+            markers.forEach((marker) => {
+                const projected = projection([marker.lng, marker.lat])
+                if (
+                    projected &&
+                    projected[0] >= 0 &&
+                    projected[0] <= containerWidth &&
+                    projected[1] >= 0 &&
+                    projected[1] <= containerHeight
+                ) {
+                    context.beginPath()
+                    context.arc(projected[0], projected[1], 4 * scaleFactor, 0, 2 * Math.PI)
+                    context.fillStyle = "rgba(0, 255, 255, 0.4)"
+                    context.fill()
+
+                    context.beginPath()
+                    context.arc(projected[0], projected[1], 2 * scaleFactor, 0, 2 * Math.PI)
+                    context.fillStyle = "#00FFFF"
+                    context.fill()
+
+                    context.lineWidth = 0.5 * scaleFactor
+                    context.strokeStyle = "#fff"
+                    context.stroke()
+                }
+            })
         }
 
-        const loadWorldData = async () => {
-            try {
-                setIsLoading(true)
-
-                const response = await fetch(
-                    "https://raw.githubusercontent.com/martynafford/natural-earth-geojson/refs/heads/master/110m/physical/ne_110m_land.json",
-                )
-                if (!response.ok) throw new Error("Failed to load land data")
-
-                landFeatures = await response.json()
-
-                // Generate dots for all land features
-                let totalDots = 0
-                landFeatures.features.forEach((feature: any) => {
-                    const dots = generateDotsInPolygon(feature, 16)
-                    dots.forEach(([lng, lat]) => {
-                        allDots.push({ lng, lat, visible: true })
-                        totalDots++
-                    })
-                })
-
-                console.log(`[v0] Total dots generated: ${totalDots} across ${landFeatures.features.length} land features`)
-
-                render()
-                setIsLoading(false)
-            } catch (err) {
-                setError("Failed to load land map data")
-                setIsLoading(false)
-            }
-        }
+        // Initial render
+        render()
 
         // Set up rotation and interaction
         const rotation = [0, 0]
@@ -231,7 +249,6 @@ export default function RotatingEarth({ width = 800, height = 600, className = "
             }
         }
 
-        // Auto-rotation timer
         const rotationTimer = d3.timer(rotate)
 
         const handleMouseDown = (event: MouseEvent) => {
@@ -240,7 +257,7 @@ export default function RotatingEarth({ width = 800, height = 600, className = "
             const startY = event.clientY
             const startRotation = [...rotation]
 
-            const handleMouseMove = (moveEvent: MouseEvent) => {
+            const handleMouseDrag = (moveEvent: MouseEvent) => {
                 const sensitivity = 0.5
                 const dx = moveEvent.clientX - startX
                 const dy = moveEvent.clientY - startY
@@ -254,39 +271,71 @@ export default function RotatingEarth({ width = 800, height = 600, className = "
             }
 
             const handleMouseUp = () => {
-                document.removeEventListener("mousemove", handleMouseMove)
+                document.removeEventListener("mousemove", handleMouseDrag)
                 document.removeEventListener("mouseup", handleMouseUp)
-
-                setTimeout(() => {
-                    autoRotate = true
-                }, 10)
+                setTimeout(() => { autoRotate = true }, 10)
             }
 
-            document.addEventListener("mousemove", handleMouseMove)
+            document.addEventListener("mousemove", handleMouseDrag)
             document.addEventListener("mouseup", handleMouseUp)
         }
 
-        const handleWheel = (event: WheelEvent) => {
-            event.preventDefault()
-            const scaleFactor = event.deltaY > 0 ? 0.9 : 1.1
-            const newRadius = Math.max(radius * 0.5, Math.min(radius * 3, projection.scale() * scaleFactor))
-            projection.scale(newRadius)
-            render()
+        const handleMouseMove = (event: MouseEvent) => {
+            const rect = canvas.getBoundingClientRect()
+            const x = event.clientX - rect.left
+            const y = event.clientY - rect.top
+
+            let foundMarker = null
+            for (const marker of markers) {
+                const projected = projection([marker.lng, marker.lat])
+                if (
+                    projected &&
+                    projected[0] >= 0 &&
+                    projected[0] <= containerWidth &&
+                    projected[1] >= 0 &&
+                    projected[1] <= containerHeight
+                ) {
+                    const dx = x - projected[0]
+                    const dy = y - projected[1]
+                    const dist = Math.sqrt(dx * dx + dy * dy)
+                    if (dist < 20) {
+                        foundMarker = marker
+                        break
+                    }
+                }
+            }
+
+            if (onMarkerHoverRef.current) {
+                onMarkerHoverRef.current(foundMarker)
+            }
+            canvas.style.cursor = foundMarker ? "pointer" : "grab"
+        }
+
+        const handleMouseEnter = () => {
+            if (onEarthHoverRef.current) {
+                onEarthHoverRef.current(true)
+            }
+        }
+
+        const handleMouseLeave = () => {
+            if (onEarthHoverRef.current) {
+                onEarthHoverRef.current(false)
+            }
         }
 
         canvas.addEventListener("mousedown", handleMouseDown)
-        canvas.addEventListener("wheel", handleWheel)
+        canvas.addEventListener("mousemove", handleMouseMove)
+        canvas.addEventListener("mouseenter", handleMouseEnter)
+        canvas.addEventListener("mouseleave", handleMouseLeave)
 
-        // Load the world data
-        loadWorldData()
-
-        // Cleanup
         return () => {
             rotationTimer.stop()
             canvas.removeEventListener("mousedown", handleMouseDown)
-            canvas.removeEventListener("wheel", handleWheel)
+            canvas.removeEventListener("mousemove", handleMouseMove)
+            canvas.removeEventListener("mouseenter", handleMouseEnter)
+            canvas.removeEventListener("mouseleave", handleMouseLeave)
         }
-    }, [width, height])
+    }, [width, height, markers, landFeatures]) // Removed onMarkerHover from deps
 
     if (error) {
         return (
@@ -303,7 +352,7 @@ export default function RotatingEarth({ width = 800, height = 600, className = "
         <div className={`relative ${className}`}>
             <canvas
                 ref={canvasRef}
-                className="w-full h-auto rounded-2xl bg-background dark"
+                className="w-full h-auto rounded-2xl"
                 style={{ maxWidth: "100%", height: "auto" }}
             />
         </div>
