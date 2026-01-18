@@ -28,7 +28,7 @@ const WORLDS: WorldData[] = [
     { state: "111", meaning: "BTC Yes, ETH Yes, SUI Yes", prob: 12.0 },
 ];
 
-const COLORS = ["#60a5fa", "#2563eb", "#facc15"];
+const COLORS = ["#60a5fa", "#2563eb", "#0ea5e9"];
 
 function Cube({ position, prob, state, isHovered, isSelected, onHover, onClick, targetDate, color }: {
     position: [number, number, number],
@@ -123,41 +123,24 @@ function Cube({ position, prob, state, isHovered, isSelected, onHover, onClick, 
                 >
                     <div style={{
                         background: 'white',
-                        border: isSelected ? '3px solid #06b6d4' : '2px solid black',
+                        border: '2px solid black',
                         borderRadius: '8px',
                         padding: '12px 16px',
                         minWidth: '180px',
-                        boxShadow: isSelected ? '0 0 20px rgba(6, 182, 212, 0.5)' : '0 4px 12px rgba(0,0,0,0.15)',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
                     }}>
-                        {/* Selection badge */}
-                        {isSelected && (
-                            <div style={{
-                                background: '#06b6d4',
-                                color: 'white',
-                                fontWeight: 'bold',
-                                fontSize: '10px',
-                                padding: '2px 8px',
-                                borderRadius: '4px',
-                                textAlign: 'center',
-                                marginBottom: '8px',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.5px'
-                            }}>
-                                ✓ Selected
-                            </div>
-                        )}
                         {/* Probability */}
                         <div style={{
-                            background: isSelected ? '#06b6d4' : isMostProbable ? '#fbbf24' : '#2563eb',
-                            color: isSelected || isMostProbable ? 'black' : 'white',
+                            background: 'transparent',
+                            color: '#2563eb',
                             fontWeight: 'bold',
-                            fontSize: '18px',
+                            fontSize: '40px',
                             padding: '6px 12px',
                             borderRadius: '4px',
                             textAlign: 'center',
-                            marginBottom: '10px',
+                            marginBottom: '4px',
                         }}>
-                            {prob}%
+                            {prob.toFixed(2)}%
                         </div>
 
                         {/* Market Results */}
@@ -299,10 +282,10 @@ function Scene({ marketSelections, onMarketSelectionsChange, targetDate, basePro
     const getHeatmapColor = (prob: number, min: number, max: number) => {
         const normalized = max === min ? 0.5 : (prob - min) / (max - min);
         const colors = [
-            { r: 56, g: 189, b: 248 },  // Sky 400 (Blue)
-            { r: 14, g: 165, b: 233 },  // Sky 500
-            { r: 251, g: 191, b: 36 },  // Amber 400 (Yellow)
-            { r: 245, g: 158, b: 11 },  // Amber 500 (Vibrant Yellow)
+            { r: 224, g: 242, b: 254 },  // Sky 100 (Light Blue)
+            { r: 125, g: 211, b: 252 },  // Sky 300
+            { r: 56, g: 189, b: 248 },   // Sky 400
+            { r: 14, g: 165, b: 233 },   // Sky 500 (Deep Blue)
         ];
         const idx = normalized * (colors.length - 1);
         const lowerIdx = Math.floor(idx);

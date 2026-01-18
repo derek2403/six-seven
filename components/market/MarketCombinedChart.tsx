@@ -733,12 +733,22 @@ export function MarketCombinedChart({ data, selectedMarkets, view, marketSelecti
         }
     };
 
-    // Default percentages based on Iran context (Synced with WorldTable)
-    const currentValues: Record<string, number> = {
-        m1: 77.0,
-        m2: 2.2,
-        m3: 3.1
-    };
+    // Calculate marginal probabilities from joint probabilities (Pool 0 data)
+    // m1 (Khamenei out, bit 0): states where bit[0] = 1 → "100", "101", "110", "111"
+    // m2 (US strikes, bit 1): states where bit[1] = 1 → "010", "011", "110", "111"
+    // m3 (Israel strikes, bit 2): states where bit[2] = 1 → "001", "011", "101", "111"
+    const currentValues: Record<string, number> = React.useMemo(() => {
+        const probs = probabilities || DEFAULT_PROBS;
+        console.log("MarketCombinedChart - probabilities:", probabilities);
+        console.log("MarketCombinedChart - using probs:", probs);
+
+        const m1 = (probs["100"] || 0) + (probs["101"] || 0) + (probs["110"] || 0) + (probs["111"] || 0);
+        const m2 = (probs["010"] || 0) + (probs["011"] || 0) + (probs["110"] || 0) + (probs["111"] || 0);
+        const m3 = (probs["001"] || 0) + (probs["011"] || 0) + (probs["101"] || 0) + (probs["111"] || 0);
+
+        console.log("MarketCombinedChart - currentValues:", { m1, m2, m3 });
+        return { m1, m2, m3 };
+    }, [probabilities]);
 
     const availableFilters = ["1H", "6H", "1D"];
     if (selectedCount >= 2) availableFilters.push("2D");

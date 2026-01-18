@@ -30,7 +30,7 @@ const WORLDS: WorldData[] = [
 // state[1] = US (m2)
 // state[2] = Israel (m3)
 
-const COLORS = ["#60a5fa", "#2563eb", "#facc15"];
+const COLORS = ["#60a5fa", "#2563eb", "#0ea5e9"];
 
 function Cube({ position, prob, state, isHovered, isSelected, onHover, onClick, color }: {
     position: [number, number, number],
@@ -261,10 +261,10 @@ function Scene({ marketSelections, onMarketSelectionsChange, probabilities }: {
         // Clamp normalized to 0-1 range to prevent array index errors
         const normalized = max === min ? 0.5 : Math.max(0, Math.min(1, (prob - min) / (max - min)));
         const colors = [
-            { r: 56, g: 189, b: 248 },  // Sky 400 (Blue)
-            { r: 14, g: 165, b: 233 },  // Sky 500
-            { r: 251, g: 191, b: 36 },  // Amber 400 (Yellow)
-            { r: 245, g: 158, b: 11 },  // Amber 500 (Vibrant Yellow)
+            { r: 224, g: 242, b: 254 },  // Sky 100 (Light Blue)
+            { r: 125, g: 211, b: 252 },  // Sky 300
+            { r: 56, g: 189, b: 248 },   // Sky 400
+            { r: 14, g: 165, b: 233 },   // Sky 500 (Deep Blue)
         ];
         const idx = normalized * (colors.length - 1);
         const lowerIdx = Math.min(Math.floor(idx), colors.length - 1);

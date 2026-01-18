@@ -213,12 +213,22 @@ const CryptoProbabilityDisplay = ({ markets, selectedMarkets, marketSelections, 
 }) => {
     const activeMarkets = markets.filter(m => selectedMarkets[m.id]);
 
-    // Use current probability values from props
+    // Calculate marginal probabilities from joint probabilities
+    // baseProbabilities is now keyed by "000", "001", etc.
+    // m1 (BTC, bit 0): states where bit[0] = 1 → "100", "101", "110", "111"
+    // m2 (ETH, bit 1): states where bit[1] = 1 → "010", "011", "110", "111"
+    // m3 (SUI, bit 2): states where bit[2] = 1 → "001", "011", "101", "111"
+    const probs = baseProbabilities || {};
     let currentValues: Record<string, number> = {
-        m1: baseProbabilities.m1 || 50,
-        m2: baseProbabilities.m2 || 50,
-        m3: baseProbabilities.m3 || 50
+        m1: (probs["100"] || 0) + (probs["101"] || 0) + (probs["110"] || 0) + (probs["111"] || 0),
+        m2: (probs["010"] || 0) + (probs["011"] || 0) + (probs["110"] || 0) + (probs["111"] || 0),
+        m3: (probs["001"] || 0) + (probs["011"] || 0) + (probs["101"] || 0) + (probs["111"] || 0)
     };
+
+    // Fallback to 50% if no probs available
+    if (currentValues.m1 === 0 && currentValues.m2 === 0 && currentValues.m3 === 0) {
+        currentValues = { m1: 50, m2: 50, m3: 50 };
+    }
 
     // Jitter values based on targetDate and marketSelections
     if (targetDate || marketSelections) {

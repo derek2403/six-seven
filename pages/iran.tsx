@@ -28,7 +28,11 @@ export default function MarketPage() {
     const [maker, setMaker] = React.useState<string>('');
     const [isLoading, setIsLoading] = React.useState(false);
 
-    const [selectedMarkets, setSelectedMarkets] = React.useState<Record<string, boolean>>({});
+    const [selectedMarkets, setSelectedMarkets] = React.useState<Record<string, boolean>>({
+        m1: true,
+        m2: true,
+        m3: true
+    });
     const [view, setView] = React.useState("1D");
     const [timeRange, setTimeRange] = React.useState("1d");
 
@@ -357,9 +361,6 @@ export default function MarketPage() {
             if (view !== "1D") setView("1D");
         }
     }, [marketSelections, view, isAutoView]);
-
-    // Mock probabilities for ROI calculation (Synced with WorldTable)
-    const probabilities = { m1: 77.0, m2: 2.2, m3: 3.1 };
 
     return (
         <div className="min-h-screen bg-white font-sans">

@@ -355,8 +355,16 @@ export default function CryptoPage() {
         return () => clearInterval(interval);
     }, [client]);
 
-    // Calculate "real rate" probabilities based on pricingData
+    // Calculate "real rate" probabilities based on pricingData or Pool 1
+    // For Dec 31, 2026, use Pool 1 joint probabilities from blockchain
     const probabilities = useMemo(() => {
+        // If targetDate is Dec 31, 2026, use Pool 1 joint probabilities directly
+        if (targetDate === "Dec 31, 2026" && poolProbabilities && Object.keys(poolProbabilities).length > 0) {
+            console.log("Using Pool 1 probabilities for Dec 31, 2026:", poolProbabilities);
+            return poolProbabilities; // Return joint probabilities keyed by "000", "001", etc.
+        }
+
+        // Otherwise, calculate from pricing data (returns marginal probabilities)
         const monthMap: Record<string, string> = {
             "Jan": "01", "Feb": "02", "Mar": "03", "Apr": "04", "May": "05", "Jun": "06",
             "Jul": "07", "Aug": "08", "Sep": "09", "Oct": "10", "Nov": "11", "Dec": "12"
@@ -383,12 +391,22 @@ export default function CryptoPage() {
             }
         };
 
+        // For other dates, calculate joint probabilities from marginals (assuming independence)
+        const p1 = getProb("bitcoin", 100000) / 100;
+        const p2 = getProb("ethereum", 4000) / 100;
+        const p3 = getProb("sui", 5.0) / 100;
+
         return {
-            m1: getProb("bitcoin", 100000),
-            m2: getProb("ethereum", 4000),
-            m3: getProb("sui", 5.0)
+            "000": (1 - p1) * (1 - p2) * (1 - p3) * 100,
+            "001": (1 - p1) * (1 - p2) * p3 * 100,
+            "010": (1 - p1) * p2 * (1 - p3) * 100,
+            "011": (1 - p1) * p2 * p3 * 100,
+            "100": p1 * (1 - p2) * (1 - p3) * 100,
+            "101": p1 * (1 - p2) * p3 * 100,
+            "110": p1 * p2 * (1 - p3) * 100,
+            "111": p1 * p2 * p3 * 100,
         };
-    }, [targetDate]);
+    }, [targetDate, poolProbabilities]);
 
     // Merge live prices into markets
     const displayMarkets = useMemo(() => {

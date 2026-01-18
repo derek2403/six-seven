@@ -32,67 +32,40 @@ export function TradeCard({ markets, marketSelections, onMarketSelectionsChange,
     const [isFocused, setIsFocused] = React.useState(false);
 
     // Joint probability (price) calculation for the selected scenario
+    // baseProbabilities now contains Pool 0 joint probabilities keyed by "000", "001", etc.
     const price = React.useMemo(() => {
         if (!baseProbabilities) return 0.5; // Fallback
 
-        const p1 = (baseProbabilities.m1 || 0) / 100;
-        const p2 = (baseProbabilities.m2 || 0) / 100;
-        const p3 = (baseProbabilities.m3 || 0) / 100;
+        // All possible world states
+        const allStates = ["000", "001", "010", "011", "100", "101", "110", "111"];
 
-        const worlds = [
-            { state: "000", prob: (1 - p1) * (1 - p2) * (1 - p3) },
-            { state: "001", prob: (1 - p1) * (1 - p2) * p3 },
-            { state: "010", prob: (1 - p1) * p2 * (1 - p3) },
-            { state: "011", prob: (1 - p1) * p2 * p3 },
-            { state: "100", prob: p1 * (1 - p2) * (1 - p3) },
-            { state: "101", prob: p1 * (1 - p2) * p3 },
-            { state: "110", prob: p1 * p2 * (1 - p3) },
-            { state: "111", prob: p1 * p2 * p3 },
-        ];
+        // Filter states that match current market selections
+        const matchingStates = allStates.filter(state => {
+            if (!marketSelections) return true;
 
-        // Filter worlds that match current selections
-        const matches = worlds.filter(w => {
-            if (marketSelections) {
-                const s1 = marketSelections.m1;
-                const s2 = marketSelections.m2;
-                const s3 = marketSelections.m3;
+            const s1 = marketSelections.m1;
+            const s2 = marketSelections.m2;
+            const s3 = marketSelections.m3;
 
-                if (s1 && s1 !== "any" && w.state[0] !== (s1 === "yes" ? "1" : "0")) return false;
-                if (s2 && s2 !== "any" && w.state[1] !== (s2 === "yes" ? "1" : "0")) return false;
-                if (s3 && s3 !== "any" && w.state[2] !== (s3 === "yes" ? "1" : "0")) return false;
-            }
+            // Check if state matches selection (null or "any" = wildcard)
+            if (s1 && s1 !== "any" && state[0] !== (s1 === "yes" ? "1" : "0")) return false;
+            if (s2 && s2 !== "any" && state[1] !== (s2 === "yes" ? "1" : "0")) return false;
+            if (s3 && s3 !== "any" && state[2] !== (s3 === "yes" ? "1" : "0")) return false;
+
             return true;
         });
 
-        const totalProb = matches.reduce((acc: number, w) => {
-            let prob = w.prob * 100;
-
-            // Apply minor jitter for visual sync with table
-            if (targetDate) {
-                const dateHash = targetDate.split('').reduce((h: number, char) => h + char.charCodeAt(0), 0);
-                prob += (dateHash % 4) - 2;
-            }
-
-            // Apply selection bias
-            if (marketSelections) {
-                const m1 = marketSelections.m1;
-                const m2 = marketSelections.m2;
-                const m3 = marketSelections.m3;
-
-                const matchCount = [
-                    m1 === (w.state[0] === '1' ? 'yes' : 'no'),
-                    m2 === (w.state[1] === '1' ? 'yes' : 'no'),
-                    m3 === (w.state[2] === '1' ? 'yes' : 'no')
-                ].filter(Boolean).length;
-
-                prob += matchCount * 1.5;
-            }
-
+        // Sum probabilities of matching states (values are already in percentage, e.g. 9.63)
+        const totalProb = matchingStates.reduce((acc, state) => {
+            const prob = baseProbabilities[state] || 0;
             return acc + prob;
         }, 0);
 
-        return Math.max(1, Math.min(99, totalProb)) / 100;
-    }, [baseProbabilities, marketSelections, targetDate]);
+        console.log("TradeCard - matching states:", matchingStates, "total prob:", totalProb);
+
+        // totalProb is in percentage (0-100), convert to decimal (0-1) for price
+        return Math.max(0.01, Math.min(0.99, totalProb / 100));
+    }, [baseProbabilities, marketSelections]);
 
     const potentialReturn = React.useMemo(() => {
         const numAmount = parseFloat(amount || "0");
