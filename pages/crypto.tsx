@@ -8,9 +8,23 @@ import pricingData from '@/data/crypto-prices.json';
 import { WalletConnect } from "@/components/WalletConnect";
 import React, { useEffect, useMemo } from 'react';
 import { cn } from "@/lib/utils";
+import { useCurrentAccount, useSignTransaction, useSuiClient } from '@mysten/dapp-kit';
+import { PlaceBetRequest, PlaceBetResponse, PM_CONFIG } from '@/lib/tee';
+import { VAULT_CONFIG, WORLD_CONFIG } from '@/lib/config';
+import type { BuildSponsoredBetTxRequest, BuildSponsoredTxResponse } from '@/lib/shinami-types';
 
 export default function CryptoPage() {
     const marketData = MARKET_DATA.crypto;
+
+    // Sui Hooks
+    const account = useCurrentAccount();
+    const client = useSuiClient();
+    const { mutateAsync: signTransaction } = useSignTransaction();
+
+    // Backend State for Pool 1
+    const [poolProbabilities, setPoolProbabilities] = React.useState<Record<string, number> | null>(null);
+    const [maker, setMaker] = React.useState<string>('');
+    const [isLoading, setIsLoading] = React.useState(false);
 
     const [selectedMarkets, setSelectedMarkets] = React.useState<Record<string, boolean>>({});
     const [view, setView] = React.useState("Default");
@@ -109,6 +123,219 @@ export default function CryptoPage() {
             setView("2D");
         }
     }, [marketSelections, view]);
+
+    // Fetch Pool 1 Data
+    const fetchPoolData = async () => {
+        try {
+            const worldObj = await client.getObject({
+                id: WORLD_CONFIG.WORLD_ID,
+                options: { showContent: true }
+            });
+
+            const poolsTableId = worldObj.data?.content && 'fields' in worldObj.data.content
+                ? (worldObj.data.content.fields as any).pools?.fields?.id?.id
+                : null;
+
+            if (!poolsTableId) return;
+
+            // Get Pool 1 for Crypto
+            const poolField = await client.getDynamicFieldObject({
+                parentId: poolsTableId,
+                name: { type: 'u64', value: '1' }
+            });
+
+            if (poolField.data?.content && 'fields' in poolField.data.content) {
+                const poolContent = (poolField.data.content.fields as any).value.fields;
+                const probsTableId = poolContent.probabilities?.fields?.id?.id;
+
+                if (probsTableId) {
+                    const probFields = await client.getDynamicFields({ parentId: probsTableId });
+                    const newProbs: Record<string, number> = {};
+
+                    for (const pf of probFields.data) {
+                        const pItem = await client.getObject({ id: pf.objectId, options: { showContent: true } });
+                        if (pItem.data?.content && 'fields' in pItem.data.content) {
+                            const val = (pItem.data.content.fields as any).value;
+                            const keyInt = parseInt(pf.name.value as string);
+                            const binaryKey = keyInt.toString(2).padStart(3, '0');
+                            newProbs[binaryKey] = parseInt(val) / 100;
+                        }
+                    }
+
+                    if (Object.keys(newProbs).length > 0) {
+                        setPoolProbabilities(newProbs);
+                    }
+                }
+            }
+
+            fetchMakerForPool(1);
+        } catch (error) {
+            console.error("Error fetching pool data:", error);
+        }
+    };
+
+    const fetchMakerForPool = async (targetPoolId: number) => {
+        try {
+            const worldObj = await client.getObject({
+                id: WORLD_CONFIG.WORLD_ID,
+                options: { showContent: true }
+            });
+            const makerRegistryId = worldObj.data?.content && 'fields' in worldObj.data.content
+                ? (worldObj.data.content.fields as any).maker_registry?.fields?.id?.id
+                : null;
+
+            if (!makerRegistryId) return;
+            const fields = await client.getDynamicFields({ parentId: makerRegistryId });
+
+            for (const field of fields.data) {
+                const item = await client.getObject({ id: field.objectId, options: { showContent: true } });
+                if (item.data?.content && 'fields' in item.data.content) {
+                    const content = item.data.content.fields as any;
+                    const poolIds = content.value as string[];
+                    if (poolIds.some((pid: string) => parseInt(pid) === targetPoolId)) {
+                        setMaker(field.name.value as string);
+                        return;
+                    }
+                }
+            }
+        } catch (err) { console.error('Error fetching maker', err); }
+    };
+
+    const getUserWithdrawableBalance = async (userAddress: string) => {
+        try {
+            const ledgerObj = await client.getObject({ id: VAULT_CONFIG.LEDGER_ID, options: { showContent: true } });
+            const accountsTableId = ledgerObj.data?.content && 'fields' in ledgerObj.data.content
+                ? (ledgerObj.data.content.fields as any).accounts?.fields?.id?.id
+                : null;
+            if (!accountsTableId) return BigInt(0);
+
+            const userField = await client.getDynamicFieldObject({
+                parentId: accountsTableId,
+                name: { type: 'address', value: userAddress }
+            });
+
+            if (userField.data?.content && 'fields' in userField.data.content) {
+                return BigInt((userField.data.content.fields as any).value.fields.withdrawable_amount);
+            }
+        } catch (e) { return BigInt(0); }
+        return BigInt(0);
+    };
+
+    // Trade function - uses Shinami sponsored transactions for gasless betting
+    const handleTrade = async (amountStr: string, outcome: number) => {
+        if (!account) {
+            alert("Please connect wallet");
+            return;
+        }
+        setIsLoading(true);
+        try {
+            const currentProbsArray = Array(8).fill(1250);
+            if (poolProbabilities) {
+                ['000', '001', '010', '011', '100', '101', '110', '111'].forEach((k, i) => {
+                    if (poolProbabilities[k] !== undefined) currentProbsArray[i] = Math.round(poolProbabilities[k] * 100);
+                });
+            }
+
+            const request: PlaceBetRequest = {
+                user: account.address,
+                pool_id: 1, // Pool 1 for Crypto
+                outcome: outcome,
+                amount: parseInt(amountStr.replace(/[^0-9]/g, "")) * 1_000_000,
+                maker: maker,
+                current_probs: currentProbsArray,
+            };
+
+            const teeResponse = await fetch('/api/tee-proxy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ endpoint: 'process_data', payload: request }),
+            });
+
+            const teeData = await teeResponse.json();
+            if (!teeData.response?.data || !teeData.signature) {
+                alert("TEE Error: " + JSON.stringify(teeData));
+                return;
+            }
+
+            const betResponse: PlaceBetResponse = teeData.response.data;
+
+            const makerAddress = maker || account.address;
+            const makerCurrentBalance = await getUserWithdrawableBalance(makerAddress);
+            const makerNewBalance = makerCurrentBalance + BigInt(betResponse.credit_amount);
+
+            const userCurrentBalance = await getUserWithdrawableBalance(account.address);
+            const userNewBalance = userCurrentBalance - BigInt(betResponse.debit_amount);
+
+            const buildRequest: BuildSponsoredBetTxRequest = {
+                sender: account.address,
+                poolId: 1,
+                outcome: outcome,
+                amount: parseInt(amountStr.replace(/[^0-9]/g, "")) * 1_000_000,
+                maker: makerAddress,
+                currentProbs: currentProbsArray,
+                teeResponse: {
+                    shares: betResponse.shares,
+                    newProbs: betResponse.new_probs,
+                    debitAmount: betResponse.debit_amount,
+                    creditAmount: betResponse.credit_amount,
+                    timestampMs: teeData.response.timestamp_ms,
+                },
+                teeSignature: teeData.signature,
+                userNewBalance: userNewBalance.toString(),
+                makerNewBalance: makerNewBalance.toString(),
+            };
+
+            const buildResponse = await fetch('/api/buildSponsoredBetTx', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(buildRequest),
+            });
+
+            if (!buildResponse.ok) {
+                const errorData = await buildResponse.json();
+                throw new Error(errorData.error || 'Failed to build sponsored transaction');
+            }
+
+            const sponsoredTx: BuildSponsoredTxResponse = await buildResponse.json();
+
+            const { signature: senderSignature } = await signTransaction({
+                transaction: sponsoredTx.txBytes,
+            });
+
+            const executeResponse = await fetch('/api/executeSponsoredTx', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    txBytes: sponsoredTx.txBytes,
+                    sponsorSignature: sponsoredTx.sponsorSignature,
+                    senderSignature: senderSignature,
+                }),
+            });
+
+            if (!executeResponse.ok) {
+                const errorData = await executeResponse.json();
+                throw new Error(errorData.error || 'Failed to execute transaction');
+            }
+
+            const result = await executeResponse.json();
+            console.log('Sponsored transaction result:', result);
+            alert("Bet Placed! (Gasless) TX: " + result.digest);
+            fetchPoolData();
+
+        } catch (e: any) {
+            console.error(e);
+            alert("Error: " + e.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Fetch Pool 1 data on mount
+    useEffect(() => {
+        fetchPoolData();
+        const interval = setInterval(fetchPoolData, 5000);
+        return () => clearInterval(interval);
+    }, [client]);
 
     // Calculate "real rate" probabilities based on pricingData
     const probabilities = useMemo(() => {
@@ -238,6 +465,7 @@ export default function CryptoPage() {
                             marketSelections={marketSelections}
                             onMarketSelectionsChange={setMarketSelections as any}
                             focusedMarket={focusedMarket}
+                            onTrade={handleTrade}
                         />
                         <p className="mt-4 text-center text-[13px] text-gray-400 font-medium leading-relaxed">
                             By trading, you agree to the <span className="underline cursor-pointer hover:text-gray-600 transition-colors">Terms of Use.</span>

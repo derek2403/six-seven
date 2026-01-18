@@ -258,7 +258,8 @@ function Scene({ marketSelections, onMarketSelectionsChange, probabilities }: {
     };
 
     const getHeatmapColor = (prob: number, min: number, max: number) => {
-        const normalized = max === min ? 0.5 : (prob - min) / (max - min);
+        // Clamp normalized to 0-1 range to prevent array index errors
+        const normalized = max === min ? 0.5 : Math.max(0, Math.min(1, (prob - min) / (max - min)));
         const colors = [
             { r: 56, g: 189, b: 248 },  // Sky 400 (Blue)
             { r: 14, g: 165, b: 233 },  // Sky 500
@@ -266,8 +267,8 @@ function Scene({ marketSelections, onMarketSelectionsChange, probabilities }: {
             { r: 245, g: 158, b: 11 },  // Amber 500 (Vibrant Yellow)
         ];
         const idx = normalized * (colors.length - 1);
-        const lowerIdx = Math.floor(idx);
-        const upperIdx = Math.ceil(idx);
+        const lowerIdx = Math.min(Math.floor(idx), colors.length - 1);
+        const upperIdx = Math.min(Math.ceil(idx), colors.length - 1);
         const t = idx - lowerIdx;
         const r = Math.round(colors[lowerIdx].r + (colors[upperIdx].r - colors[lowerIdx].r) * t);
         const g = Math.round(colors[lowerIdx].g + (colors[upperIdx].g - colors[lowerIdx].g) * t);
@@ -283,7 +284,8 @@ function Scene({ marketSelections, onMarketSelectionsChange, probabilities }: {
             const z = w.state[2] === "1" ? 0.55 : -0.55;
             return {
                 ...w,
-                position: [x, y, z] as [number, number, number]
+                position: [x, y, z] as [number, number, number],
+                prob: probabilities[w.state] || 0
             };
         });
 
@@ -295,7 +297,7 @@ function Scene({ marketSelections, onMarketSelectionsChange, probabilities }: {
             ...item,
             color: getHeatmapColor(item.prob, min, max)
         }));
-    }, []);
+    }, [probabilities]);
 
     return (
         <>
