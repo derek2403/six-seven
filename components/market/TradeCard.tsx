@@ -273,18 +273,15 @@ export function TradeCard({ markets, marketSelections, onMarketSelectionsChange,
 
             {/* ROI / Payout Display */}
             {amount && parseFloat(amount) > 0 && (
-                <div className="flex items-center justify-between mt-4 mb-5 bg-gray-50/50 rounded-2xl p-4 border border-gray-100">
-                    <div className="flex flex-col gap-0.5">
-                        <div className="flex items-center gap-1.5">
-                            <span className="text-[14px] font-black text-gray-900 uppercase tracking-tight">To win</span>
-                            <span className="text-[16px]">💸</span>
-                        </div>
+                <div className="flex items-center justify-between h-[40px] mt-4 mb-5">
+                    <div className="flex flex-col">
+                        <span className="text-[16px] font-bold text-black uppercase tracking-tight">To win</span>
                         <div className="flex items-center gap-1 text-[12px] text-gray-400 font-bold uppercase tracking-wide">
                             Avg. Price {(price * 100).toFixed(0)}¢
                             <span className="size-3.5 rounded-full border border-gray-200 flex items-center justify-center text-[10px] text-gray-300">i</span>
                         </div>
                     </div>
-                    <div className="text-[32px] font-black text-[#22c55e] tracking-tight">
+                    <div className="text-[36px] font-bold text-[#22c55e] leading-none">
                         ${potentialReturn}
                     </div>
                 </div>

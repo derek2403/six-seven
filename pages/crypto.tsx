@@ -80,10 +80,28 @@ export default function CryptoPage() {
         }
     }, [marketData]);
 
-    // Auto-switch views based on selections (only when in 2D/3D/4D views, NOT Table/Default)
+    const [isAutoView, setIsAutoView] = React.useState(true);
+
+    // Track previous selections to detect changes
+    const prevSelectionsRef = React.useRef(marketSelections);
+
+    const handleViewChange = (v: string, isAuto?: boolean) => {
+        setView(v);
+        if (isAuto !== undefined) {
+            setIsAutoView(isAuto);
+        }
+    };
+
+    // Auto-switch views based on selections (only when in Auto mode and dimensional views)
     useEffect(() => {
-        // Don't auto-switch if user is in Table or Default view
-        if (view === "Table" || view === "Default") {
+        // Detect if selections actually changed
+        const hasChanged = JSON.stringify(prevSelectionsRef.current) !== JSON.stringify(marketSelections);
+        prevSelectionsRef.current = marketSelections;
+
+        // Requirement: Only auto-switch if we are in AUTO mode and currently in a dimensional view
+        const isDimensionalView = ["2D", "3D", "4D"].includes(view);
+
+        if (!hasChanged || !isAutoView || !isDimensionalView) {
             return;
         }
 
@@ -98,17 +116,17 @@ export default function CryptoPage() {
 
         // If all 3 markets have yes or no (not null, not "any"), switch to 4D
         if (yesNoCount === 3) {
-            setView("4D");
+            if (view !== "4D") setView("4D");
         }
         // If exactly 2 have yes/no, switch to 3D
         else if (yesNoCount === 2) {
-            setView("3D");
+            if (view !== "3D") setView("3D");
         }
         // If 2+ are any/null, switch to 2D
         else if (anyOrNullCount >= 2) {
-            setView("2D");
+            if (view !== "2D") setView("2D");
         }
-    }, [marketSelections, view]);
+    }, [marketSelections, view, isAutoView]);
 
     // Calculate "real rate" probabilities based on pricingData
     const probabilities = useMemo(() => {
@@ -198,7 +216,7 @@ export default function CryptoPage() {
                             <MarketTimeFilter
                                 selectedMarkets={selectedMarkets}
                                 view={view}
-                                onViewChange={setView}
+                                onViewChange={handleViewChange}
                                 timeRange={timeRange}
                                 onTimeRangeChange={setTimeRange}
                                 hideTimeRanges={true}
@@ -212,7 +230,7 @@ export default function CryptoPage() {
                                 items={marketData.legendItems}
                                 selectedMarkets={selectedMarkets}
                                 view={view}
-                                onViewChange={setView}
+                                onViewChange={handleViewChange}
                             />
                         </div>
 

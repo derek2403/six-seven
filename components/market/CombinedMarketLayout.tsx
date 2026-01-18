@@ -14,8 +14,8 @@ export function CombinedMarketLayout() {
     );
     const [view, setView] = React.useState("Default");
 
-    // Mock probabilities for ROI calculation
-    const probabilities = { m1: 35, m2: 45, m3: 55 };
+    // Mock probabilities for ROI calculation (Synced with WorldTable)
+    const probabilities = { m1: 77.0, m2: 2.2, m3: 3.1 };
 
     const toggleMarket = (id: string) => {
         setSelectedMarkets(prev => ({
