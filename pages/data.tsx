@@ -531,26 +531,9 @@ export default function DataPage() {
             </Head>
 
             {/* Category Tabs Bar (Top - white background) */}
-            <div className="bg-white border-b border-gray-100">
+            <div className="bg-white mt-16 border-b border-gray-100">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center py-2 h-10">
-                        {/* Scrollable Tabs */}
-                        <div className="flex-1 flex items-center gap-1 overflow-x-auto scrollbar-hide mr-4">
-                            {categoryTabs.slice(0, -1).map((tab) => (
-                                <button
-                                    key={tab}
-                                    onClick={() => setActiveCategory(tab)}
-                                    className={`flex-shrink-0 px-3 py-1.5 text-sm font-medium transition-all ${activeCategory === tab
-                                        ? 'text-blue-600'
-                                        : 'text-gray-600 hover:text-gray-900'
-                                        }`}
-                                >
-                                    {tab === 'Trending' && <span className="mr-1">📈</span>}
-                                    <span>{tab}</span>
-                                </button>
-                            ))}
-                        </div>
-
                         {/* Fixed More Tab */}
                         <button
                             onClick={() => setActiveCategory('More')}
@@ -559,8 +542,6 @@ export default function DataPage() {
                                 : 'text-gray-600 hover:text-gray-900'
                                 }`}
                         >
-                            <span>More</span>
-                            <ChevronDown className="ml-1 w-4 h-4" />
                         </button>
                     </div>
                 </div>
