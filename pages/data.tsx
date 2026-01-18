@@ -27,7 +27,7 @@ const formatMoney = (amount: number) => {
     return `$${amount.toFixed(0)}`;
 };
 
-const FeaturedEventCard = ({ title, icon, items, link, showArrow, volume, frequency, showGift }: { title: string, icon: string, items: any[], link?: string, showArrow?: boolean, volume?: string, frequency?: string, showGift?: boolean }) => {
+const FeaturedEventCard = ({ title, icon, items, link, showArrow, volume, frequency, showGift, layout = 'default' }: { title: string, icon: string, items: any[], link?: string, showArrow?: boolean, volume?: string, frequency?: string, showGift?: boolean, layout?: 'default' | 'compact' }) => {
     const content = (
         <div className={`bg-white border border-gray-200 rounded-xl p-5 shadow-sm hover:shadow-lg transition-all duration-200 flex flex-col h-full group ${link ? 'cursor-pointer' : ''}`}>
             <div className="flex items-center justify-between mb-6">
@@ -50,34 +50,60 @@ const FeaturedEventCard = ({ title, icon, items, link, showArrow, volume, freque
 
             <div className="space-y-6 flex-1">
                 {items.map((item, idx) => (
-                    <div key={idx} className="flex flex-col space-y-3">
-                        <div className="flex items-center space-x-4">
-                            <img
-                                src={item.image}
-                                alt={item.title}
-                                className="w-10 h-10 rounded-full object-cover flex-shrink-0 border border-gray-100"
-                                onError={(e) => { (e.target as HTMLImageElement).src = 'https://polymarket.com/static/error/image-error.png' }}
-                            />
-                            <span className="text-[15px] font-medium text-gray-700 leading-snug">
-                                {item.title}
-                            </span>
-                        </div>
-                        <div className="flex space-x-3 pl-14">
-                            <button className="flex-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold py-2 px-3 rounded-lg transition-colors flex justify-between items-center">
-                                <span>Yes</span>
-                                <span>{item.yes || 0}%</span>
-                            </button>
-                            <div className="w-px bg-gray-100 self-stretch my-2" />
-                            <button className="flex-1 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-semibold py-2 px-3 rounded-lg transition-colors flex justify-between items-center">
-                                <span>No</span>
-                                <span>{item.no || 0}%</span>
-                            </button>
-                            <div className="w-px bg-gray-100 self-stretch my-2" />
-                            <button className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold py-2 px-3 rounded-lg transition-colors flex justify-between items-center">
-                                <span>Any</span>
-                                <span>{item.any || 0}%</span>
-                            </button>
-                        </div>
+                    <div key={idx} className={layout === 'compact' ? "flex items-center justify-between" : "flex flex-col space-y-3"}>
+                        {layout === 'compact' ? (
+                            <>
+                                <div className="flex items-center space-x-3 flex-1 min-w-0">
+                                    <img
+                                        src={item.image}
+                                        alt={item.title}
+                                        className="w-8 h-8 rounded-full object-cover flex-shrink-0 border border-gray-100"
+                                        onError={(e) => { (e.target as HTMLImageElement).src = 'https://polymarket.com/static/error/image-error.png' }}
+                                    />
+                                    <span className="text-[15px] font-medium text-gray-700 truncate">
+                                        {item.title}
+                                    </span>
+                                </div>
+                                <div className="flex items-center space-x-3">
+                                    <span className="text-lg font-bold text-gray-900 mr-1">
+                                        {item.yes || 0}%
+                                    </span>
+                                    <div className="flex items-center space-x-2">
+                                        <button className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[13px] font-semibold py-1.5 px-3 rounded-lg transition-colors">
+                                            Yes
+                                        </button>
+                                        <button className="bg-red-50 hover:bg-red-100 text-red-700 text-[13px] font-semibold py-1.5 px-3 rounded-lg transition-colors">
+                                            No
+                                        </button>
+                                    </div>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="flex items-center space-x-4">
+                                    <img
+                                        src={item.image}
+                                        alt={item.title}
+                                        className="w-10 h-10 rounded-full object-cover flex-shrink-0 border border-gray-100"
+                                        onError={(e) => { (e.target as HTMLImageElement).src = 'https://polymarket.com/static/error/image-error.png' }}
+                                    />
+                                    <span className="text-[15px] font-medium text-gray-700 leading-snug">
+                                        {item.title}
+                                    </span>
+                                </div>
+                                <div className="flex space-x-3 pl-14">
+                                    <button className="flex-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold py-2 px-3 rounded-lg transition-colors flex justify-between items-center">
+                                        <span>Yes</span>
+                                        <span>{item.yes || 0}%</span>
+                                    </button>
+                                    <div className="w-px bg-gray-100 self-stretch my-2" />
+                                    <button className="flex-1 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-semibold py-2 px-3 rounded-lg transition-colors flex justify-between items-center">
+                                        <span>No</span>
+                                        <span>{item.no || 0}%</span>
+                                    </button>
+                                </div>
+                            </>
+                        )}
                     </div>
                 ))}
             </div>
@@ -118,9 +144,9 @@ const politicsFeaturedData = [
         volume: "$485m Vol.",
         showGift: true,
         items: [
-            { title: "Khamenei out as Supreme Leader of Iran by January 31?", image: "/leader.png", yes: 0, no: 0, any: 0 },
-            { title: "US strikes Iran by January 31?", image: "/us-iran.png", yes: 0, no: 0, any: 0 },
-            { title: "Isreal next strikes Iran by January 31?", image: "/isreal-iran.png", yes: 0, no: 0, any: 0 }
+            { title: "Khamenei Out", image: "/leader.png", yes: 0, no: 0, any: 0 },
+            { title: "US strikes Iran", image: "/us-iran.png", yes: 0, no: 0, any: 0 },
+            { title: "Israel strikes Iran", image: "/isreal-iran.png", yes: 0, no: 0, any: 0 }
         ]
     },
     {
@@ -129,32 +155,33 @@ const politicsFeaturedData = [
         volume: "$1.2b Vol.",
         showGift: true,
         items: [
-            { title: "Who will Trump nominate as Fed Chair?", image: "/market/fedchair.png", yes: 60, no: 40, any: 0 },
-            { title: "Trump out as President by March 31?", image: "/market/trump-out.png", yes: 10, no: 90, any: 0 },
-            { title: "Will Trump admin release any more Epstein related files by...?", image: "/market/eipstein.png", yes: 30, no: 70, any: 0 }
+            { title: "Fed Chair Nominee", image: "/market/fedchair.png", yes: 60, no: 40, any: 0 },
+            { title: "Trump Out", image: "/market/trump-out.png", yes: 10, no: 90, any: 0 },
+            { title: "Epstein Files", image: "/market/eipstein.png", yes: 30, no: 70, any: 0 }
         ]
     },
     {
-        title: "US Elections 2028",
-        icon: "/market/pre-winner.png",
-        volume: "$920m Vol.",
-        frequency: "Monthly",
+        title: "15 Min Crypto",
+        icon: "/market/crypto-logo.png",
+        volume: "$0 Vol.",
         items: [
-            { title: "Will Republicans keep the House in 2028?", image: "/market/republic.png", yes: 50, no: 50, any: 0 },
-            { title: "Will Democrats win the Senate in 2028?", image: "/market/democratic.png", yes: 45, no: 55, any: 0 },
-            { title: "Will JD Vance run for President in 2028?", image: "/market/jdvance.png", yes: 30, no: 70, any: 0 }
+            { title: "Bitcoin 15m", image: "/market/btc_logo.png", yes: 0, no: 0, any: 0 },
+            { title: "Ethereum 15m", image: "/market/eth_logo.png", yes: 0, no: 0, any: 0 },
+            { title: "Sui 15m", image: "/market/sui-logo1.png", yes: 0, no: 0, any: 0 }
         ]
     }
 ];
 
 const cryptoFeaturedData = [
     {
-        title: "15 Min Crypto",
-        icon: "/market/crypto-logo.png",
+        title: "US Elections 2028",
+        icon: "/market/pre-winner.png",
+        volume: "$920m Vol.",
+        frequency: "Monthly",
         items: [
-            { title: "Bitcoin Up or Down - 15 minute", image: "/market/btc_logo.png", yes: 0, no: 0, any: 0 },
-            { title: "Ethereum Up or Down - 15 minute", image: "/market/eth_logo.png", yes: 0, no: 0, any: 0 },
-            { title: "Sui Up or Down - 15 minute", image: "/market/sui-logo1.png", yes: 0, no: 0, any: 0 }
+            { title: "GOP House 2028", image: "/market/republic.png", yes: 50, no: 50, any: 0 },
+            { title: "Dems Senate 2028", image: "/market/democratic.png", yes: 45, no: 55, any: 0 },
+            { title: "JD Vance 2028", image: "/market/jdvance.png", yes: 30, no: 70, any: 0 }
         ]
     },
     {
@@ -163,9 +190,9 @@ const cryptoFeaturedData = [
         volume: "$650m Vol.",
         frequency: "Monthly",
         items: [
-            { title: "What price will Sui hit in January?", image: "/market/sui-logo1.png", yes: 0, no: 0, any: 0 },
-            { title: "What price will Bitcoin hit in January?", image: "/market/btc_logo.png", yes: 0, no: 0, any: 0 },
-            { title: "What price will Ethereum hit in January?", image: "/market/eth_logo.png", yes: 0, no: 0, any: 0 }
+            { title: "Sui Price Jan", image: "/market/sui-logo1.png", yes: 58, no: 42, any: 0 },
+            { title: "BTC Price Jan", image: "/market/btc_logo.png", yes: 45, no: 55, any: 0 },
+            { title: "ETH Price Jan", image: "/market/eth_logo.png", yes: 40, no: 60, any: 0 }
         ]
     },
     {
@@ -174,9 +201,9 @@ const cryptoFeaturedData = [
         volume: "$210m Vol.",
         frequency: "Weekly",
         items: [
-            { title: "Will Sui price hit $5 in January?", image: "/market/sui-logo1.png", yes: 0, no: 0, any: 0 },
-            { title: "Will Sui TVL exceed $1B in January?", image: "/market/sui-logo1.png", yes: 0, no: 0, any: 0 },
-            { title: "Will Sui daily active users hit 1M?", image: "/market/sui-logo1.png", yes: 0, no: 0, any: 0 }
+            { title: "Sui $5 Jan", image: "/market/sui-logo1.png", yes: 33, no: 67, any: 0 },
+            { title: "Sui TVL $1B", image: "/market/sui-logo1.png", yes: 57, no: 43, any: 0 },
+            { title: "Sui 1M DAU", image: "/market/sui-logo1.png", yes: 22, no: 78, any: 0 }
         ]
     }
 ];
@@ -400,7 +427,12 @@ export default function DataPage() {
                 <div className="mb-12">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         {[...politicsFeaturedData, ...cryptoFeaturedData].map((event, idx) => (
-                            <FeaturedEventCard key={idx} {...event} showArrow />
+                            <FeaturedEventCard
+                                key={idx}
+                                {...event}
+                                showArrow
+                                layout="compact"
+                            />
                         ))}
                     </div>
                 </div>
