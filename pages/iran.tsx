@@ -13,7 +13,7 @@ export default function IranPage() {
     const marketData = MARKET_DATA.iran;
 
     const [selectedMarkets, setSelectedMarkets] = React.useState<Record<string, boolean>>({});
-    const [view, setView] = React.useState("Default");
+    const [view, setView] = React.useState("1D");
     const [timeRange, setTimeRange] = React.useState("1d");
 
     // Market selections for Order Ticket (lifted state)
@@ -71,6 +71,9 @@ export default function IranPage() {
             setView("1D");
         }
     }, [marketSelections, view]);
+
+    // Mock probabilities for ROI calculation
+    const probabilities = { m1: 35, m2: 45, m3: 55 };
 
     return (
         <div className="min-h-screen bg-white font-sans">
@@ -136,6 +139,8 @@ export default function IranPage() {
                             marketSelections={marketSelections}
                             onMarketSelectionsChange={setMarketSelections}
                             focusedMarket={focusedMarket}
+                            baseProbabilities={probabilities}
+                            targetDate="Jan 1, 2026"
                         />
                         <p className="mt-4 text-center text-[13px] text-gray-400 font-medium leading-relaxed">
                             By trading, you agree to the <span className="underline cursor-pointer hover:text-gray-600 transition-colors">Terms of Use.</span>

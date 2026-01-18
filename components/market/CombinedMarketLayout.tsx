@@ -14,6 +14,9 @@ export function CombinedMarketLayout() {
     );
     const [view, setView] = React.useState("Default");
 
+    // Mock probabilities for ROI calculation
+    const probabilities = { m1: 35, m2: 45, m3: 55 };
+
     const toggleMarket = (id: string) => {
         setSelectedMarkets(prev => ({
             ...prev,
@@ -66,13 +69,13 @@ export function CombinedMarketLayout() {
 
                     {/* Right Side: Trade Card */}
                     <div className="w-[380px] hidden md:block">
-                        <TradeCard />
+                        <TradeCard baseProbabilities={probabilities} targetDate="Jan 1, 2026" />
                     </div>
                 </div>
 
                 {/* Mobile Trade Card (shows below on small screens) */}
                 <div className="mt-10 md:hidden">
-                    <TradeCard />
+                    <TradeCard baseProbabilities={probabilities} targetDate="Jan 1, 2026" />
                 </div>
             </div>
         </div>

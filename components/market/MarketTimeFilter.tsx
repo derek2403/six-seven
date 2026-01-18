@@ -77,26 +77,23 @@ export function MarketTimeFilter({
 
     return (
         <div className="flex flex-wrap items-center gap-3 pl-0">
-            {/* View Selection: Chart / Table */}
+            {/* View Selection: Table only */}
             <ToggleGroup
                 type="single"
-                value={view === "Default" || view === "Table" ? view : ""}
+                value={view === "Table" ? view : ""}
                 onValueChange={(v) => v && onViewChange(v)}
                 className="gap-2"
             >
-                {["Default", "Table"].map((v) => (
-                    <ToggleGroupItem
-                        key={v}
-                        value={v}
-                        className={cn(
-                            commonBtnClasses,
-                            "data-[state=on]:bg-black data-[state=on]:text-white data-[state=on]:hover:bg-black",
-                            "data-[state=off]:bg-gray-100 data-[state=off]:text-gray-500 hover:bg-gray-200"
-                        )}
-                    >
-                        {v === "Default" ? "Chart" : v}
-                    </ToggleGroupItem>
-                ))}
+                <ToggleGroupItem
+                    value="Table"
+                    className={cn(
+                        commonBtnClasses,
+                        "data-[state=on]:bg-black data-[state=on]:text-white data-[state=on]:hover:bg-black",
+                        "data-[state=off]:bg-gray-100 data-[state=off]:text-gray-500 hover:bg-gray-200"
+                    )}
+                >
+                    Table
+                </ToggleGroupItem>
             </ToggleGroup>
 
             {/* Dimension Button - shows target dimension based on selections */}

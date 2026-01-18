@@ -13,7 +13,7 @@ export default function CryptoPage() {
     const marketData = MARKET_DATA.crypto;
 
     const [selectedMarkets, setSelectedMarkets] = React.useState<Record<string, boolean>>({});
-    const [view, setView] = React.useState("Default");
+    const [view, setView] = React.useState("2D");
     const [timeRange, setTimeRange] = React.useState("1d");
     const [targetDate, setTargetDate] = React.useState("Jan 31, 2026");
 
@@ -238,6 +238,8 @@ export default function CryptoPage() {
                             marketSelections={marketSelections}
                             onMarketSelectionsChange={setMarketSelections as any}
                             focusedMarket={focusedMarket}
+                            baseProbabilities={probabilities}
+                            targetDate={targetDate}
                         />
                         <p className="mt-4 text-center text-[13px] text-gray-400 font-medium leading-relaxed">
                             By trading, you agree to the <span className="underline cursor-pointer hover:text-gray-600 transition-colors">Terms of Use.</span>
