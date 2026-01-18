@@ -4,6 +4,7 @@ import React, { useState, useMemo, useCallback } from "react";
 import { AnimatedList, AnimatedListItem } from "@/components/ui/animated-list";
 import { cn } from "@/lib/utils";
 import FlowingMenu from "@/components/FlowingMenu";
+import Link from "next/link";
 
 
 const MARKETS = {
@@ -139,6 +140,25 @@ export default function Home() {
     <div className="min-h-screen bg-white font-sans dark:bg-white">
       {/* Hero Section - extra height to accommodate arrow and provide white space */}
       <section className="min-h-[180vh] w-full flex items-start justify-center pt-32 relative overflow-visible">
+        {/* Logo at the top left */}
+        <div className="absolute top-8 left-10 z-50">
+          <Link href="/">
+            <img
+              src="/phocastlogo.png"
+              alt="Phocast Logo"
+              className="h-12 w-auto cursor-pointer hover:opacity-80 transition-opacity"
+            />
+          </Link>
+        </div>
+
+        {/* Start Button at the top right */}
+        <div className="absolute top-8 right-10 z-50">
+          <Link href="/data">
+            <button className="px-8 py-3 bg-blue-900 text-white rounded-full font-semibold hover:bg-blue-800 transition-all shadow-lg hover:shadow-xl active:scale-95">
+              Start
+            </button>
+          </Link>
+        </div>
         <div className="flex items-start justify-center gap-8 w-full max-w-7xl px-10">
           {/* Globe - static position, stays on this page */}
           <motion.div
