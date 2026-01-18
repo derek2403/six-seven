@@ -132,9 +132,15 @@ export const MARKET_DATA: Record<string, MarketCategoryData> = {
 };
 
 // Default fallback (Iran) for initial loads or unknown slugs if needed
-export const DEFAULT_MARKET_DATA = MARKET_DATA.iran;
+export const DEFAULT_MARKET_DATA = {
+    title: "Iran War",
+    avatar: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTcHjuJwQinnq7yrEdYTZNb6xYpuKE2zdRCXg&s",
+    markets: IRAN_MARKETS,
+    legendItems: IRAN_LEGEND,
+    chartData: generatePoints([77, 2.3, 1.7]),
+};
 
 // Backward compatibility for components not yet refactored (e.g. CombinedMarketLayout)
-export const COMBINED_MARKETS = MARKET_DATA.iran.markets;
-export const LEGEND_ITEMS = MARKET_DATA.iran.legendItems;
-export const COMBINED_CHART_DATA = MARKET_DATA.iran.chartData;
+export const COMBINED_MARKETS = IRAN_MARKETS;
+export const LEGEND_ITEMS = IRAN_LEGEND;
+export const COMBINED_CHART_DATA = DEFAULT_MARKET_DATA.chartData;

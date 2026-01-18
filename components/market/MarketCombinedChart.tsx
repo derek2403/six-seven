@@ -13,6 +13,11 @@ const MARKET_NAMES: Record<string, string> = {
     value3: "Israel next strikes",
 };
 
+const DEFAULT_PROBS = {
+    "000": 2.0, "001": 2.0, "010": 2.0, "011": 88.0,
+    "100": 2.0, "101": 2.0, "110": 2.0, "111": 2.0
+};
+
 const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
         return (
@@ -208,17 +213,21 @@ const OutcomeSlider = ({ selectedMarkets, currentValues, markets, marketSelectio
     );
 };
 
-const WorldTable = ({ marketSelections }: { marketSelections?: Record<string, MarketSelection> }) => {
+const WorldTable = ({ probabilities }: { probabilities: Record<string, number> }) => {
+    // Derive worlds from probabilities prop
     const worlds = [
-        { state: "000", meaning: "Khamenei No, US No, Israel No", prob: 20.4 },
-        { state: "001", meaning: "Khamenei No, US No, Israel Yes", prob: 1.2 },
-        { state: "010", meaning: "Khamenei No, US Yes, Israel No", prob: 0.8 },
-        { state: "011", meaning: "Khamenei No, US Yes, Israel Yes", prob: 0.6 },
-        { state: "100", meaning: "Khamenei Yes, US No, Israel No", prob: 75.2 },
-        { state: "101", meaning: "Khamenei Yes, US No, Israel Yes", prob: 1.0 },
-        { state: "110", meaning: "Khamenei Yes, US Yes, Israel No", prob: 0.5 },
-        { state: "111", meaning: "Khamenei Yes, US Yes, Israel Yes", prob: 0.3 },
-    ];
+        { state: "000", meaning: "Khamenei No, US No, Israel No" },
+        { state: "001", meaning: "Khamenei No, US No, Israel Yes" },
+        { state: "010", meaning: "Khamenei No, US Yes, Israel No" },
+        { state: "011", meaning: "Khamenei No, US Yes, Israel Yes" },
+        { state: "100", meaning: "Khamenei Yes, US No, Israel No" },
+        { state: "101", meaning: "Khamenei Yes, US No, Israel Yes" },
+        { state: "110", meaning: "Khamenei Yes, US Yes, Israel No" },
+        { state: "111", meaning: "Khamenei Yes, US Yes, Israel Yes" },
+    ].map(w => ({
+        ...w,
+        prob: probabilities[w.state] || 0
+    }));
 
     const colors = ["#60a5fa", "#2563eb", "#facc15"];
 
@@ -344,11 +353,13 @@ const HeatmapColorLegend = () => {
     );
 };
 
-const ConfusionMatrix = ({ selectedMarkets, marketSelections, onMarketSelectionsChange }: {
+const ConfusionMatrix = ({ selectedMarkets, marketSelections, onMarketSelectionsChange, probabilities }: {
     selectedMarkets: Record<string, boolean>;
     marketSelections: Record<string, MarketSelection>;
     onMarketSelectionsChange: (selections: Record<string, MarketSelection>) => void;
+    probabilities: Record<string, number>;
 }) => {
+    console.log("ConfusionMatrix probabilities:", probabilities);
     const activeMarkets = COMBINED_MARKETS.filter(m => selectedMarkets[m.id]);
 
     // State for tracking which market is where
@@ -408,15 +419,12 @@ const ConfusionMatrix = ({ selectedMarkets, marketSelections, onMarketSelections
     const leftIdx = parseInt(mLeft.id.slice(1)) - 1;
 
     const worlds = [
-        { state: "000", prob: 20.4 },
-        { state: "001", prob: 1.2 },
-        { state: "010", prob: 0.8 },
-        { state: "011", prob: 0.6 },
-        { state: "100", prob: 75.2 },
-        { state: "101", prob: 1.0 },
-        { state: "110", prob: 0.5 },
-        { state: "111", prob: 0.3 },
-    ];
+        { state: "000" }, { state: "001" }, { state: "010" }, { state: "011" },
+        { state: "100" }, { state: "101" }, { state: "110" }, { state: "111" },
+    ].map(w => ({
+        ...w,
+        prob: probabilities[w.state] || 0
+    }));
 
     const matrix: Record<string, number> = { "11": 0, "10": 0, "01": 0, "00": 0 };
     worlds.forEach(w => {
@@ -691,7 +699,8 @@ interface MarketCombinedChartProps {
     onFocusedMarketChange?: (marketId: string | null) => void;
 }
 
-export function MarketCombinedChart({ data, selectedMarkets, view, marketSelections, onMarketSelectionsChange, focusedMarket, onFocusedMarketChange }: MarketCombinedChartProps) {
+export function MarketCombinedChart({ data, selectedMarkets, view, marketSelections, onMarketSelectionsChange, focusedMarket, onFocusedMarketChange, probabilities, markets = COMBINED_MARKETS }: MarketCombinedChartProps & { probabilities?: Record<string, number> }) {
+    console.log("MarketCombinedChart probabilities prop:", probabilities);
     const selectedCount = Object.values(selectedMarkets).filter(Boolean).length;
 
     // Handle line click to focus/unfocus a market
@@ -929,6 +938,7 @@ export function MarketCombinedChart({ data, selectedMarkets, view, marketSelecti
                         selectedMarkets={selectedMarkets}
                         marketSelections={marketSelections}
                         onMarketSelectionsChange={onMarketSelectionsChange}
+                        probabilities={probabilities || DEFAULT_PROBS}
                     />
                 )}
 
@@ -937,6 +947,7 @@ export function MarketCombinedChart({ data, selectedMarkets, view, marketSelecti
                         <Market3DView
                             marketSelections={marketSelections}
                             onMarketSelectionsChange={onMarketSelectionsChange}
+                            probabilities={probabilities || undefined}
                         />
                         <p className="text-[11px] text-gray-400 mt-12 text-center italic font-medium px-4">
                             Probabilities derived from the joint-outcome AMM world table.

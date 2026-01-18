@@ -10,18 +10,18 @@ type MarketSelection = "yes" | "no" | "any" | null;
 interface WorldData {
     state: string; // "000", "001", etc.
     meaning: string;
-    prob: number;
+    // prob is now derived from props
 }
 
 const WORLDS: WorldData[] = [
-    { state: "000", meaning: "Khamenei No, US No, Israel No", prob: 20.4 },
-    { state: "001", meaning: "Khamenei No, US No, Israel Yes", prob: 1.2 },
-    { state: "010", meaning: "Khamenei No, US Yes, Israel No", prob: 0.8 },
-    { state: "011", meaning: "Khamenei No, US Yes, Israel Yes", prob: 0.6 },
-    { state: "100", meaning: "Khamenei Yes, US No, Israel No", prob: 75.2 },
-    { state: "101", meaning: "Khamenei Yes, US No, Israel Yes", prob: 1.0 },
-    { state: "110", meaning: "Khamenei Yes, US Yes, Israel No", prob: 0.5 },
-    { state: "111", meaning: "Khamenei Yes, US Yes, Israel Yes", prob: 0.3 },
+    { state: "000", meaning: "Khamenei No, US No, Israel No" },
+    { state: "001", meaning: "Khamenei No, US No, Israel Yes" },
+    { state: "010", meaning: "Khamenei No, US Yes, Israel No" },
+    { state: "011", meaning: "Khamenei No, US Yes, Israel Yes" },
+    { state: "100", meaning: "Khamenei Yes, US No, Israel No" },
+    { state: "101", meaning: "Khamenei Yes, US No, Israel Yes" },
+    { state: "110", meaning: "Khamenei Yes, US Yes, Israel No" },
+    { state: "111", meaning: "Khamenei Yes, US Yes, Israel Yes" },
 ];
 
 
@@ -89,13 +89,13 @@ function Cube({ position, prob, state, isHovered, isSelected, onHover, onClick }
                 <meshPhysicalMaterial
                     transparent
                     opacity={isHovered ? 0.9 : isSelected ? 0.8 : 0.3 * intensity + 0.1}
-                    color={isSelected ? "#3b82f6" : isMostProbable ? "#facc15" : "#60a5fa"}
+                    color={isSelected ? "#3b82f6" : "#60a5fa"}
                     roughness={0.1}
                     metalness={0.2}
                     transmission={0.5}
                     thickness={1}
                     clearcoat={1}
-                    emissive={isSelected ? "#3b82f6" : isMostProbable ? "#facc15" : "#60a5fa"}
+                    emissive={isSelected ? "#3b82f6" : "#60a5fa"}
                     emissiveIntensity={isSelected ? 0.5 + Math.sin(pulsePhase) * 0.3 : isHovered ? 0.6 : 0.2 * intensity}
                 />
 
@@ -133,14 +133,14 @@ function Cube({ position, prob, state, isHovered, isSelected, onHover, onClick }
                     }}>
                         {/* Probability */}
                         <div style={{
-                            background: isMostProbable ? '#fbbf24' : '#2563eb',
-                            color: 'black',
+                            background: 'transparent',
+                            color: '#2563eb',
                             fontWeight: 'bold',
-                            fontSize: '18px',
+                            fontSize: '40px',
                             padding: '6px 12px',
                             borderRadius: '4px',
                             textAlign: 'center',
-                            marginBottom: '10px',
+                            marginBottom: '4px',
                         }}>
                             {prob}%
                         </div>
@@ -216,9 +216,10 @@ function Labels() {
 
 
 
-function Scene({ marketSelections, onMarketSelectionsChange }: {
+function Scene({ marketSelections, onMarketSelectionsChange, probabilities }: {
     marketSelections?: Record<string, MarketSelection>;
     onMarketSelectionsChange?: (selections: Record<string, MarketSelection>) => void;
+    probabilities: Record<string, number>;
 }) {
     const [hoveredState, setHoveredState] = useState<string | null>(null);
     const [selectedState, setSelectedState] = useState<string | null>(null);
@@ -271,9 +272,13 @@ function Scene({ marketSelections, onMarketSelectionsChange }: {
             const x = w.state[0] === "1" ? 0.55 : -0.55;
             const y = w.state[1] === "1" ? 0.55 : -0.55;
             const z = w.state[2] === "1" ? 0.55 : -0.55;
-            return { ...w, position: [x, y, z] as [number, number, number] };
+            return {
+                ...w,
+                position: [x, y, z] as [number, number, number],
+                prob: probabilities[w.state] || 0
+            };
         });
-    }, []);
+    }, [probabilities]);
 
     return (
         <>
@@ -313,10 +318,17 @@ function Scene({ marketSelections, onMarketSelectionsChange }: {
     );
 }
 
-export default function Market3DView({ marketSelections, onMarketSelectionsChange }: {
+export default function Market3DView({ marketSelections, onMarketSelectionsChange, probabilities }: {
     marketSelections?: Record<string, MarketSelection>;
     onMarketSelectionsChange?: (selections: Record<string, MarketSelection>) => void;
+    probabilities?: Record<string, number>;
 }) {
+    console.log("Market3DView probabilities:", probabilities);
+    // Default probs if not provided
+    const safeProbabilities = probabilities || {
+        "000": 2.0, "001": 2.0, "010": 2.0, "011": 88.0,
+        "100": 2.0, "101": 2.0, "110": 2.0, "111": 2.0
+    };
     return (
         <div className="w-full h-[500px] bg-white rounded-2xl border border-gray-100 shadow-sm relative overflow-hidden">
             <div className="absolute top-6 left-6 z-10">
@@ -329,6 +341,7 @@ export default function Market3DView({ marketSelections, onMarketSelectionsChang
                 <Scene
                     marketSelections={marketSelections}
                     onMarketSelectionsChange={onMarketSelectionsChange}
+                    probabilities={safeProbabilities}
                 />
             </Canvas>
 

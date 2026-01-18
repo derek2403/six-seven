@@ -18,9 +18,10 @@ interface TradeCardProps {
     focusedMarket?: string | null;
     // Old prop for legacy compatibility
     market?: CombinedMarketItem;
+    onTrade?: (amount: string, outcome: number) => Promise<void>;
 }
 
-export function TradeCard({ markets, marketSelections, onMarketSelectionsChange, focusedMarket, market }: TradeCardProps) {
+export function TradeCard({ markets, marketSelections, onMarketSelectionsChange, focusedMarket, market, onTrade }: TradeCardProps) {
     // Use provided markets or fallback to COMBINED_MARKETS (Iran)
     const displayMarkets = markets || COMBINED_MARKETS;
     const [tab, setTab] = React.useState<"buy" | "sell">("buy");
@@ -200,7 +201,31 @@ export function TradeCard({ markets, marketSelections, onMarketSelectionsChange,
             </div>
 
             {/* Trade Button */}
-            <Button className="w-full h-11 bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-[16px] font-bold rounded-xl transition-all active:scale-[0.98]">
+            {/* Trade Button */}
+            <Button
+                onClick={() => {
+                    if (!onTrade) return;
+                    // Calculate outcome index
+                    // m1 (Khamenei) -> 4
+                    // m2 (US) -> 2
+                    // m3 (Israel) -> 1
+                    let outcome = 0;
+                    if (marketSelections.m1 === 'yes') outcome += 4;
+                    if (marketSelections.m2 === 'yes') outcome += 2;
+                    if (marketSelections.m3 === 'yes') outcome += 1;
+
+                    // Simple validation: Ensure no 'any' or null if we want precise outcome
+                    // For now we assume if 'no', it adds 0. If 'yes', it adds bit.
+                    if (marketSelections) {
+                        if (marketSelections.m1 === 'yes') outcome += 4;
+                        if (marketSelections.m2 === 'yes') outcome += 2;
+                        if (marketSelections.m3 === 'yes') outcome += 1;
+                    }
+                    onTrade(amount, outcome);
+                }}
+                disabled={!amount || !onTrade}
+                className="w-full h-11 bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-[16px] font-bold rounded-xl transition-all active:scale-[0.98]"
+            >
                 Trade
             </Button>
         </div>
