@@ -7,7 +7,7 @@ import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
 import * as fs from 'fs';
 import * as path from 'path';
-import { PM_CONFIG } from '../lib/pm';
+import { PM_CONFIG } from '../lib/tee';
 
 // Health check returns:
 // {"pk":"8715fd210f51229da1469a14d91de5a105b7665dc9dfbbc944ebfaaa1d24c89b", ...}
