@@ -132,6 +132,11 @@ const CryptoScenarioTable = ({ marketSelections, targetDate, baseProbabilities }
 
     const isRowHighlighted = (state: string) => {
         if (!expectedPattern) return false;
+
+        // If all are null (no selections/wild cards), do not highlight anything
+        const hasSelection = expectedPattern.some(char => char !== null);
+        if (!hasSelection) return false;
+
         return expectedPattern.every((char, idx) => char === null || char === state[idx]);
     };
 
@@ -198,10 +203,11 @@ const CryptoScenarioTable = ({ marketSelections, targetDate, baseProbabilities }
 };
 
 // 2. Probability Slider (1D) - Matches Iran OutcomeSlider design exactly
-const CryptoProbabilityDisplay = ({ markets, selectedMarkets, marketSelections, targetDate, baseProbabilities }: {
+const CryptoProbabilityDisplay = ({ markets, selectedMarkets, marketSelections, onMarketSelectionsChange, targetDate, baseProbabilities }: {
     markets: CombinedMarketItem[],
     selectedMarkets: Record<string, boolean>,
     marketSelections?: Record<string, MarketSelection>,
+    onMarketSelectionsChange?: (selections: Record<string, MarketSelection>) => void,
     targetDate?: string,
     baseProbabilities: Record<string, number>
 }) => {
@@ -324,20 +330,26 @@ const CryptoProbabilityDisplay = ({ markets, selectedMarkets, marketSelections, 
                     const animationName = m.id === "m1" ? "pulse-glow-blue" : m.id === "m2" ? "pulse-glow-darkblue" : "pulse-glow-yellow";
                     const shortTitle = MARKET_NAMES[`value${m.id.slice(1)}`] || m.title;
                     const isPulsing = isMarketSelected(m.id);
+                    const handleDotClick = (e: React.MouseEvent) => {
+                        e.stopPropagation();
+                        if (!onMarketSelectionsChange) return;
+
+                        const current = marketSelections?.[m.id];
+                        const next = current === "yes" ? "any" : "yes";
+
+                        onMarketSelectionsChange({
+                            ...marketSelections,
+                            [m.id]: next
+                        });
+                    };
 
                     return (
                         <div
                             key={m.id}
                             className="absolute top-1/2 -translate-y-1/2 transition-all duration-500 ease-out flex flex-col items-center group/marker"
                             style={{ left: `${visualValue}%` }}
+                            onClick={handleDotClick}
                         >
-                            {/* Connector line to actual value if offset is significant */}
-                            {index !== 0 && Math.abs(visualValue - value) > 0.1 && (
-                                <div
-                                    className="absolute top-0 w-px bg-gray-200 h-4 -translate-y-full"
-                                    style={{ left: `${(value - visualValue) * (800 / 100)}px` }}
-                                />
-                            )}
 
                             {/* Tooltip on Hover */}
                             <div className="absolute bottom-6 opacity-0 group-hover/marker:opacity-100 transition-all duration-300 translate-y-2 group-hover/marker:translate-y-0 pointer-events-none z-10">
@@ -536,6 +548,25 @@ const CryptoCorrelationHeatmap = ({ markets, selectedMarkets, marketSelections, 
         return `rgb(${r}, ${g}, ${b})`;
     };
 
+    const handleCellClick = (topLabel: string, leftLabel: string) => {
+        if (!onMarketSelectionsChange || !topMarketId || !leftMarketId) return;
+
+        const newSelections = { ...marketSelections };
+
+        // Set the active markets
+        newSelections[topMarketId] = topLabel === "Yes" ? "yes" : "no";
+        newSelections[leftMarketId] = leftLabel === "Yes" ? "yes" : "no";
+
+        // Reset all other markets to "any"
+        Object.keys(newSelections).forEach(key => {
+            if (key !== topMarketId && key !== leftMarketId) {
+                newSelections[key] = "any";
+            }
+        });
+
+        onMarketSelectionsChange(newSelections);
+    };
+
     const HeatmapCell = ({ prob, topLabel, leftLabel }: { prob: number, topLabel: string, leftLabel: string }) => {
         const bgColor = getHeatmapColor(prob);
         const normalized = maxProb === minProb ? 0.5 : (prob - minProb) / (maxProb - minProb);
@@ -547,7 +578,7 @@ const CryptoCorrelationHeatmap = ({ markets, selectedMarkets, marketSelections, 
             <div
                 className="relative w-full h-full flex flex-col items-center justify-center transition-all duration-300 hover:scale-[1.02] hover:shadow-lg cursor-pointer group overflow-hidden"
                 style={{ backgroundColor: bgColor }}
-                onClick={() => setShiningBox(isShining ? null : boxId)}
+                onClick={() => handleCellClick(topLabel, leftLabel)}
             >
                 {/* Pulsing glow effect from all 4 sides */}
                 {isShining && (
@@ -726,9 +757,9 @@ export function CryptoMarketChart({ data, markets, selectedMarkets, view, market
             <div className="w-full relative min-h-[400px]">
                 {view === "Table" && <CryptoScenarioTable marketSelections={marketSelections} targetDate={targetDate} baseProbabilities={baseProbabilities} />}
 
-                {view === "2D" && <CryptoProbabilityDisplay markets={markets} selectedMarkets={selectedMarkets} marketSelections={marketSelections} targetDate={targetDate} baseProbabilities={baseProbabilities} />}
+                {view === "2D" && <CryptoProbabilityDisplay markets={markets} selectedMarkets={selectedMarkets} marketSelections={marketSelections} onMarketSelectionsChange={handleMarketSelectionsChange} targetDate={targetDate} baseProbabilities={baseProbabilities} />}
 
-                {view === "3D" && <CryptoCorrelationHeatmap markets={markets} selectedMarkets={selectedMarkets} marketSelections={marketSelections} targetDate={targetDate} baseProbabilities={baseProbabilities} />}
+                {view === "3D" && <CryptoCorrelationHeatmap markets={markets} selectedMarkets={selectedMarkets} marketSelections={marketSelections} onMarketSelectionsChange={handleMarketSelectionsChange} targetDate={targetDate} baseProbabilities={baseProbabilities} />}
 
                 {view === "4D" && (
                     <div className="flex flex-col pt-0 pb-4">

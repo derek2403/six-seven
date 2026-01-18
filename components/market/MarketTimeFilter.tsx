@@ -18,7 +18,7 @@ type MarketSelection = "yes" | "no" | "any" | null;
 interface MarketTimeFilterProps {
     selectedMarkets: Record<string, boolean>;
     view: string;
-    onViewChange: (view: string) => void;
+    onViewChange: (view: string, isAuto?: boolean) => void;
     timeRange?: string;
     onTimeRangeChange?: (range: string) => void;
     hideTimeRanges?: boolean;
@@ -41,13 +41,9 @@ export function MarketTimeFilter({
 
     let availableDimensions: string[] = [];
     if (isCrypto) {
-        if (selectedCount >= 1) availableDimensions.push("2D");
-        if (selectedCount >= 2) availableDimensions.push("3D");
-        if (selectedCount >= 3) availableDimensions.push("4D");
+        availableDimensions = ["2D", "3D", "4D"];
     } else {
-        if (selectedCount >= 1) availableDimensions.push("1D");
-        if (selectedCount >= 2) availableDimensions.push("2D");
-        if (selectedCount >= 3) availableDimensions.push("3D");
+        availableDimensions = ["1D", "2D", "3D"];
     }
 
     const isDimensionView = isCrypto
@@ -81,7 +77,7 @@ export function MarketTimeFilter({
             <ToggleGroup
                 type="single"
                 value={view === "Table" ? view : ""}
-                onValueChange={(v) => v && onViewChange(v)}
+                onValueChange={(v) => v && onViewChange(v, false)}
                 className="gap-2"
             >
                 <ToggleGroupItem
@@ -117,7 +113,7 @@ export function MarketTimeFilter({
                             {availableDimensions.map((d) => (
                                 <DropdownMenuItem
                                     key={d}
-                                    onClick={() => onViewChange(d)}
+                                    onClick={() => onViewChange(d, false)}
                                     className={`font-bold text-[13px] cursor-pointer hover:bg-gray-50 rounded-lg px-3 py-2 justify-center ${view === d ? "text-blue-600 bg-blue-50/50" : "text-gray-900"}`}
                                 >
                                     {d}
@@ -127,7 +123,7 @@ export function MarketTimeFilter({
                     </DropdownMenu>
                 ) : (
                     <RainbowButton
-                        onClick={() => onViewChange(getTargetDimension)}
+                        onClick={() => onViewChange(getTargetDimension, true)}
                         variant="outline"
                         className={cn(
                             "h-[36px] text-sm font-bold px-5 flex items-center gap-2 rounded-full transition-transform active:scale-95"
