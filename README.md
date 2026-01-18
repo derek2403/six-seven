@@ -543,7 +543,7 @@ The more dimensions, the more specific a bet can be — and the easier it is to 
 ### Noodles.fi Integration
 Real-time on-chain price data for Sui ecosystem tokens (WBTC, WETH, SUI).
 **API Route**
-- **Service Library** https://github.com/derek2403/six-seven/blob/main/pages/api/integrations/noodles.ts
-- **WebSocket Endpoint** https://github.com/derek2403/six-seven/tree/main/lib/integrations/noodles
-- `wss://ws.noodles.fi/ws/coin-update`
+- **Service Library:** https://github.com/derek2403/six-seven/blob/main/pages/api/integrations/noodles.ts
+- **WebSocket Endpoint:** https://github.com/derek2403/six-seven/tree/main/lib/integrations/noodles
+- **WebSocket Endpoint:** `wss://ws.noodles.fi/ws/coin-update`
 
