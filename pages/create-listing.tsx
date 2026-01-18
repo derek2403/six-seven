@@ -175,171 +175,226 @@ export default function CreateListing() {
     };
 
     return (
-        <>
+        <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 font-sans text-slate-900">
             <Head>
-                <title>Create Listing</title>
+                <title>Create Listing | Phōcast</title>
             </Head>
 
             <Header />
 
-            <div className="max-w-4xl mx-auto px-8 pb-8 pt-24 font-sans min-h-screen text-gray-900">
-                <h1 className="text-3xl font-bold text-center mb-10 text-gray-800">Create New Listing</h1>
+            <main className="max-w-2xl mx-auto px-6 py-12 pt-24">
+                <div className="text-center mb-10">
+                    <h1 className="text-3xl font-bold text-slate-800 mb-2 mt-6">Create New Listing</h1>
+                    <p className="text-slate-500">Launch a new prediction market on Phōcast</p>
+                </div>
 
                 <div className="flex flex-col gap-8">
-                    {/* Category Selection */}
-                    <section className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
-                        <h2 className="text-xl font-semibold mb-5 text-blue-800 border-b border-blue-200 pb-2">Quick Create from Template</h2>
+                    {/* Category Selection Card */}
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 transition-shadow hover:shadow-md">
+                        <div className="flex items-center gap-3 mb-6 border-b border-slate-100 pb-4">
+                            <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-bold text-slate-800">1. Choose Correlated Events</h2>
+                                <p className="text-xs text-slate-500">Start from a preset or custom event</p>
+                            </div>
+                        </div>
 
-                        <div className="mb-4">
-                            <label className="block mb-2 text-sm font-medium text-blue-700">Select Category</label>
-                            <select
-                                className="w-full p-3 rounded-lg border border-blue-300 bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all cursor-pointer"
-                                value={selectedCategory}
-                                onChange={(e) => handleCategoryChange(e.target.value as CategoryType)}
-                            >
-                                <option value="">-- Choose a category --</option>
-                                <option value="politics">Politics Events</option>
-                                <option value="sports">Sports</option>
-                            </select>
+                        <div className="mb-6">
+                            <label className="block mb-2 text-sm font-medium text-slate-700">Category</label>
+                            <div className="relative">
+                                <select
+                                    className="w-full appearance-none px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all cursor-pointer"
+                                    value={selectedCategory}
+                                    onChange={(e) => handleCategoryChange(e.target.value as CategoryType)}
+                                >
+                                    <option value="">Select a category...</option>
+                                    <option value="politics">Politics Events</option>
+                                    <option value="sports">Sports</option>
+                                </select>
+                                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="m6 9 6 6 6-6" />
+                                    </svg>
+                                </div>
+                            </div>
                         </div>
 
                         {selectedCategory && (
-                            <div className="mt-4">
-                                <label className="block mb-3 text-sm font-medium text-blue-700">Select an Event</label>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="animate-in fade-in slide-in-from-top-4 duration-300">
+                                <label className="block mb-3 text-sm font-medium text-slate-700">Select Event</label>
+                                <div className="grid grid-cols-1 gap-3">
                                     {getCategoryOptions().map((event) => (
                                         <button
                                             key={event.id}
                                             type="button"
                                             onClick={() => handleEventSelect(event)}
-                                            className={`p-4 rounded-lg border-2 text-left transition-all hover:shadow-md ${selectedEvent?.id === event.id
-                                                    ? 'border-blue-500 bg-blue-50 shadow-md'
-                                                    : 'border-gray-200 bg-white hover:border-blue-300'
+                                            className={`p-4 rounded-xl border-2 text-left transition-all flex items-start gap-4 group ${selectedEvent?.id === event.id
+                                                ? 'border-blue-500 bg-blue-50/50 shadow-sm'
+                                                : 'border-slate-100 bg-white hover:border-blue-200 hover:bg-slate-50'
                                                 }`}
                                         >
-                                            <div className="flex items-start gap-3">
-                                                <img
-                                                    src={event.image || event.icon}
-                                                    alt={event.title}
-                                                    className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
-                                                    onError={(e) => (e.currentTarget.src = 'https://placehold.co/64x64?text=?')}
-                                                />
-                                                <div className="flex-1 min-w-0">
-                                                    <h3 className="font-semibold text-gray-900 truncate">{event.title}</h3>
-                                                    <p className="text-sm text-gray-500 line-clamp-2 mt-1">
-                                                        {event.description?.slice(0, 100)}...
-                                                    </p>
-                                                    {event.markets && (
-                                                        <span className="inline-block mt-2 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
-                                                            {event.markets.length} submarkets
-                                                        </span>
-                                                    )}
-                                                </div>
+                                            <img
+                                                src={event.image || event.icon}
+                                                alt={event.title}
+                                                className="w-12 h-12 object-cover rounded-lg bg-slate-200"
+                                                onError={(e) => (e.currentTarget.src = 'https://placehold.co/48x48?text=?')}
+                                            />
+                                            <div className="flex-1 min-w-0">
+                                                <h3 className={`font-semibold truncate ${selectedEvent?.id === event.id ? 'text-blue-700' : 'text-slate-800'}`}>
+                                                    {event.title}
+                                                </h3>
+                                                <p className="text-xs text-slate-500 line-clamp-2 mt-1">
+                                                    {event.description?.slice(0, 100)}...
+                                                </p>
                                             </div>
                                         </button>
                                     ))}
                                 </div>
                             </div>
                         )}
+                    </div>
 
-                        {!selectedCategory && (
-                            <p className="text-sm text-gray-500 mt-2">
-                                Or fill in the form manually below
-                            </p>
-                        )}
-                    </section>
-
-                    {/* Main Listing Info */}
-                    <section className="bg-gray-50 rounded-xl p-6 border border-gray-200">
-                        <h2 className="text-xl font-semibold mb-5 text-gray-700 border-b border-gray-200 pb-2">Main Listing Details</h2>
-                        <div className="mb-4">
-                            <label className="block mb-2 text-sm font-medium text-gray-600">Listing Title</label>
-                            <input
-                                type="text"
-                                className="w-full p-3 rounded-lg border border-gray-300 bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                                value={title}
-                                onChange={(e) => setTitle(e.target.value)}
-                                placeholder="e.g. Premier League Matchday 1"
-                            />
+                    {/* Main Details Card */}
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 transition-shadow hover:shadow-md">
+                        <div className="flex items-center gap-3 mb-6 border-b border-slate-100 pb-4">
+                            <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-bold text-slate-800">2. Listing Details</h2>
+                                <p className="text-xs text-slate-500">Define the main event information</p>
+                            </div>
                         </div>
-                        <div className="mb-4">
-                            <label className="block mb-2 text-sm font-medium text-gray-600">Description</label>
-                            <textarea
-                                className="w-full p-3 rounded-lg border border-gray-300 bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                                value={description}
-                                onChange={(e) => setDescription(e.target.value)}
-                                placeholder="Describe the listing..."
-                                rows={3}
-                            />
-                        </div>
-                        <div className="mb-4">
-                            <label className="block mb-2 text-sm font-medium text-gray-600">Main Image URL</label>
-                            <input
-                                type="text"
-                                className="w-full p-3 rounded-lg border border-gray-300 bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                                value={imageUrl}
-                                onChange={(e) => setImageUrl(e.target.value)}
-                                placeholder="https://..."
-                            />
-                        </div>
-                    </section>
 
-                    {/* Submarkets */}
-                    <section className="bg-gray-50 rounded-xl p-6 border border-gray-200">
-                        <h2 className="text-xl font-semibold mb-5 text-gray-700 border-b border-gray-200 pb-2">Submarkets (Exactly 3 Required)</h2>
-
-                        {submarkets.map((sub, index) => (
-                            <div key={index} className="bg-white rounded-lg p-4 mb-4 border border-gray-200 shadow-sm">
-                                <h3 className="text-base font-medium mb-3 text-gray-500">Submarket #{index + 1}</h3>
-                                <div className="mb-4">
-                                    <label className="block mb-2 text-sm font-medium text-gray-600">Title</label>
+                        <div className="space-y-5">
+                            <div>
+                                <label className="block mb-2 text-sm font-medium text-slate-700">Title</label>
+                                <input
+                                    type="text"
+                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400"
+                                    value={title}
+                                    onChange={(e) => setTitle(e.target.value)}
+                                    placeholder="e.g. US Election 2024"
+                                />
+                            </div>
+                            <div>
+                                <label className="block mb-2 text-sm font-medium text-slate-700">Description</label>
+                                <textarea
+                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400 min-h-[100px]"
+                                    value={description}
+                                    onChange={(e) => setDescription(e.target.value)}
+                                    placeholder="Describe the event and resolution criteria..."
+                                />
+                            </div>
+                            <div>
+                                <label className="block mb-2 text-sm font-medium text-slate-700">Image URL</label>
+                                <div className="flex gap-3">
                                     <input
                                         type="text"
-                                        className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                                        value={sub.title}
-                                        onChange={(e) => handleSubmarketChange(index, 'title', e.target.value)}
-                                        placeholder={`Submarket ${index + 1} Title`}
+                                        className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400"
+                                        value={imageUrl}
+                                        onChange={(e) => setImageUrl(e.target.value)}
+                                        placeholder="https://..."
                                     />
-                                </div>
-                                <div className="mb-4">
-                                    <label className="block mb-2 text-sm font-medium text-gray-600">Image URL</label>
-                                    <input
-                                        type="text"
-                                        className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                                        value={sub.image}
-                                        onChange={(e) => handleSubmarketChange(index, 'image', e.target.value)}
-                                        placeholder={`Submarket ${index + 1} Image URL`}
-                                    />
+                                    {imageUrl && (
+                                        <div className="w-12 h-12 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden flex-shrink-0">
+                                            <img src={imageUrl} alt="Preview" className="w-full h-full object-cover" onError={(e) => e.currentTarget.style.display = 'none'} />
+                                        </div>
+                                    )}
                                 </div>
                             </div>
-                        ))}
-                    </section>
+                        </div>
+                    </div>
 
-                    {/* Action Buttons */}
-                    <div className="text-center mt-5">
+                    {/* Submarkets Card */}
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 transition-shadow hover:shadow-md">
+                        <div className="flex items-center gap-3 mb-6 border-b border-slate-100 pb-4">
+                            <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M3 3v18h18"></path>
+                                    <path d="m19 9-5 5-4-4-3 3"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-bold text-slate-800">3. Outcomes</h2>
+                                <p className="text-xs text-slate-500">Define exactly 3 mutually exclusive outcomes</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            {submarkets.map((sub, index) => (
+                                <div key={index} className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Outcome #{index + 1}</h3>
+                                    <div className="space-y-3">
+                                        <input
+                                            type="text"
+                                            className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400 text-sm"
+                                            value={sub.title}
+                                            onChange={(e) => handleSubmarketChange(index, 'title', e.target.value)}
+                                            placeholder={`Outcome Title (e.g. Yes/No/Maybe)`}
+                                        />
+                                        <input
+                                            type="text"
+                                            className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400 text-sm"
+                                            value={sub.image}
+                                            onChange={(e) => handleSubmarketChange(index, 'image', e.target.value)}
+                                            placeholder="Image URL (optional)"
+                                        />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex flex-col gap-4">
+                        {error && (
+                            <div className="p-4 rounded-xl bg-red-50 border border-red-100 text-red-600 text-sm text-center font-medium animate-in fade-in slide-in-from-top-1">
+                                {error}
+                            </div>
+                        )}
+                        {success && (
+                            <div className="p-4 rounded-xl bg-green-50 border border-green-100 text-green-600 text-sm text-center font-medium animate-in fade-in slide-in-from-top-1 break-all">
+                                {success}
+                            </div>
+                        )}
+
                         {!currentAccount ? (
-                            <p className="text-amber-600 text-lg font-medium">Please connect your wallet to create a listing</p>
+                            <button disabled className="w-full py-4 rounded-xl bg-slate-100 text-slate-400 font-bold border-2 border-slate-200 cursor-not-allowed">
+                                Connect Wallet to Continue
+                            </button>
                         ) : (
                             <button
-                                className="px-12 py-4 rounded-xl border-none bg-blue-600 text-white text-lg font-bold cursor-pointer hover:bg-blue-700 disabled:opacity-70 disabled:cursor-not-allowed transition-colors shadow-md"
+                                className="w-full py-4 rounded-xl bg-blue-600 text-white font-bold text-lg shadow-lg shadow-blue-600/20 hover:bg-blue-700 hover:shadow-xl hover:shadow-blue-600/30 disabled:opacity-70 disabled:cursor-not-allowed transition-all transform active:scale-[0.99]"
                                 onClick={createListing}
                                 disabled={loading}
                             >
-                                {loading ? 'Creating...' : 'Create Listing'}
+                                {loading ? (
+                                    <span className="flex items-center justify-center gap-2">
+                                        <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Creating Listing...
+                                    </span>
+                                ) : 'Create Listing'}
                             </button>
                         )}
                     </div>
-
-                    {/* Feedback */}
-                    {error && <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-600 text-center">{error}</div>}
-                    {success && <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-green-600 text-center">{success}</div>}
                 </div>
 
                 <div className="mt-16">
                     <CreatedListings />
                 </div>
-            </div>
-        </>
+            </main>
+        </div>
     );
 }
 
