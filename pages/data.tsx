@@ -246,12 +246,12 @@ export default function DataPage() {
             </Head>
 
 
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-32">
                 {/* Trending Markets Section */}
-                <div className="mb-16">
+                <div className="mb-16 mt-12">
                     <div className="mb-8">
-                        <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">Trending Markets</h2>
-                        <p className="mt-2 text-lg text-gray-600">Explore the most active and high-impact prediction markets across politics, crypto, and global events.</p>
+                        <h2 className="text-xl font-extrabold text-gray-900 tracking-tight">Trending Markets</h2>
+                        <p className="mt-2 text-base text-gray-600">Explore the most active and high-impact prediction markets across politics, crypto, and global events.</p>
                     </div>
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         {[...politicsFeaturedData, ...cryptoFeaturedData].map((event, idx) => (
