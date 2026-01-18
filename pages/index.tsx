@@ -202,7 +202,7 @@ export default function Home() {
       </section>
 
       {/* Next Section - FlowingMenu */}
-      <section className="h-screen w-full">
+      <section className="h-screen w-full mt-65">
         <FlowingMenu
           items={[
             { link: '#', text: 'Multi-Dimensional Prediction Market', image: '/flowingmenu/Multi-Dimensional_Prediction_Market.png' },
