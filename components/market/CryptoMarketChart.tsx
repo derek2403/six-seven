@@ -702,11 +702,12 @@ interface CryptoMarketChartProps {
     marketSelections?: Record<string, MarketSelection>;
     targetDate: string;
     baseProbabilities: Record<string, number>;
+    poolProbabilities?: Record<string, number> | null; // Pool 1 probabilities from blockchain
     onTargetDateChange: (date: string) => void;
     onMarketSelectionsChange?: (selections: Record<string, MarketSelection>) => void;
 }
 
-export function CryptoMarketChart({ data, markets, selectedMarkets, view, marketSelections, targetDate, baseProbabilities, onTargetDateChange, onMarketSelectionsChange }: CryptoMarketChartProps) {
+export function CryptoMarketChart({ data, markets, selectedMarkets, view, marketSelections, targetDate, baseProbabilities, poolProbabilities, onTargetDateChange, onMarketSelectionsChange }: CryptoMarketChartProps) {
     const selectedCount = Object.values(selectedMarkets).filter(Boolean).length;
     const availableFilters = ["1H", "6H", "1D", "1W", "1M", "MAX"];
 
@@ -736,6 +737,7 @@ export function CryptoMarketChart({ data, markets, selectedMarkets, view, market
                             onMarketSelectionsChange={handleMarketSelectionsChange}
                             targetDate={targetDate}
                             baseProbabilities={baseProbabilities}
+                            probabilities={poolProbabilities}
                         />
                         <p className="text-[11px] text-gray-400 mt-4 text-center italic font-medium">
                             4D Visualization (Joint Probability Space × Time Dimension) for {targetDate}

@@ -24,7 +24,7 @@ interface TradeCardProps {
     onTrade?: (amount: string, outcome: number) => Promise<void>;
 }
 
-export function TradeCard({ markets, marketSelections, onMarketSelectionsChange, focusedMarket, targetDate, baseProbabilities, market }: TradeCardProps) {
+export function TradeCard({ markets, marketSelections, onMarketSelectionsChange, focusedMarket, targetDate, baseProbabilities, market, onTrade }: TradeCardProps) {
     // Use provided markets or fallback to COMBINED_MARKETS (Iran)
     const displayMarkets = markets || COMBINED_MARKETS;
     const [tab, setTab] = React.useState<"buy" | "sell">("buy");

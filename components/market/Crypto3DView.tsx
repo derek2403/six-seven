@@ -231,11 +231,12 @@ function Labels() {
 
 
 
-function Scene({ marketSelections, onMarketSelectionsChange, targetDate, baseProbabilities }: {
+function Scene({ marketSelections, onMarketSelectionsChange, targetDate, baseProbabilities, probabilities }: {
     marketSelections?: Record<string, MarketSelection>,
     onMarketSelectionsChange?: (selections: Record<string, MarketSelection>) => void,
     targetDate?: string,
-    baseProbabilities: Record<string, number>
+    baseProbabilities: Record<string, number>,
+    probabilities?: Record<string, number> | null // Pool 1 data from blockchain
 }) {
     const [hoveredState, setHoveredState] = useState<string | null>(null);
 
@@ -245,16 +246,26 @@ function Scene({ marketSelections, onMarketSelectionsChange, targetDate, basePro
     const p3 = (baseProbabilities.m3 || 0) / 100;
 
     const getJitteredProb = (state: string) => {
+        // Calculate base probability from pricing data (varies by targetDate)
         let prob = 0;
-        // Joint probability assuming independence
         const bits = state.split('').map(b => b === '1');
         prob = (bits[0] ? p1 : 1 - p1) * (bits[1] ? p2 : 1 - p2) * (bits[2] ? p3 : 1 - p3) * 100;
 
+        // Apply small jitter based on targetDate for visual variation
         if (targetDate) {
             const hash = targetDate.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-            prob += (hash % 4) - 2;
+            prob += (hash % 6) - 3;
         }
 
+        // If we have Pool 1 data from blockchain, blend it in as a bias
+        // This represents "market sentiment" from actual bets
+        if (probabilities && probabilities[state] !== undefined) {
+            const poolProb = probabilities[state];
+            // Blend: 70% base (varies by date) + 30% pool (bet-influenced)
+            prob = prob * 0.7 + poolProb * 0.3;
+        }
+
+        // Apply selection highlighting bias
         if (marketSelections) {
             const m1 = marketSelections.m1;
             const m2 = marketSelections.m2;
@@ -344,7 +355,7 @@ function Scene({ marketSelections, onMarketSelectionsChange, targetDate, basePro
             ...item,
             color: getHeatmapColor(item.prob, min, max)
         }));
-    }, [targetDate, marketSelections, baseProbabilities]);
+    }, [targetDate, marketSelections, baseProbabilities, probabilities]);
 
     return (
         <>
@@ -385,11 +396,12 @@ function Scene({ marketSelections, onMarketSelectionsChange, targetDate, basePro
     );
 }
 
-export default function Crypto3DView({ marketSelections, onMarketSelectionsChange, targetDate, baseProbabilities }: {
+export default function Crypto3DView({ marketSelections, onMarketSelectionsChange, targetDate, baseProbabilities, probabilities }: {
     marketSelections?: Record<string, MarketSelection>,
     onMarketSelectionsChange?: (selections: Record<string, MarketSelection>) => void,
     targetDate?: string,
-    baseProbabilities: Record<string, number>
+    baseProbabilities: Record<string, number>,
+    probabilities?: Record<string, number> | null // Pool 1 data from blockchain
 }) {
     return (
         <div className="w-full h-[500px] bg-white rounded-2xl border border-gray-100 shadow-sm relative overflow-hidden">
@@ -405,6 +417,7 @@ export default function Crypto3DView({ marketSelections, onMarketSelectionsChang
                     onMarketSelectionsChange={onMarketSelectionsChange}
                     targetDate={targetDate}
                     baseProbabilities={baseProbabilities}
+                    probabilities={probabilities}
                 />
             </Canvas>
 

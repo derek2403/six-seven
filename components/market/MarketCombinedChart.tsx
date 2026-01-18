@@ -213,7 +213,13 @@ const OutcomeSlider = ({ selectedMarkets, currentValues, markets, marketSelectio
     );
 };
 
-const WorldTable = ({ probabilities }: { probabilities: Record<string, number> }) => {
+const WorldTable = ({ probabilities, marketSelections }: {
+    probabilities?: Record<string, number>,
+    marketSelections?: Record<string, MarketSelection>
+}) => {
+    // Default probabilities if not provided
+    const probs: Record<string, number> = probabilities || DEFAULT_PROBS;
+
     // Derive worlds from probabilities prop
     const worlds = [
         { state: "000", meaning: "Khamenei No, US No, Israel No" },
@@ -226,7 +232,7 @@ const WorldTable = ({ probabilities }: { probabilities: Record<string, number> }
         { state: "111", meaning: "Khamenei Yes, US Yes, Israel Yes" },
     ].map(w => ({
         ...w,
-        prob: probabilities[w.state] || 0
+        prob: probs[w.state] || 0
     }));
 
     const colors = ["#60a5fa", "#2563eb", "#facc15"];
@@ -731,7 +737,7 @@ export function MarketCombinedChart({ data, selectedMarkets, view, marketSelecti
     return (
         <div className="w-full flex flex-col">
             <div className="w-full relative min-h-[400px]">
-                {view === "Table" && <WorldTable marketSelections={marketSelections} />}
+                {view === "Table" && <WorldTable probabilities={probabilities} marketSelections={marketSelections} />}
 
                 {view === "1D" && (
                     <div className="h-[400px] w-full">

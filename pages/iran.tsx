@@ -18,6 +18,16 @@ export default function MarketPage() {
     const router = useRouter();
     const { slug } = router.query;
 
+    // Sui Hooks
+    const account = useCurrentAccount();
+    const client = useSuiClient();
+    const { mutateAsync: signTransaction } = useSignTransaction();
+
+    // Backend State
+    const [probabilities, setProbabilities] = React.useState<Record<string, number> | null>(null);
+    const [maker, setMaker] = React.useState<string>('');
+    const [isLoading, setIsLoading] = React.useState(false);
+
     const [selectedMarkets, setSelectedMarkets] = React.useState<Record<string, boolean>>({});
     const [view, setView] = React.useState("1D");
     const [timeRange, setTimeRange] = React.useState("1d");
@@ -330,9 +340,6 @@ export default function MarketPage() {
         }
     }, [marketSelections, view]);
 
-    // Mock probabilities for ROI calculation
-    const probabilities = { m1: 35, m2: 45, m3: 55 };
-
     return (
         <div className="min-h-screen bg-white font-sans">
             {/* Site Header */}
@@ -397,7 +404,7 @@ export default function MarketPage() {
                             marketSelections={marketSelections}
                             onMarketSelectionsChange={setMarketSelections}
                             focusedMarket={focusedMarket}
-                            baseProbabilities={probabilities}
+                            baseProbabilities={probabilities || undefined}
                             targetDate="Jan 1, 2026"
                         />
                         <p className="mt-4 text-center text-[13px] text-gray-400 font-medium leading-relaxed">

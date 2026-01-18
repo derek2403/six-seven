@@ -452,6 +452,7 @@ export default function CryptoPage() {
                                 marketSelections={marketSelections}
                                 targetDate={targetDate}
                                 baseProbabilities={probabilities}
+                                poolProbabilities={poolProbabilities}
                                 onTargetDateChange={setTargetDate}
                                 onMarketSelectionsChange={setMarketSelections}
                             />
@@ -467,6 +468,7 @@ export default function CryptoPage() {
                             focusedMarket={focusedMarket}
                             baseProbabilities={probabilities}
                             targetDate={targetDate}
+                            onTrade={handleTrade}
                         />
                         <p className="mt-4 text-center text-[13px] text-gray-400 font-medium leading-relaxed">
                             By trading, you agree to the <span className="underline cursor-pointer hover:text-gray-600 transition-colors">Terms of Use.</span>
