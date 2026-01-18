@@ -6,6 +6,8 @@ import { Trophy, Clock, Settings, SlidersHorizontal, ArrowUpDown, Shuffle } from
 import { CombinedChartPoint, CombinedMarketItem } from "@/lib/mock/combined-markets";
 import Crypto3DView from "./Crypto3DView";
 
+type MarketSelection = "yes" | "no" | "any" | null;
+
 const MARKET_NAMES: Record<string, string> = {
     value1: "BTC > $100k",
     value2: "ETH > $4k",
@@ -61,7 +63,7 @@ const CustomDot = (props: any) => {
 // --- CRYPTO SPECIFIC VIEWS ---
 
 // 1. World Table (matching Iran design with outcome dots)
-const CryptoScenarioTable = () => {
+const CryptoScenarioTable = ({ marketSelections }: { marketSelections?: Record<string, MarketSelection> }) => {
     // state[0] = BTC > $100k, state[1] = ETH > $4k, state[2] = SUI > $5
     const worlds = [
         { state: "000", meaning: "BTC No, ETH No, SUI No", prob: 8.5 },
@@ -76,6 +78,27 @@ const CryptoScenarioTable = () => {
 
     const colors = ["#60a5fa", "#2563eb", "#facc15"]; // BTC, ETH, SUI
 
+    // Convert marketSelections to expected state pattern for matching
+    const getExpectedPattern = () => {
+        if (!marketSelections) return null;
+        const m1 = marketSelections.m1;
+        const m2 = marketSelections.m2;
+        const m3 = marketSelections.m3;
+
+        return [
+            m1 === "yes" ? "1" : m1 === "no" ? "0" : null,
+            m2 === "yes" ? "1" : m2 === "no" ? "0" : null,
+            m3 === "yes" ? "1" : m3 === "no" ? "0" : null,
+        ];
+    };
+
+    const expectedPattern = getExpectedPattern();
+
+    const isRowHighlighted = (state: string) => {
+        if (!expectedPattern) return false;
+        return expectedPattern.every((char, idx) => char === null || char === state[idx]);
+    };
+
     return (
         <div className="w-full max-w-[800px] mx-auto mt-4 px-4 mb-20">
             <div className="bg-gray-50/50 rounded-xl border border-gray-100 overflow-hidden shadow-sm">
@@ -88,33 +111,37 @@ const CryptoScenarioTable = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50 bg-white">
-                        {worlds.map((w) => (
-                            <tr key={w.state} className="hover:bg-blue-50/10 transition-colors group">
-                                <td className="px-6 py-4 w-[100px]">
-                                    <div className="flex items-center gap-2">
-                                        {w.state.split('').map((char: string, idx: number) => (
-                                            <div
-                                                key={idx}
-                                                className="size-2.5 rounded-full border border-current"
-                                                style={{
-                                                    backgroundColor: char === '1' ? colors[idx] : 'transparent',
-                                                    color: colors[idx],
-                                                    opacity: char === '1' ? 1 : 0.4
-                                                }}
-                                            />
-                                        ))}
-                                    </div>
-                                </td>
-                                <td className="px-4 py-4">
-                                    <span className="text-[13px] font-medium text-gray-600">
-                                        {w.meaning}
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4 text-right w-[120px]">
-                                    <span className="font-black text-gray-900 text-[14px]">{w.prob}%</span>
-                                </td>
-                            </tr>
-                        ))}
+                        {worlds.map((w) => {
+                            const highlighted = isRowHighlighted(w.state);
+                            return (
+                                <tr key={w.state} className={`transition-colors group ${highlighted ? 'bg-blue-100/60 ring-2 ring-blue-400/50 ring-inset' : 'hover:bg-blue-50/10'}`}>
+                                    <td className="px-6 py-4 w-[100px]">
+                                        <div className="flex items-center gap-2">
+                                            {w.state.split('').map((char: string, idx: number) => (
+                                                <div
+                                                    key={idx}
+                                                    className={`size-2.5 rounded-full border border-current ${highlighted ? 'scale-125' : ''}`}
+                                                    style={{
+                                                        backgroundColor: char === '1' ? colors[idx] : 'transparent',
+                                                        color: colors[idx],
+                                                        opacity: char === '1' ? 1 : 0.4,
+                                                        transition: 'transform 0.2s'
+                                                    }}
+                                                />
+                                            ))}
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-4">
+                                        <span className={`text-[13px] font-medium ${highlighted ? 'text-blue-800 font-semibold' : 'text-gray-600'}`}>
+                                            {w.meaning}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 text-right w-[120px]">
+                                        <span className={`font-black text-[14px] ${highlighted ? 'text-blue-700' : 'text-gray-900'}`}>{w.prob}%</span>
+                                    </td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
             </div>
@@ -135,7 +162,11 @@ const CryptoScenarioTable = () => {
 };
 
 // 2. Probability Slider (1D) - Matches Iran OutcomeSlider design exactly
-const CryptoProbabilityDisplay = ({ markets, selectedMarkets }: { markets: CombinedMarketItem[], selectedMarkets: Record<string, boolean> }) => {
+const CryptoProbabilityDisplay = ({ markets, selectedMarkets, marketSelections }: {
+    markets: CombinedMarketItem[],
+    selectedMarkets: Record<string, boolean>,
+    marketSelections?: Record<string, MarketSelection>
+}) => {
     const activeMarkets = markets.filter(m => selectedMarkets[m.id]);
 
     // Mocked current probability values
@@ -167,8 +198,47 @@ const CryptoProbabilityDisplay = ({ markets, selectedMarkets }: { markets: Combi
         }
     }
 
+    // Check if a market is selected (has yes or no, not any/null)
+    const isMarketSelected = (marketId: string) => {
+        if (!marketSelections) return false;
+        const sel = marketSelections[marketId];
+        return sel === "yes" || sel === "no";
+    };
+
     return (
         <div className="w-full py-20 px-4 select-none max-w-[800px] mx-auto">
+            <style jsx>{`
+                @keyframes pulse-glow-blue {
+                    0%, 100% {
+                        box-shadow: 0 0 0 0 rgba(96, 165, 250, 0.7);
+                        transform: scale(1);
+                    }
+                    50% {
+                        box-shadow: 0 0 0 8px rgba(96, 165, 250, 0);
+                        transform: scale(1.15);
+                    }
+                }
+                @keyframes pulse-glow-darkblue {
+                    0%, 100% {
+                        box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.7);
+                        transform: scale(1);
+                    }
+                    50% {
+                        box-shadow: 0 0 0 8px rgba(37, 99, 235, 0);
+                        transform: scale(1.15);
+                    }
+                }
+                @keyframes pulse-glow-yellow {
+                    0%, 100% {
+                        box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.7);
+                        transform: scale(1);
+                    }
+                    50% {
+                        box-shadow: 0 0 0 8px rgba(250, 204, 21, 0);
+                        transform: scale(1.15);
+                    }
+                }
+            `}</style>
             <div className="flex items-center justify-between w-full mb-12">
                 <span className="text-[14px] font-bold text-gray-400 uppercase tracking-widest leading-none">Outcome</span>
             </div>
@@ -187,7 +257,9 @@ const CryptoProbabilityDisplay = ({ markets, selectedMarkets }: { markets: Combi
                     const value = currentValues[m.id];
                     const visualValue = visualPositions[m.id] ?? value;
                     const color = m.id === "m1" ? "#60a5fa" : m.id === "m2" ? "#2563eb" : "#facc15";
+                    const animationName = m.id === "m1" ? "pulse-glow-blue" : m.id === "m2" ? "pulse-glow-darkblue" : "pulse-glow-yellow";
                     const shortTitle = MARKET_NAMES[`value${m.id.slice(1)}`] || m.title;
+                    const isPulsing = isMarketSelected(m.id);
 
                     return (
                         <div
@@ -215,8 +287,11 @@ const CryptoProbabilityDisplay = ({ markets, selectedMarkets }: { markets: Combi
 
                             {/* Dot */}
                             <div
-                                className="size-4 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform relative z-0"
-                                style={{ backgroundColor: color }}
+                                className={`size-4 rounded-full border-2 border-white shadow-md cursor-pointer transition-transform relative z-0 ${isPulsing ? '' : 'hover:scale-110'}`}
+                                style={{
+                                    backgroundColor: color,
+                                    animation: isPulsing ? `${animationName} 1.5s ease-in-out infinite` : 'none'
+                                }}
                             />
 
                             {/* Value Label below */}
@@ -259,7 +334,12 @@ const CryptoHeatmapColorLegend = () => {
 };
 
 // 3. Joint Probability Heatmap (2D) - Matches Iran ConfusionMatrix design
-const CryptoCorrelationHeatmap = ({ markets, selectedMarkets }: { markets: CombinedMarketItem[], selectedMarkets: Record<string, boolean> }) => {
+const CryptoCorrelationHeatmap = ({ markets, selectedMarkets, marketSelections, onMarketSelectionsChange }: {
+    markets: CombinedMarketItem[],
+    selectedMarkets: Record<string, boolean>,
+    marketSelections?: Record<string, MarketSelection>,
+    onMarketSelectionsChange?: (selections: Record<string, MarketSelection>) => void
+}) => {
     const activeMarkets = markets.filter(m => selectedMarkets[m.id]);
 
     const [topMarketId, setTopMarketId] = React.useState<string | null>(null);
@@ -277,6 +357,23 @@ const CryptoCorrelationHeatmap = ({ markets, selectedMarkets }: { markets: Combi
             setLeftMarketId(potential || activeIds[0] || null);
         }
     }, [selectedMarkets, topMarketId, leftMarketId, activeMarkets]);
+
+    // Auto-shine box based on market selections
+    React.useEffect(() => {
+        if (!topMarketId || !leftMarketId || !marketSelections) return;
+
+        const topSel = marketSelections[topMarketId];
+        const leftSel = marketSelections[leftMarketId];
+
+        if (topSel !== null && topSel !== "any" && leftSel !== null && leftSel !== "any") {
+            const topLabel = topSel === "yes" ? "Yes" : "No";
+            const leftLabel = leftSel === "yes" ? "Yes" : "No";
+            const boxId = `${topLabel}${leftLabel}`;
+            setShiningBox(boxId);
+        } else {
+            setShiningBox(null);
+        }
+    }, [marketSelections, topMarketId, leftMarketId]);
 
     if (activeMarkets.length < 2) {
         return (
@@ -338,9 +435,63 @@ const CryptoCorrelationHeatmap = ({ markets, selectedMarkets }: { markets: Combi
                 style={{ backgroundColor: bgColor }}
                 onClick={() => setShiningBox(isShining ? null : boxId)}
             >
+                {/* Pulsing glow effect from all 4 sides */}
                 {isShining && (
-                    <div className="absolute inset-0 border-2 rounded animate-pulse" style={{ borderColor: '#3b82f6', boxShadow: '0 0 20px rgba(59, 130, 246, 0.8)' }} />
+                    <>
+                        {/* Top glow */}
+                        <div
+                            className="absolute top-0 left-0 right-0 h-2"
+                            style={{
+                                animation: 'shine-pulse 1s infinite',
+                                background: 'linear-gradient(to bottom, #06b6d4, transparent)'
+                            }}
+                        />
+                        {/* Bottom glow */}
+                        <div
+                            className="absolute bottom-0 left-0 right-0 h-2"
+                            style={{
+                                animation: 'shine-pulse 1s infinite',
+                                background: 'linear-gradient(to top, #06b6d4, transparent)'
+                            }}
+                        />
+                        {/* Left glow */}
+                        <div
+                            className="absolute top-0 bottom-0 left-0 w-2"
+                            style={{
+                                animation: 'shine-pulse 1s infinite',
+                                background: 'linear-gradient(to right, #06b6d4, transparent)'
+                            }}
+                        />
+                        {/* Right glow */}
+                        <div
+                            className="absolute top-0 bottom-0 right-0 w-2"
+                            style={{
+                                animation: 'shine-pulse 1s infinite',
+                                background: 'linear-gradient(to left, #06b6d4, transparent)'
+                            }}
+                        />
+                        {/* Pulsing border */}
+                        <div
+                            className="absolute inset-0 border-2 rounded"
+                            style={{
+                                animation: 'shine-pulse 1s infinite',
+                                borderColor: '#06b6d4',
+                                boxShadow: '0 0 20px rgba(6, 182, 212, 0.8), inset 0 0 20px rgba(6, 182, 212, 0.4)'
+                            }}
+                        />
+                    </>
                 )}
+
+                <style jsx>{`
+                    @keyframes shine-pulse {
+                        0%, 100% {
+                            opacity: 0.3;
+                        }
+                        50% {
+                            opacity: 1;
+                        }
+                    }
+                `}</style>
                 <span className="text-xl font-bold transition-all duration-200 group-hover:scale-110" style={{ color: textColor }}>
                     {prob.toFixed(1)}%
                 </span>
@@ -351,17 +502,24 @@ const CryptoCorrelationHeatmap = ({ markets, selectedMarkets }: { markets: Combi
         );
     };
 
-    const handleSwap = () => {
+    const handleSwap = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
+        const temp = topMarketId;
         setTopMarketId(leftMarketId);
-        setLeftMarketId(topMarketId);
+        setLeftMarketId(temp);
     };
 
-    const handleShuffleTop = () => {
+    const handleShuffleTop = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
         const other = activeMarkets.find(m => m.id !== topMarketId && m.id !== leftMarketId);
         if (other) setTopMarketId(other.id);
     };
 
-    const handleShuffleLeft = () => {
+    const handleShuffleLeft = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
         const other = activeMarkets.find(m => m.id !== topMarketId && m.id !== leftMarketId);
         if (other) setLeftMarketId(other.id);
     };
@@ -376,12 +534,12 @@ const CryptoCorrelationHeatmap = ({ markets, selectedMarkets }: { markets: Combi
             <div className="flex items-center justify-center gap-4">
                 {/* Left Y-axis Label */}
                 <div className="flex flex-col items-center justify-center h-[280px] mr-2">
-                    <div className="text-xs font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap flex items-center gap-2" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
+                    <div className="text-xs font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
                         {mLeftName}
-                        <div className="flex gap-1">
-                            <ArrowUpDown className="size-3 cursor-pointer hover:text-blue-500 transition-colors" onClick={handleSwap} />
-                            <Shuffle className={`size-3 transition-colors ${activeMarkets.length > 2 ? 'cursor-pointer hover:text-blue-500' : 'opacity-20'}`} onClick={handleShuffleLeft} />
-                        </div>
+                    </div>
+                    <div className="flex flex-col gap-2 mt-2">
+                        <ArrowUpDown className="size-3 cursor-pointer hover:text-blue-500 transition-colors text-gray-400" onClick={handleSwap} />
+                        <Shuffle className={`size-3 transition-colors text-gray-400 ${activeMarkets.length > 2 ? 'cursor-pointer hover:text-blue-500' : 'opacity-20 cursor-not-allowed'}`} onClick={activeMarkets.length > 2 ? handleShuffleLeft : undefined} />
                     </div>
                 </div>
 
@@ -396,7 +554,7 @@ const CryptoCorrelationHeatmap = ({ markets, selectedMarkets }: { markets: Combi
                     <div className="text-center mb-3 flex items-center justify-center gap-2">
                         <span className="text-xs font-bold text-gray-600 uppercase tracking-wider">{mTopName}</span>
                         <ArrowUpDown className="size-3 cursor-pointer hover:text-blue-500 transition-colors text-gray-400" onClick={handleSwap} />
-                        <Shuffle className={`size-3 transition-colors text-gray-400 ${activeMarkets.length > 2 ? 'cursor-pointer hover:text-blue-500' : 'opacity-20'}`} onClick={handleShuffleTop} />
+                        <Shuffle className={`size-3 transition-colors text-gray-400 ${activeMarkets.length > 2 ? 'cursor-pointer hover:text-blue-500' : 'opacity-20 cursor-not-allowed'}`} onClick={activeMarkets.length > 2 ? handleShuffleTop : undefined} />
                     </div>
                     <div className="flex justify-around mb-2" style={{ width: '360px' }}>
                         <span className="text-[11px] font-semibold text-gray-600 w-[170px] text-center">Yes</span>
@@ -427,9 +585,10 @@ interface CryptoMarketChartProps {
     markets: CombinedMarketItem[];
     selectedMarkets: Record<string, boolean>;
     view: string;
+    marketSelections?: Record<string, MarketSelection>;
 }
 
-export function CryptoMarketChart({ data, markets, selectedMarkets, view }: CryptoMarketChartProps) {
+export function CryptoMarketChart({ data, markets, selectedMarkets, view, marketSelections }: CryptoMarketChartProps) {
     const selectedCount = Object.values(selectedMarkets).filter(Boolean).length;
     const availableFilters = ["1H", "6H", "1D", "1W", "1M", "MAX"];
 
@@ -482,15 +641,15 @@ export function CryptoMarketChart({ data, markets, selectedMarkets, view }: Cryp
                     </div>
                 )}
 
-                {view === "Table" && <CryptoScenarioTable />}
+                {view === "Table" && <CryptoScenarioTable marketSelections={marketSelections} />}
 
-                {view === "1D" && <CryptoProbabilityDisplay markets={markets} selectedMarkets={selectedMarkets} />}
+                {view === "1D" && <CryptoProbabilityDisplay markets={markets} selectedMarkets={selectedMarkets} marketSelections={marketSelections} />}
 
-                {view === "2D" && <CryptoCorrelationHeatmap markets={markets} selectedMarkets={selectedMarkets} />}
+                {view === "2D" && <CryptoCorrelationHeatmap markets={markets} selectedMarkets={selectedMarkets} marketSelections={marketSelections} />}
 
                 {view === "3D" && (
                     <div className="flex flex-col py-4">
-                        <Crypto3DView />
+                        <Crypto3DView marketSelections={marketSelections} />
                         <p className="text-[11px] text-gray-400 mt-4 text-center italic font-medium">
                             3D Visualization of Joint Probability Space
                         </p>
