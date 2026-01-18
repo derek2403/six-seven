@@ -533,4 +533,21 @@ The more dimensions, the more specific a bet can be — and the easier it is to 
 - **ENCLAVE_PACKAGE:** https://testnet.suivision.xyz/package/0x143e110ae8389ef848783215a1fd4d5a2826e561b2a8624e2c64283cc8299a2d
 - **ENCLAVE_CONFIG_ID:** https://testnet.suivision.xyz/object/0x15a2d73dbecf428e2856ff88db6648bb7bb6716129b2c8347c9ff50e6b4163e5 
 - **ENCLAVE_OBJECT_ID:** https://testnet.suivision.xyz/object/0x9db6f3758c5fd0d8ef9aa4866b43cb4f2b0b9845022d42d4017ec7bb1df6326d
-- **PM_PACKAGE:** https://testnet.suivision.xyz/package/0x327d01aa4fdc8cba53596b225510a6b5afc5d2266227654574fe6347a45d3973 
+- **PM_PACKAGE:** https://testnet.suivision.xyz/package/0x327d01aa4fdc8cba53596b225510a6b5afc5d2266227654574fe6347a45d3973
+
+---
+
+### Noodles.fi Integration
+Real-time on-chain price data for Sui ecosystem tokens (WBTC, WETH, SUI).
+**API Route**
+- https://github.com/derek2403/six-seven/blob/main/pages/api/integrations/noodles.ts
+**Service Library**
+- https://github.com/derek2403/six-seven/tree/main/lib/integrations/noodles
+**WebSocket Endpoint**
+- `wss://ws.noodles.fi/ws/coin-update`
+**Features**
+- Singleton service pattern for persistent connection
+- Server-side caching to prevent rate limiting
+- Auto-reconnect with 10s delay
+- Ping/pong heartbeat every 30s
+- Zod schema validation for type safety
