@@ -3,7 +3,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import politicsEvents from '../data/metadata/politics_events.json';
 import sportsEvents from '../data/metadata/sports.json';
-import { Header } from '../components/header';
+import { Header } from '../components/Header';
 import { WalletConnect } from '../components/WalletConnect';
 import { Search, SlidersHorizontal, Bookmark, ChevronRight, ChevronDown, Repeat, Gift } from 'lucide-react';
 import { useSuiClient } from '@mysten/dapp-kit';

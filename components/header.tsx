@@ -1,8 +1,4 @@
-'use client';
-
-import { WalletConnect } from "./WalletConnect";
-import { VaultControls } from "./VaultControls";
-import Link from "next/link";
+import { WalletConnect } from './WalletConnect';
 
 export function Header() {
     return <WalletConnect />;
