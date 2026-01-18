@@ -3,7 +3,7 @@
 import React from "react";
 import { Line, LineChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
 import { Trophy, Clock, Settings, SlidersHorizontal, ChevronDown, Shuffle, ArrowUpDown } from "lucide-react";
-import { COMBINED_CHART_DATA, COMBINED_MARKETS } from "@/lib/mock/combined-markets";
+import { CombinedChartPoint, CombinedMarketItem, COMBINED_CHART_DATA, COMBINED_MARKETS } from "@/lib/mock/combined-markets";
 import Market3DView from "./Market3DView";
 
 
@@ -11,6 +11,11 @@ const MARKET_NAMES: Record<string, string> = {
     value1: "Khamenei out",
     value2: "US strikes Iran",
     value3: "Israel next strikes",
+};
+
+const DEFAULT_PROBS = {
+    "000": 2.0, "001": 2.0, "010": 2.0, "011": 88.0,
+    "100": 2.0, "101": 2.0, "110": 2.0, "111": 2.0
 };
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -63,8 +68,13 @@ const CustomDot = (props: any) => {
     return null;
 };
 
-const OutcomeSlider = ({ selectedMarkets, currentValues }: { selectedMarkets: Record<string, boolean>; currentValues: Record<string, number> }) => {
-    const activeMarkets = COMBINED_MARKETS.filter(m => selectedMarkets[m.id]);
+const OutcomeSlider = ({ selectedMarkets, currentValues, markets, marketSelections }: {
+    selectedMarkets: Record<string, boolean>;
+    currentValues: Record<string, number>;
+    markets: CombinedMarketItem[];
+    marketSelections?: Record<string, MarketSelection>;
+}) => {
+    const activeMarkets = markets.filter(m => selectedMarkets[m.id]);
 
     // Sort markets by value to determine clumping
     const sortedMarkets = [...activeMarkets].sort((a, b) => currentValues[a.id] - currentValues[b.id]);
@@ -95,8 +105,47 @@ const OutcomeSlider = ({ selectedMarkets, currentValues }: { selectedMarkets: Re
         }
     }
 
+    // Check if a market is selected (has yes or no, not any/null)
+    const isMarketSelected = (marketId: string) => {
+        if (!marketSelections) return false;
+        const sel = marketSelections[marketId];
+        return sel === "yes" || sel === "no";
+    };
+
     return (
         <div className="w-full py-20 px-4 select-none max-w-[800px] mx-auto">
+            <style jsx>{`
+                @keyframes pulse-glow-blue {
+                    0%, 100% {
+                        box-shadow: 0 0 0 0 rgba(96, 165, 250, 0.7);
+                        transform: scale(1);
+                    }
+                    50% {
+                        box-shadow: 0 0 0 8px rgba(96, 165, 250, 0);
+                        transform: scale(1.15);
+                    }
+                }
+                @keyframes pulse-glow-darkblue {
+                    0%, 100% {
+                        box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.7);
+                        transform: scale(1);
+                    }
+                    50% {
+                        box-shadow: 0 0 0 8px rgba(37, 99, 235, 0);
+                        transform: scale(1.15);
+                    }
+                }
+                @keyframes pulse-glow-yellow {
+                    0%, 100% {
+                        box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.7);
+                        transform: scale(1);
+                    }
+                    50% {
+                        box-shadow: 0 0 0 8px rgba(250, 204, 21, 0);
+                        transform: scale(1.15);
+                    }
+                }
+            `}</style>
             <div className="flex items-center justify-between w-full mb-12">
                 <span className="text-[14px] font-bold text-gray-400 uppercase tracking-widest leading-none">Outcome</span>
             </div>
@@ -115,7 +164,9 @@ const OutcomeSlider = ({ selectedMarkets, currentValues }: { selectedMarkets: Re
                     const value = currentValues[m.id];
                     const visualValue = visualPositions[m.id] ?? value;
                     const color = m.id === "m1" ? "#60a5fa" : m.id === "m2" ? "#2563eb" : "#facc15";
+                    const animationName = m.id === "m1" ? "pulse-glow-blue" : m.id === "m2" ? "pulse-glow-darkblue" : "pulse-glow-yellow";
                     const shortTitle = MARKET_NAMES[`value${m.id.slice(1)}`];
+                    const isPulsing = isMarketSelected(m.id);
 
                     return (
                         <div
@@ -143,8 +194,11 @@ const OutcomeSlider = ({ selectedMarkets, currentValues }: { selectedMarkets: Re
                             </div>
 
                             <div
-                                className="size-4 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform relative z-0"
-                                style={{ backgroundColor: color }}
+                                className={`size-4 rounded-full border-2 border-white shadow-md cursor-pointer transition-transform relative z-0 ${isPulsing ? '' : 'hover:scale-110'}`}
+                                style={{
+                                    backgroundColor: color,
+                                    animation: isPulsing ? `${animationName} 1.5s ease-in-out infinite` : 'none'
+                                }}
                             />
 
                             {/* REAL numeric value below it. */}
@@ -159,19 +213,48 @@ const OutcomeSlider = ({ selectedMarkets, currentValues }: { selectedMarkets: Re
     );
 };
 
-const WorldTable = () => {
+const WorldTable = ({ probabilities }: { probabilities: Record<string, number> }) => {
+    // Derive worlds from probabilities prop
     const worlds = [
-        { state: "000", meaning: "Khamenei No, US No, Israel No", prob: 20.4 },
-        { state: "001", meaning: "Khamenei No, US No, Israel Yes", prob: 1.2 },
-        { state: "010", meaning: "Khamenei No, US Yes, Israel No", prob: 0.8 },
-        { state: "011", meaning: "Khamenei No, US Yes, Israel Yes", prob: 0.6 },
-        { state: "100", meaning: "Khamenei Yes, US No, Israel No", prob: 75.2 },
-        { state: "101", meaning: "Khamenei Yes, US No, Israel Yes", prob: 1.0 },
-        { state: "110", meaning: "Khamenei Yes, US Yes, Israel No", prob: 0.5 },
-        { state: "111", meaning: "Khamenei Yes, US Yes, Israel Yes", prob: 0.3 },
-    ];
+        { state: "000", meaning: "Khamenei No, US No, Israel No" },
+        { state: "001", meaning: "Khamenei No, US No, Israel Yes" },
+        { state: "010", meaning: "Khamenei No, US Yes, Israel No" },
+        { state: "011", meaning: "Khamenei No, US Yes, Israel Yes" },
+        { state: "100", meaning: "Khamenei Yes, US No, Israel No" },
+        { state: "101", meaning: "Khamenei Yes, US No, Israel Yes" },
+        { state: "110", meaning: "Khamenei Yes, US Yes, Israel No" },
+        { state: "111", meaning: "Khamenei Yes, US Yes, Israel Yes" },
+    ].map(w => ({
+        ...w,
+        prob: probabilities[w.state] || 0
+    }));
 
     const colors = ["#60a5fa", "#2563eb", "#facc15"];
+
+    // Convert marketSelections to expected state pattern for matching
+    const getExpectedPattern = () => {
+        if (!marketSelections) return null;
+        const m1 = marketSelections.m1;
+        const m2 = marketSelections.m2;
+        const m3 = marketSelections.m3;
+
+        // Build pattern: 1 = yes, 0 = no, null/any = wildcard
+        return [
+            m1 === "yes" ? "1" : m1 === "no" ? "0" : null,
+            m2 === "yes" ? "1" : m2 === "no" ? "0" : null,
+            m3 === "yes" ? "1" : m3 === "no" ? "0" : null,
+        ];
+    };
+
+    const expectedPattern = getExpectedPattern();
+
+    const isRowHighlighted = (state: string) => {
+        if (!expectedPattern) return false;
+        // Check if all non-null pattern positions match the state
+        return expectedPattern.every((char, idx) =>
+            char === null || char === state[idx]
+        );
+    };
 
     return (
         <div className="w-full max-w-[800px] mx-auto mt-4 px-4 mb-20">
@@ -186,7 +269,12 @@ const WorldTable = () => {
                     </thead>
                     <tbody className="divide-y divide-gray-50 bg-white">
                         {worlds.map((w) => (
-                            <WorldTableRow key={w.state} world={w} colors={colors} />
+                            <WorldTableRow
+                                key={w.state}
+                                world={w}
+                                colors={colors}
+                                isHighlighted={isRowHighlighted(w.state)}
+                            />
                         ))}
                     </tbody>
                 </table>
@@ -207,31 +295,35 @@ const WorldTable = () => {
     );
 };
 
-const WorldTableRow = ({ world, colors }: { world: any, colors: string[] }) => {
+const WorldTableRow = ({ world, colors, isHighlighted }: { world: any, colors: string[], isHighlighted?: boolean }) => {
     return (
-        <tr className="hover:bg-blue-50/10 transition-colors group">
+        <tr className={`transition-colors group ${isHighlighted
+            ? 'bg-blue-100/60 ring-2 ring-blue-400/50 ring-inset'
+            : 'hover:bg-blue-50/10'
+            }`}>
             <td className="px-6 py-4 w-[100px]">
                 <div className="flex items-center gap-2">
                     {world.state.split('').map((char: string, idx: number) => (
                         <div
                             key={idx}
-                            className="size-2.5 rounded-full border border-current"
+                            className={`size-2.5 rounded-full border border-current ${isHighlighted ? 'scale-125' : ''}`}
                             style={{
                                 backgroundColor: char === '1' ? colors[idx] : 'transparent',
                                 color: colors[idx],
-                                opacity: char === '1' ? 1 : 0.4
+                                opacity: char === '1' ? 1 : 0.4,
+                                transition: 'transform 0.2s'
                             }}
                         />
                     ))}
                 </div>
             </td>
             <td className="px-4 py-4">
-                <span className="text-[13px] font-medium text-gray-600">
+                <span className={`text-[13px] font-medium ${isHighlighted ? 'text-blue-800 font-semibold' : 'text-gray-600'}`}>
                     {world.meaning}
                 </span>
             </td>
             <td className="px-6 py-4 text-right w-[120px]">
-                <span className="font-black text-gray-900 text-[14px]">{world.prob}%</span>
+                <span className={`font-black text-[14px] ${isHighlighted ? 'text-blue-700' : 'text-gray-900'}`}>{world.prob}%</span>
             </td>
         </tr>
     );
@@ -261,11 +353,13 @@ const HeatmapColorLegend = () => {
     );
 };
 
-const ConfusionMatrix = ({ selectedMarkets, marketSelections, onMarketSelectionsChange }: {
+const ConfusionMatrix = ({ selectedMarkets, marketSelections, onMarketSelectionsChange, probabilities }: {
     selectedMarkets: Record<string, boolean>;
     marketSelections: Record<string, MarketSelection>;
     onMarketSelectionsChange: (selections: Record<string, MarketSelection>) => void;
+    probabilities: Record<string, number>;
 }) => {
+    console.log("ConfusionMatrix probabilities:", probabilities);
     const activeMarkets = COMBINED_MARKETS.filter(m => selectedMarkets[m.id]);
 
     // State for tracking which market is where
@@ -315,8 +409,8 @@ const ConfusionMatrix = ({ selectedMarkets, marketSelections, onMarketSelections
 
     if (!topMarketId || !leftMarketId) return null;
 
-    const mTop = COMBINED_MARKETS.find(m => m.id === topMarketId)!;
-    const mLeft = COMBINED_MARKETS.find(m => m.id === leftMarketId)!;
+    const mTop = activeMarkets.find(m => m.id === topMarketId)!;
+    const mLeft = activeMarkets.find(m => m.id === leftMarketId)!;
 
     const mTopName = MARKET_NAMES[`value${mTop.id.slice(1)}`];
     const mLeftName = MARKET_NAMES[`value${mLeft.id.slice(1)}`];
@@ -325,15 +419,12 @@ const ConfusionMatrix = ({ selectedMarkets, marketSelections, onMarketSelections
     const leftIdx = parseInt(mLeft.id.slice(1)) - 1;
 
     const worlds = [
-        { state: "000", prob: 20.4 },
-        { state: "001", prob: 1.2 },
-        { state: "010", prob: 0.8 },
-        { state: "011", prob: 0.6 },
-        { state: "100", prob: 75.2 },
-        { state: "101", prob: 1.0 },
-        { state: "110", prob: 0.5 },
-        { state: "111", prob: 0.3 },
-    ];
+        { state: "000" }, { state: "001" }, { state: "010" }, { state: "011" },
+        { state: "100" }, { state: "101" }, { state: "110" }, { state: "111" },
+    ].map(w => ({
+        ...w,
+        prob: probabilities[w.state] || 0
+    }));
 
     const matrix: Record<string, number> = { "11": 0, "10": 0, "01": 0, "00": 0 };
     worlds.forEach(w => {
@@ -596,19 +687,25 @@ const ConfusionMatrix = ({ selectedMarkets, marketSelections, onMarketSelections
 type MarketSelection = "yes" | "no" | "any" | null;
 
 interface MarketCombinedChartProps {
+    // Optional for backward compatibility (crypto passes these, Iran doesn't)
+    data?: CombinedChartPoint[];
+    markets?: CombinedMarketItem[];
     selectedMarkets: Record<string, boolean>;
     view: string;
-    marketSelections: Record<string, MarketSelection>;
-    onMarketSelectionsChange: (selections: Record<string, MarketSelection>) => void;
-    focusedMarket: string | null;
-    onFocusedMarketChange: (marketId: string | null) => void;
+    // New props for Iran (optional for crypto backward compatibility)
+    marketSelections?: Record<string, MarketSelection>;
+    onMarketSelectionsChange?: (selections: Record<string, MarketSelection>) => void;
+    focusedMarket?: string | null;
+    onFocusedMarketChange?: (marketId: string | null) => void;
 }
 
-export function MarketCombinedChart({ selectedMarkets, view, marketSelections, onMarketSelectionsChange, focusedMarket, onFocusedMarketChange }: MarketCombinedChartProps) {
+export function MarketCombinedChart({ data, selectedMarkets, view, marketSelections, onMarketSelectionsChange, focusedMarket, onFocusedMarketChange, probabilities, markets = COMBINED_MARKETS }: MarketCombinedChartProps & { probabilities?: Record<string, number> }) {
+    console.log("MarketCombinedChart probabilities prop:", probabilities);
     const selectedCount = Object.values(selectedMarkets).filter(Boolean).length;
 
     // Handle line click to focus/unfocus a market
     const handleLineClick = (marketId: string) => {
+        if (!onFocusedMarketChange) return;
         if (focusedMarket === marketId) {
             // Clicking same line unfocuses
             onFocusedMarketChange(null);
@@ -637,7 +734,7 @@ export function MarketCombinedChart({ selectedMarkets, view, marketSelections, o
                 {view === "Default" && (
                     <div className="h-[400px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={COMBINED_CHART_DATA} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+                            <LineChart data={data || COMBINED_CHART_DATA} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
                                 <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#e5e7eb" />
                                 <XAxis
                                     dataKey="date"
@@ -673,7 +770,7 @@ export function MarketCombinedChart({ selectedMarkets, view, marketSelections, o
                                         strokeWidth={2}
                                         dot={(props: any) => {
                                             const { key, ...rest } = props;
-                                            return <CustomDot key={key} {...rest} color="#60a5fa" lastIndex={COMBINED_CHART_DATA.length - 1} />;
+                                            return <CustomDot key={key} {...rest} color="#60a5fa" lastIndex={(data || COMBINED_CHART_DATA).length - 1} />;
                                         }}
                                         activeDot={<CustomActiveDot />}
                                         isAnimationActive={false}
@@ -687,7 +784,7 @@ export function MarketCombinedChart({ selectedMarkets, view, marketSelections, o
                                         strokeWidth={2}
                                         dot={(props: any) => {
                                             const { key, ...rest } = props;
-                                            return <CustomDot key={key} {...rest} color="#2563eb" lastIndex={COMBINED_CHART_DATA.length - 1} />;
+                                            return <CustomDot key={key} {...rest} color="#2563eb" lastIndex={(data || COMBINED_CHART_DATA).length - 1} />;
                                         }}
                                         activeDot={<CustomActiveDot />}
                                         isAnimationActive={false}
@@ -701,7 +798,7 @@ export function MarketCombinedChart({ selectedMarkets, view, marketSelections, o
                                         strokeWidth={2}
                                         dot={(props: any) => {
                                             const { key, ...rest } = props;
-                                            return <CustomDot key={key} {...rest} color="#facc15" lastIndex={COMBINED_CHART_DATA.length - 1} />;
+                                            return <CustomDot key={key} {...rest} color="#facc15" lastIndex={(data || COMBINED_CHART_DATA).length - 1} />;
                                         }}
                                         activeDot={<CustomActiveDot />}
                                         isAnimationActive={false}
@@ -712,7 +809,7 @@ export function MarketCombinedChart({ selectedMarkets, view, marketSelections, o
                     </div>
                 )}
 
-                {view === "Table" && <WorldTable />}
+                {view === "Table" && <WorldTable marketSelections={marketSelections} />}
 
                 {view === "1D" && (
                     <div className="h-[400px] w-full">
@@ -836,19 +933,21 @@ export function MarketCombinedChart({ selectedMarkets, view, marketSelections, o
                     </div>
                 )}
 
-                {view === "2D" && (
+                {view === "2D" && marketSelections && onMarketSelectionsChange && (
                     <ConfusionMatrix
                         selectedMarkets={selectedMarkets}
                         marketSelections={marketSelections}
                         onMarketSelectionsChange={onMarketSelectionsChange}
+                        probabilities={probabilities || DEFAULT_PROBS}
                     />
                 )}
 
-                {view === "3D" && (
+                {view === "3D" && marketSelections && onMarketSelectionsChange && (
                     <div className="flex flex-col py-4">
                         <Market3DView
                             marketSelections={marketSelections}
                             onMarketSelectionsChange={onMarketSelectionsChange}
+                            probabilities={probabilities || undefined}
                         />
                         <p className="text-[11px] text-gray-400 mt-12 text-center italic font-medium px-4">
                             Probabilities derived from the joint-outcome AMM world table.
