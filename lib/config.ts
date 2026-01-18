@@ -50,6 +50,6 @@ export const WORLD_CONFIG = {
 };
 
 export const LISTING_CONFIG = {
-    PACKAGE_ID: "0xfd3ee427ffe629ee95c5850bc3f59263ec3831f0184cec1a67e96e916c48a15b",
+    PACKAGE_ID: "0x143e110ae8389ef848783215a1fd4d5a2826e561b2a8624e2c64283cc8299a2d",
     MODULE_NAME: "listing",
 };
