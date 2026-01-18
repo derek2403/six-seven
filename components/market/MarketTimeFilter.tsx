@@ -23,6 +23,7 @@ interface MarketTimeFilterProps {
     onTimeRangeChange?: (range: string) => void;
     hideTimeRanges?: boolean;
     marketSelections?: Record<string, MarketSelection>;
+    isCrypto?: boolean;
 }
 
 export function MarketTimeFilter({
@@ -32,31 +33,47 @@ export function MarketTimeFilter({
     timeRange = "1d",
     onTimeRangeChange,
     hideTimeRanges = false,
-    marketSelections
+    marketSelections,
+    isCrypto = false
 }: MarketTimeFilterProps) {
     const selectedCount = Object.values(selectedMarkets).filter(Boolean).length;
     const commonBtnClasses = "h-[36px] !rounded-full px-4 text-sm font-bold transition-all flex items-center justify-center gap-1";
 
     let availableDimensions: string[] = [];
-    if (selectedCount >= 1) availableDimensions.push("1D");
-    if (selectedCount >= 2) availableDimensions.push("2D");
-    if (selectedCount >= 3) availableDimensions.push("3D");
+    if (isCrypto) {
+        if (selectedCount >= 1) availableDimensions.push("2D");
+        if (selectedCount >= 2) availableDimensions.push("3D");
+        if (selectedCount >= 3) availableDimensions.push("4D");
+    } else {
+        if (selectedCount >= 1) availableDimensions.push("1D");
+        if (selectedCount >= 2) availableDimensions.push("2D");
+        if (selectedCount >= 3) availableDimensions.push("3D");
+    }
 
-    const isDimensionView = ["1D", "2D", "3D"].includes(view);
+    const isDimensionView = isCrypto
+        ? ["2D", "3D", "4D"].includes(view)
+        : ["1D", "2D", "3D"].includes(view);
 
     const timeRanges = ["15 min", "1h", "4h", "1d", "1w", "All"];
 
     // Calculate target dimension based on marketSelections
     const getTargetDimension = React.useMemo(() => {
-        if (!marketSelections) return availableDimensions[0] || "1D";
+        const defaultDim = isCrypto ? "2D" : "1D";
+        if (!marketSelections) return availableDimensions[0] || defaultDim;
 
         const selections = [marketSelections.m1, marketSelections.m2, marketSelections.m3];
         const yesNoCount = selections.filter(s => s === "yes" || s === "no").length;
 
-        if (yesNoCount === 3) return "3D";
-        if (yesNoCount === 2) return "2D";
-        return "1D";
-    }, [marketSelections, availableDimensions]);
+        if (isCrypto) {
+            if (yesNoCount === 3) return "4D";
+            if (yesNoCount === 2) return "3D";
+            return "2D";
+        } else {
+            if (yesNoCount === 3) return "3D";
+            if (yesNoCount === 2) return "2D";
+            return "1D";
+        }
+    }, [marketSelections, availableDimensions, isCrypto]);
 
     return (
         <div className="flex flex-wrap items-center gap-3 pl-0">
