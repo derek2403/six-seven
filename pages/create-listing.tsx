@@ -3,7 +3,7 @@ import Head from 'next/head';
 import { useCurrentAccount, useSignAndExecuteTransaction, useSuiClient } from '@mysten/dapp-kit';
 import { createListingTx } from '../lib/listing';
 import { LISTING_CONFIG } from '../lib/config';
-import { Header } from '../components/Header';
+import { Header } from '../components/header';
 
 // Import JSON data
 import politicsEventsData from '../data/metadata/politics_events.json';
