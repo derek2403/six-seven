@@ -1,5 +1,9 @@
 import { WalletConnect } from './WalletConnect';
 
 export function Header() {
-    return <WalletConnect />;
+    return (
+        <div className="mb-16">
+            <WalletConnect />
+        </div>
+    );
 }
