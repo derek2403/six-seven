@@ -193,8 +193,8 @@ const cryptoFeaturedData = [
         frequency: "Monthly",
         items: [
             { title: "Sui Active Wallets", image: "/market/slush.png", yes: 58, no: 42, any: 0 },
-            { title: "Sui App DAU", image: "/market/btc_logo.png", yes: 45, no: 55, any: 0 },
-            { title: "Sui DEX Share", image: "/market/eth_logo.png", yes: 40, no: 60, any: 0 }
+            { title: "Sui App DAU", image: "/market/dau.png", yes: 45, no: 55, any: 0 },
+            { title: "Sui DEX Share", image: "/market/suidex.png", yes: 40, no: 60, any: 0 }
         ]
     },
     {
@@ -203,9 +203,9 @@ const cryptoFeaturedData = [
         volume: "$210m Vol.",
         frequency: "Weekly",
         items: [
-            { title: "Sui $5 Jan", image: "/market/sui-logo1.png", yes: 33, no: 67, any: 0 },
-            { title: "Sui TVL $1B", image: "/market/sui-logo1.png", yes: 57, no: 43, any: 0 },
-            { title: "Sui 1M DAU", image: "/market/sui-logo1.png", yes: 22, no: 78, any: 0 }
+            { title: "Sui $5 Jan", image: "/market/dau.png", yes: 33, no: 67, any: 0 },
+            { title: "Sui TVL $1B", image: "/market/sui-coin.png", yes: 57, no: 43, any: 0 },
+            { title: "Sui 1M DAU", image: "/market/suidex.png", yes: 22, no: 78, any: 0 }
         ]
     }
 ];
@@ -417,13 +417,13 @@ export default function DataPage() {
             ]
         },
         {
-            title: "15 Min Crypto",
+            title: "Crypto price",
             icon: "/market/crypto-logo.png",
             volume: "$0 Vol.",
             items: [
-                { title: "Bitcoin 15m", image: "/market/btc_logo.png", yes: 0, no: 0, any: 0 },
-                { title: "Ethereum 15m", image: "/market/eth_logo.png", yes: 0, no: 0, any: 0 },
-                { title: "Sui 15m", image: "/market/sui-logo1.png", yes: 0, no: 0, any: 0 }
+                { title: "BTC > $96k Mar", image: "/market/btc_logo.png", yes: 0, no: 0, any: 0 },
+                { title: "ETH > $3.4k Mar", image: "/market/eth_logo.png", yes: 0, no: 0, any: 0 },
+                { title: "Sui > $10 Aug", image: "/market/sui-logo1.png", yes: 0, no: 0, any: 0 }
             ]
         }
     ], [iranProbs]);

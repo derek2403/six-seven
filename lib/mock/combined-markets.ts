@@ -123,7 +123,7 @@ export const MARKET_DATA: Record<string, MarketCategoryData> = {
         chartData: generatePoints([77, 2.3, 1.7]),
     },
     crypto: {
-        title: "crypto price",
+        title: "Crypto price",
         avatar: "/crypto_all.png",
         markets: CRYPTO_MARKETS,
         legendItems: CRYPTO_LEGEND,
