@@ -109,7 +109,7 @@ const politicsFeaturedData = [
 const cryptoFeaturedData = [
     {
         title: "15 Min Crypto",
-        icon: "/market/btc_logo.png",
+        icon: "/market/crypto-logo.png",
         items: [
             { title: "Bitcoin Up or Down - 15 minute", image: "/market/btc_logo.png" },
             { title: "Ethereum Up or Down - 15 minute", image: "/market/eth_logo.png" },
@@ -246,9 +246,9 @@ export default function DataPage() {
             </Head>
 
 
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-32">
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24">
                 {/* Trending Markets Section */}
-                <div className="mb-16 mt-12">
+                <div className="mb-16 mt-4">
                     <div className="mb-8">
                         <h2 className="text-xl font-extrabold text-gray-900 tracking-tight">Trending Markets</h2>
                         <p className="mt-2 text-base text-gray-600">Explore the most active and high-impact prediction markets across politics, crypto, and global events.</p>
