@@ -440,7 +440,7 @@ export default function DataPage() {
     return (
         <div className="min-h-screen bg-white text-gray-900 font-sans">
             <Head>
-                <title>SixSeven Events</title>
+                <title>PhoCast</title>
                 <meta name="description" content="Polymarket events data" />
                 <style>{`
                     .scrollbar-hide::-webkit-scrollbar { display: none; }
