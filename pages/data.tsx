@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import politicsEvents from '../data/metadata/politics_events.json';
@@ -6,6 +6,8 @@ import sportsEvents from '../data/metadata/sports.json';
 import { Header } from '../components/header';
 import { WalletConnect } from '../components/WalletConnect';
 import { Search, SlidersHorizontal, Bookmark, ChevronRight, ChevronDown, Repeat, Gift } from 'lucide-react';
+import { useSuiClient } from '@mysten/dapp-kit';
+import { WORLD_CONFIG } from '@/lib/config';
 
 // Helper to parse JSON strings that might be in the data
 const safeParse = (str: string) => {
@@ -324,6 +326,108 @@ export default function DataPage() {
     const [activeTopic, setActiveTopic] = useState('All');
     const [activeCategory, setActiveCategory] = useState('Trending');
 
+    // Sui client for fetching Pool 0 data
+    const client = useSuiClient();
+    const [iranProbs, setIranProbs] = useState<{ m1: number; m2: number; m3: number }>({ m1: 0, m2: 0, m3: 0 });
+
+    // Fetch Pool 0 probabilities for Iran market
+    useEffect(() => {
+        const fetchIranData = async () => {
+            try {
+                // Get World Object
+                const worldObj = await client.getObject({
+                    id: WORLD_CONFIG.WORLD_ID,
+                    options: { showContent: true }
+                });
+
+                const poolsTableId = worldObj.data?.content && 'fields' in worldObj.data.content
+                    ? (worldObj.data.content.fields as any).pools?.fields?.id?.id
+                    : null;
+
+                if (!poolsTableId) return;
+
+                // Get Pool 0
+                const poolField = await client.getDynamicFieldObject({
+                    parentId: poolsTableId,
+                    name: { type: 'u64', value: '0' }
+                });
+
+                if (poolField.data?.content && 'fields' in poolField.data.content) {
+                    const poolContent = (poolField.data.content.fields as any).value.fields;
+                    const probsTableId = poolContent.probabilities?.fields?.id?.id;
+
+                    if (probsTableId) {
+                        const probFields = await client.getDynamicFields({ parentId: probsTableId });
+                        const probs: Record<string, number> = {};
+
+                        for (const pf of probFields.data) {
+                            const pItem = await client.getObject({ id: pf.objectId, options: { showContent: true } });
+                            if (pItem.data?.content && 'fields' in pItem.data.content) {
+                                const val = (pItem.data.content.fields as any).value;
+                                const keyInt = parseInt(pf.name.value as string);
+                                const binaryKey = keyInt.toString(2).padStart(3, '0');
+                                probs[binaryKey] = parseInt(val) / 100; // Convert basis points to percentage
+                            }
+                        }
+
+                        // Calculate marginal probabilities for each market
+                        // Market 1 (Khamenei Out): Sum of all states where bit 0 = 1 (100, 101, 110, 111)
+                        // Market 2 (US Strikes): Sum of all states where bit 1 = 1 (010, 011, 110, 111)
+                        // Market 3 (Israel Strikes): Sum of all states where bit 2 = 1 (001, 011, 101, 111)
+                        const m1 = (probs['100'] || 0) + (probs['101'] || 0) + (probs['110'] || 0) + (probs['111'] || 0);
+                        const m2 = (probs['010'] || 0) + (probs['011'] || 0) + (probs['110'] || 0) + (probs['111'] || 0);
+                        const m3 = (probs['001'] || 0) + (probs['011'] || 0) + (probs['101'] || 0) + (probs['111'] || 0);
+
+                        setIranProbs({ m1: Math.round(m1), m2: Math.round(m2), m3: Math.round(m3) });
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching Iran data:', error);
+            }
+        };
+
+        fetchIranData();
+        const interval = setInterval(fetchIranData, 10000); // Refresh every 10s
+        return () => clearInterval(interval);
+    }, [client]);
+
+    // Dynamic politicsFeaturedData with real Iran probabilities
+    const dynamicPoliticsFeaturedData = useMemo(() => [
+        {
+            title: "Iran War",
+            icon: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Flag_of_Iran.svg/1200px-Flag_of_Iran.svg.png",
+            link: "/iran",
+            volume: "$485m Vol.",
+            showGift: true,
+            items: [
+                { title: "Khamenei Out", image: "/leader.png", yes: iranProbs.m1, no: 100 - iranProbs.m1, any: 0 },
+                { title: "US strikes Iran", image: "/us-iran.png", yes: iranProbs.m2, no: 100 - iranProbs.m2, any: 0 },
+                { title: "Israel strikes Iran", image: "/isreal-iran.png", yes: iranProbs.m3, no: 100 - iranProbs.m3, any: 0 }
+            ]
+        },
+        {
+            title: "Trump Presidency",
+            icon: "/market/trump_portrait.png",
+            volume: "$1.2b Vol.",
+            showGift: true,
+            items: [
+                { title: "Fed Chair Nominee", image: "/market/fedchair.png", yes: 60, no: 40, any: 0 },
+                { title: "Trump Out", image: "/market/trump-out.png", yes: 10, no: 90, any: 0 },
+                { title: "Epstein Files", image: "/market/eipstein.png", yes: 30, no: 70, any: 0 }
+            ]
+        },
+        {
+            title: "15 Min Crypto",
+            icon: "/market/crypto-logo.png",
+            volume: "$0 Vol.",
+            items: [
+                { title: "Bitcoin 15m", image: "/market/btc_logo.png", yes: 0, no: 0, any: 0 },
+                { title: "Ethereum 15m", image: "/market/eth_logo.png", yes: 0, no: 0, any: 0 },
+                { title: "Sui 15m", image: "/market/sui-logo1.png", yes: 0, no: 0, any: 0 }
+            ]
+        }
+    ], [iranProbs]);
+
     const filteredEvents = useMemo(() => {
         const politics = politicsEvents.map((e: any) => ({ ...e, category: 'Politics' }));
         const sports = sportsEvents.map((e: any) => ({ ...e, category: 'Sports' }));
@@ -426,7 +530,7 @@ export default function DataPage() {
                 {/* Featured Markets Grid */}
                 <div className="mb-12">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        {[...politicsFeaturedData, ...cryptoFeaturedData].map((event, idx) => (
+                        {[...dynamicPoliticsFeaturedData, ...cryptoFeaturedData].map((event, idx) => (
                             <FeaturedEventCard
                                 key={idx}
                                 {...event}
