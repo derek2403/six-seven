@@ -525,3 +525,9 @@ The more dimensions, the more specific a bet can be — and the easier it is to 
 **Walrus Aggregator Blob Endpoints**  
 - https://aggregator.walrus-testnet.walrus.space/v1/blobs/8jGqnY8qR9UqNDp1W-0H4q9_uvD5SOdlE0cWVPFlI5c  
 - https://aggregator.walrus-testnet.walrus.space/v1/blobs/Ok0Uune5egOJHGNg8k_F3FZVBNYQ6al2oilImJuzzl4  
+
+### TEE & PM Packages
+- **ENCLAVE_PACKAGE:** https://suivision.xyz/object/0x3a0c541676d4844f1296e92b28163ea079f45b77867599724f141322ff3e8a41?network=testnet  
+- **ENCLAVE_CONFIG_ID:** https://suivision.xyz/object/0x15a2d73dbecf428e2856ff88db6648bb7bb6716129b2c8347c9ff50e6b4163e5?network=testnet  
+- **ENCLAVE_OBJECT_ID:** https://suivision.xyz/object/0x9db6f3758c5fd0d8ef9aa4866b43cb4f2b0b9845022d42d4017ec7bb1df6326d?network=testnet  
+- **PM_PACKAGE:** https://suivision.xyz/object/0x327d01aa4fdc8cba53596b225510a6b5afc5d2266227654574fe6347a45d3973?network=testnet  
