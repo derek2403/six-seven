@@ -68,7 +68,7 @@ export function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
                             </div>
                             <div className="flex-1">
                                 <h3 className="font-semibold">I have a wallet</h3>
-                                <p className="text-xs text-zinc-500">Connect Suiet, Ethos, etc.</p>
+                                <p className="text-xs text-zinc-500">Connect Slush, Phantom, etc.</p>
                             </div>
 
                             {/* Overlay ConnectButton that fills the container but is invisible-ish or positioned to capture clicks? 
