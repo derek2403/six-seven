@@ -5,6 +5,8 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, PerspectiveCamera, Text, Float, ContactShadows, Environment, Billboard, Html } from "@react-three/drei";
 import * as THREE from "three";
 
+type MarketSelection = "yes" | "no" | "any" | null;
+
 interface WorldData {
     state: string; // "000", "001", etc.
     meaning: string;
@@ -28,14 +30,16 @@ const WORLDS: WorldData[] = [
 
 const COLORS = ["#60a5fa", "#2563eb", "#facc15"];
 
-function Cube({ position, prob, state, isHovered, onHover }: {
+function Cube({ position, prob, state, isHovered, isSelected, onHover }: {
     position: [number, number, number],
     prob: number,
     state: string,
     isHovered: boolean,
+    isSelected: boolean,
     onHover: (hover: boolean) => void
 }) {
     const mesh = useRef<THREE.Mesh>(null!);
+    const pulseRef = useRef(0);
 
     // Intensity based on probability
     const intensity = 0.1 + (prob / 100) * 0.9;
@@ -45,6 +49,17 @@ function Cube({ position, prob, state, isHovered, onHover }: {
     const btcVal = state[0] === '1' ? 'YES' : 'NO';
     const ethVal = state[1] === '1' ? 'YES' : 'NO';
     const suiVal = state[2] === '1' ? 'YES' : 'NO';
+
+    // Pulsating animation for selected cube
+    useFrame((state) => {
+        if (isSelected && mesh.current) {
+            pulseRef.current += 0.05;
+            const scale = 1 + Math.sin(pulseRef.current) * 0.08;
+            mesh.current.scale.setScalar(scale);
+        } else if (mesh.current) {
+            mesh.current.scale.setScalar(1);
+        }
+    });
 
     return (
         <group position={position}>
@@ -62,15 +77,15 @@ function Cube({ position, prob, state, isHovered, onHover }: {
                 <boxGeometry args={[1, 1, 1]} />
                 <meshPhysicalMaterial
                     transparent
-                    opacity={isHovered ? 0.9 : 0.3 * intensity + 0.1}
-                    color={isMostProbable ? "#facc15" : "#60a5fa"}
+                    opacity={isSelected ? 0.95 : isHovered ? 0.9 : 0.3 * intensity + 0.1}
+                    color={isSelected ? "#06b6d4" : isMostProbable ? "#facc15" : "#60a5fa"}
                     roughness={0.1}
                     metalness={0.2}
                     transmission={0.5}
                     thickness={1}
                     clearcoat={1}
-                    emissive={isMostProbable ? "#facc15" : "#60a5fa"}
-                    emissiveIntensity={isHovered ? 0.6 : 0.2 * intensity}
+                    emissive={isSelected ? "#06b6d4" : isMostProbable ? "#facc15" : "#60a5fa"}
+                    emissiveIntensity={isSelected ? 0.8 : isHovered ? 0.6 : 0.2 * intensity}
                 />
 
                 {/* Always-visible probability on the cube */}
@@ -78,7 +93,7 @@ function Cube({ position, prob, state, isHovered, onHover }: {
                     <Billboard>
                         <Text
                             fontSize={0.22}
-                            color="black"
+                            color={isSelected ? "white" : "black"}
                             anchorX="center"
                             anchorY="middle"
                             fontWeight="bold"
@@ -88,6 +103,14 @@ function Cube({ position, prob, state, isHovered, onHover }: {
                     </Billboard>
                 )}
             </mesh>
+
+            {/* Selection indicator ring */}
+            {isSelected && (
+                <mesh rotation={[Math.PI / 2, 0, 0]}>
+                    <ringGeometry args={[0.6, 0.7, 32]} />
+                    <meshBasicMaterial color="#06b6d4" transparent opacity={0.8} side={THREE.DoubleSide} />
+                </mesh>
+            )}
 
             {/* Detailed Info on Hover */}
             {isHovered && (
@@ -99,16 +122,33 @@ function Cube({ position, prob, state, isHovered, onHover }: {
                 >
                     <div style={{
                         background: 'white',
-                        border: '2px solid black',
+                        border: isSelected ? '3px solid #06b6d4' : '2px solid black',
                         borderRadius: '8px',
                         padding: '12px 16px',
                         minWidth: '180px',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                        boxShadow: isSelected ? '0 0 20px rgba(6, 182, 212, 0.5)' : '0 4px 12px rgba(0,0,0,0.15)',
                     }}>
+                        {/* Selection badge */}
+                        {isSelected && (
+                            <div style={{
+                                background: '#06b6d4',
+                                color: 'white',
+                                fontWeight: 'bold',
+                                fontSize: '10px',
+                                padding: '2px 8px',
+                                borderRadius: '4px',
+                                textAlign: 'center',
+                                marginBottom: '8px',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.5px'
+                            }}>
+                                ✓ Selected
+                            </div>
+                        )}
                         {/* Probability */}
                         <div style={{
-                            background: isMostProbable ? '#fbbf24' : '#2563eb',
-                            color: isMostProbable ? 'black' : 'white',
+                            background: isSelected ? '#06b6d4' : isMostProbable ? '#fbbf24' : '#2563eb',
+                            color: isSelected || isMostProbable ? 'black' : 'white',
                             fontWeight: 'bold',
                             fontSize: '18px',
                             padding: '6px 12px',
@@ -190,8 +230,29 @@ function Labels() {
 
 
 
-function Scene() {
+function Scene({ marketSelections }: { marketSelections?: Record<string, MarketSelection> }) {
     const [hoveredState, setHoveredState] = useState<string | null>(null);
+
+    // Determine the selected state based on marketSelections
+    const selectedState = useMemo(() => {
+        if (!marketSelections) return null;
+
+        const m1 = marketSelections.m1;
+        const m2 = marketSelections.m2;
+        const m3 = marketSelections.m3;
+
+        // Only select if all three have yes/no (not any/null)
+        if (m1 !== null && m1 !== "any" &&
+            m2 !== null && m2 !== "any" &&
+            m3 !== null && m3 !== "any") {
+            const bit1 = m1 === "yes" ? "1" : "0";
+            const bit2 = m2 === "yes" ? "1" : "0";
+            const bit3 = m3 === "yes" ? "1" : "0";
+            return `${bit1}${bit2}${bit3}`;
+        }
+
+        return null;
+    }, [marketSelections]);
 
     const cubes = useMemo(() => {
         return WORLDS.map((w) => {
@@ -218,6 +279,7 @@ function Scene() {
                             prob={c.prob}
                             state={c.state}
                             isHovered={hoveredState === c.state}
+                            isSelected={selectedState === c.state}
                             onHover={(h) => setHoveredState(h ? c.state : null)}
                         />
                     ))}
@@ -239,7 +301,7 @@ function Scene() {
     );
 }
 
-export default function Crypto3DView() {
+export default function Crypto3DView({ marketSelections }: { marketSelections?: Record<string, MarketSelection> }) {
     return (
         <div className="w-full h-[500px] bg-white rounded-2xl border border-gray-100 shadow-sm relative overflow-hidden">
             <div className="absolute top-6 left-6 z-10">
@@ -249,7 +311,7 @@ export default function Crypto3DView() {
 
             <Canvas shadows dpr={[1, 2]}>
                 <PerspectiveCamera makeDefault position={[0, 0, 5]} fov={50} />
-                <Scene />
+                <Scene marketSelections={marketSelections} />
             </Canvas>
 
             <div className="absolute bottom-6 right-6 text-right z-10 pointer-events-none">

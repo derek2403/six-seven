@@ -48,3 +48,8 @@ export const WORLD_CONFIG = {
     // Shared World object ID
     WORLD_ID: "0x84d9deddf76eeae57ce0f0bbe6718cb575963bf8feb7230f5b779f8da4cad391",
 };
+
+export const LISTING_CONFIG = {
+    PACKAGE_ID: "0xfd3ee427ffe629ee95c5850bc3f59263ec3831f0184cec1a67e96e916c48a15b",
+    MODULE_NAME: "listing",
+};

@@ -14,6 +14,7 @@ export default function IranPage() {
 
     const [selectedMarkets, setSelectedMarkets] = React.useState<Record<string, boolean>>({});
     const [view, setView] = React.useState("Default");
+    const [timeRange, setTimeRange] = React.useState("1d");
 
     // Market selections for Order Ticket (lifted state)
     const [marketSelections, setMarketSelections] = React.useState<Record<string, MarketSelection>>({
@@ -41,25 +42,33 @@ export default function IranPage() {
         }
     }, [marketData]);
 
-    // Auto-switch to 3D view when all 3 markets have yes/no selections
-    // Auto-switch back to 2D when any market becomes "any" or null
+    // Auto-switch views based on selections (only when in 1D/2D/3D views, NOT Table/Default)
     React.useEffect(() => {
+        // Don't auto-switch if user is in Table or Default view
+        if (view === "Table" || view === "Default") {
+            return;
+        }
+
         const m1Sel = marketSelections.m1;
         const m2Sel = marketSelections.m2;
         const m3Sel = marketSelections.m3;
 
+        // Count how many are yes/no vs any/null
+        const selections = [m1Sel, m2Sel, m3Sel];
+        const yesNoCount = selections.filter(s => s === "yes" || s === "no").length;
+        const anyOrNullCount = selections.filter(s => s === "any" || s === null).length;
+
         // If all 3 markets have yes or no (not null, not "any"), switch to 3D
-        if (m1Sel !== null && m1Sel !== "any" &&
-            m2Sel !== null && m2Sel !== "any" &&
-            m3Sel !== null && m3Sel !== "any") {
+        if (yesNoCount === 3) {
             setView("3D");
         }
-        // If any market is "any" or null, and we're in 3D view, switch back to 2D
-        else if (view === "3D" &&
-            (m1Sel === "any" || m1Sel === null ||
-                m2Sel === "any" || m2Sel === null ||
-                m3Sel === "any" || m3Sel === null)) {
+        // If exactly 2 have yes/no, switch to 2D
+        else if (yesNoCount === 2) {
             setView("2D");
+        }
+        // If 2+ are any/null, switch to 1D
+        else if (anyOrNullCount >= 2) {
+            setView("1D");
         }
     }, [marketSelections, view]);
 
@@ -82,8 +91,8 @@ export default function IranPage() {
 
                         {/* Context Description */}
                         <div className="mt-4 px-1">
-                            <p className="text-[13px] text-gray-500 leading-relaxed text-justify">
-                                As of January 2028, Iran is in a state of severe internal upheaval and, to a lesser extent, external conflict following a rapid deterioration of its security and economic situation in the latter half of 2027. The context is defined by a brutal, large-scale crackdown on internal protests, economic collapse, and the aftermath of a direct, 12-day war with Israel in June 2027.
+                            <p className="text-gray-500 leading-relaxed text-justify text-[13px]">
+                                As of January 2026, Iran is in a state of severe internal upheaval and, to a lesser extent, external conflict following a rapid deterioration of its security and economic situation in the latter half of 2025. The context is defined by a brutal, large-scale crackdown on internal protests, economic collapse, and the aftermath of a direct, 12-day war with Israel in June 2025.
                             </p>
                         </div>
 
@@ -92,6 +101,10 @@ export default function IranPage() {
                                 selectedMarkets={selectedMarkets}
                                 view={view}
                                 onViewChange={setView}
+                                timeRange={timeRange}
+                                onTimeRangeChange={setTimeRange}
+                                hideTimeRanges={true}
+                                marketSelections={marketSelections}
                             />
                         </div>
 
@@ -117,7 +130,7 @@ export default function IranPage() {
                     </div>
 
                     {/* Right Side: Trade Card */}
-                    <div className="w-full md:w-[400px] flex-shrink-0 sticky top-20">
+                    <div className="w-full md:w-[400px] flex-shrink-0 sticky top-20 self-start">
                         <TradeCard
                             markets={marketData.markets}
                             marketSelections={marketSelections}
