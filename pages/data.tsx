@@ -161,13 +161,13 @@ const politicsFeaturedData = [
         ]
     },
     {
-        title: "15 Min Crypto",
+        title: "Jan Crypto Hits",
         icon: "/market/crypto-logo.png",
         volume: "$0 Vol.",
         items: [
-            { title: "Bitcoin 15m", image: "/market/btc_logo.png", yes: 0, no: 0, any: 0 },
-            { title: "Ethereum 15m", image: "/market/eth_logo.png", yes: 0, no: 0, any: 0 },
-            { title: "Sui 15m", image: "/market/sui-logo1.png", yes: 0, no: 0, any: 0 }
+            { title: "BTC > $98k Jan", image: "/market/btc_logo.png", yes: 0, no: 0, any: 0 },
+            { title: "ETH > $3.5k Jan", image: "/market/eth_logo.png", yes: 0, no: 0, any: 0 },
+            { title: "Sui > $2.5 Jan", image: "/market/sui-logo1.png", yes: 0, no: 0, any: 0 }
         ]
     }
 ];
@@ -185,14 +185,14 @@ const cryptoFeaturedData = [
         ]
     },
     {
-        title: "January Price Targets",
+        title: "Sui January Targets",
         icon: "/market/jan.png",
         volume: "$650m Vol.",
         frequency: "Monthly",
         items: [
-            { title: "Sui Price Jan", image: "/market/sui-logo1.png", yes: 58, no: 42, any: 0 },
-            { title: "BTC Price Jan", image: "/market/btc_logo.png", yes: 45, no: 55, any: 0 },
-            { title: "ETH Price Jan", image: "/market/eth_logo.png", yes: 40, no: 60, any: 0 }
+            { title: "Sui Active Wallets", image: "/market/slush.png", yes: 58, no: 42, any: 0 },
+            { title: "Sui App DAU", image: "/market/btc_logo.png", yes: 45, no: 55, any: 0 },
+            { title: "Sui DEX Share", image: "/market/eth_logo.png", yes: 40, no: 60, any: 0 }
         ]
     },
     {
