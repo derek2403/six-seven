@@ -1,9 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import Head from 'next/head';
+import Link from 'next/link';
 import politicsEvents from '../data/metadata/politics_events.json';
 import sportsEvents from '../data/metadata/sports.json';
 import { Header } from '../components/header';
 import { WalletConnect } from '../components/WalletConnect';
+import { Search, SlidersHorizontal, Bookmark, ChevronRight, ChevronDown, Repeat, Gift } from 'lucide-react';
 
 // Helper to parse JSON strings that might be in the data
 const safeParse = (str: string) => {
@@ -25,9 +27,9 @@ const formatMoney = (amount: number) => {
     return `$${amount.toFixed(0)}`;
 };
 
-const FeaturedEventCard = ({ title, icon, items }: { title: string, icon: string, items: any[] }) => {
-    return (
-        <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm hover:shadow-lg transition-all duration-200 flex flex-col h-full group">
+const FeaturedEventCard = ({ title, icon, items, link, showArrow, volume, frequency, showGift }: { title: string, icon: string, items: any[], link?: string, showArrow?: boolean, volume?: string, frequency?: string, showGift?: boolean }) => {
+    const content = (
+        <div className={`bg-white border border-gray-200 rounded-xl p-5 shadow-sm hover:shadow-lg transition-all duration-200 flex flex-col h-full group ${link ? 'cursor-pointer' : ''}`}>
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center space-x-3">
                     <img
@@ -35,10 +37,15 @@ const FeaturedEventCard = ({ title, icon, items }: { title: string, icon: string
                         alt={title}
                         className="w-12 h-12 rounded-xl object-cover shadow-sm"
                     />
-                    <h3 className="text-2xl font-bold text-gray-900 tracking-tight">
+                    <h3 className="text-2xl font-bold text-gray-900 tracking-tight group-hover:text-blue-600 transition-colors">
                         {title}
                     </h3>
                 </div>
+                {(link || showArrow) && (
+                    <svg className="w-5 h-5 text-gray-400 group-hover:text-blue-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                )}
             </div>
 
             <div className="space-y-6 flex-1">
@@ -60,10 +67,12 @@ const FeaturedEventCard = ({ title, icon, items }: { title: string, icon: string
                                 <span>Yes</span>
                                 <span>{item.yes || 0}%</span>
                             </button>
+                            <div className="w-px bg-gray-100 self-stretch my-2" />
                             <button className="flex-1 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-semibold py-2 px-3 rounded-lg transition-colors flex justify-between items-center">
                                 <span>No</span>
                                 <span>{item.no || 0}%</span>
                             </button>
+                            <div className="w-px bg-gray-100 self-stretch my-2" />
                             <button className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold py-2 px-3 rounded-lg transition-colors flex justify-between items-center">
                                 <span>Any</span>
                                 <span>{item.any || 0}%</span>
@@ -72,14 +81,42 @@ const FeaturedEventCard = ({ title, icon, items }: { title: string, icon: string
                     </div>
                 ))}
             </div>
+
+            {/* Card Footer */}
+            <div className="mt-auto pt-6 flex items-center justify-between text-[13px] font-semibold text-gray-400">
+                <div className="flex items-center space-x-3">
+                    <span>{volume || '$0 Vol.'}</span>
+                    <div className="flex items-center space-x-1">
+                        {showGift ? (
+                            <Gift className="w-4 h-4 text-gray-400" />
+                        ) : (
+                            frequency && (
+                                <>
+                                    <Repeat className="w-4 h-4" />
+                                    <span>{frequency}</span>
+                                </>
+                            )
+                        )}
+                    </div>
+                </div>
+                <Bookmark className="w-5 h-5 text-gray-300 group-hover:text-blue-600 transition-colors" />
+            </div>
         </div>
     );
+
+    if (link) {
+        return <Link href={link}>{content}</Link>;
+    }
+    return content;
 };
 
 const politicsFeaturedData = [
     {
         title: "Iran War",
         icon: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Flag_of_Iran.svg/1200px-Flag_of_Iran.svg.png",
+        link: "/iran",
+        volume: "$485m Vol.",
+        showGift: true,
         items: [
             { title: "Khamenei out as Supreme Leader of Iran by January 31?", image: "/leader.png", yes: 0, no: 0, any: 0 },
             { title: "US strikes Iran by January 31?", image: "/us-iran.png", yes: 0, no: 0, any: 0 },
@@ -89,6 +126,8 @@ const politicsFeaturedData = [
     {
         title: "Trump Presidency",
         icon: "/market/trump_portrait.png",
+        volume: "$1.2b Vol.",
+        showGift: true,
         items: [
             { title: "Who will Trump nominate as Fed Chair?", image: "/market/fedchair.png", yes: 60, no: 40, any: 0 },
             { title: "Trump out as President by March 31?", image: "/market/trump-out.png", yes: 10, no: 90, any: 0 },
@@ -98,6 +137,8 @@ const politicsFeaturedData = [
     {
         title: "US Elections 2028",
         icon: "/market/pre-winner.png",
+        volume: "$920m Vol.",
+        frequency: "Monthly",
         items: [
             { title: "Will Republicans keep the House in 2028?", image: "/market/republic.png", yes: 50, no: 50, any: 0 },
             { title: "Will Democrats win the Senate in 2028?", image: "/market/democratic.png", yes: 45, no: 55, any: 0 },
@@ -119,6 +160,8 @@ const cryptoFeaturedData = [
     {
         title: "January Price Targets",
         icon: "/market/jan.png",
+        volume: "$650m Vol.",
+        frequency: "Monthly",
         items: [
             { title: "What price will Sui hit in January?", image: "/market/sui-logo1.png", yes: 0, no: 0, any: 0 },
             { title: "What price will Bitcoin hit in January?", image: "/market/btc_logo.png", yes: 0, no: 0, any: 0 },
@@ -128,6 +171,8 @@ const cryptoFeaturedData = [
     {
         title: "Sui Ecosystem",
         icon: "/market/sui-coin.png",
+        volume: "$210m Vol.",
+        frequency: "Weekly",
         items: [
             { title: "Will Sui price hit $5 in January?", image: "/market/sui-logo1.png", yes: 0, no: 0, any: 0 },
             { title: "Will Sui TVL exceed $1B in January?", image: "/market/sui-logo1.png", yes: 0, no: 0, any: 0 },
@@ -200,10 +245,15 @@ const EventCard = ({ event }: { event: any }) => {
                                         }
 
                                         return (
-                                            <button key={idx} className={`flex-1 ${colorClass} text-sm font-medium py-1.5 px-3 rounded transition-colors flex justify-between items-center w-full`}>
-                                                <span className="truncate mr-1">{outcome}</span>
-                                                <span>{price}%</span>
-                                            </button>
+                                            <React.Fragment key={idx}>
+                                                <button className={`flex-1 ${colorClass} text-sm font-medium py-1.5 px-3 rounded transition-colors flex justify-between items-center w-full`}>
+                                                    <span className="truncate mr-1">{outcome}</span>
+                                                    <span>{price}%</span>
+                                                </button>
+                                                {idx < outcomes.length - 1 && (
+                                                    <div className="w-px bg-gray-100 self-stretch my-2" />
+                                                )}
+                                            </React.Fragment>
                                         );
                                     })}
                                 </div>
@@ -226,8 +276,26 @@ const EventCard = ({ event }: { event: any }) => {
     );
 };
 
+// Topic pills for the scrollable filter bar
+const topicPills = [
+    "All", "Trump", "Iran", "NFL Playoffs", "Greenland", "Portugal Election",
+    "Tariffs", "Fed", "Derivatives", "Venezuela", "Ukraine", "Oscars",
+    "Epstein", "Tweet Markets", "Minnesota Unrest", "China", "AI", "Weather",
+    "Silver", "Equities", "Primaries", "Midterms", "Movies", "Global Elections",
+    "Parlays", "Israel", "Crypto Prices", "Bitcoin", "Commodities"
+];
+
+// Category tabs (no icons)
+const categoryTabs = [
+    "Trending", "Breaking", "New", "Politics", "Sports", "Crypto",
+    "Finance", "Geopolitics", "Earnings", "Tech", "Culture", "World",
+    "Economy", "Climate & Science", "Elections", "Mentions", "More"
+];
+
 export default function DataPage() {
     const [activeFilter, setActiveFilter] = useState<'All' | 'Sports' | 'Politics' | 'Crypto'>('All');
+    const [activeTopic, setActiveTopic] = useState('All');
+    const [activeCategory, setActiveCategory] = useState('Trending');
 
     const filteredEvents = useMemo(() => {
         const politics = politicsEvents.map((e: any) => ({ ...e, category: 'Politics' }));
@@ -239,23 +307,100 @@ export default function DataPage() {
     }, [activeFilter]);
 
     return (
-        <div className="min-h-screen bg-gray-50 text-gray-900 font-sans">
+        <div className="min-h-screen bg-white text-gray-900 font-sans">
             <Head>
                 <title>SixSeven Events</title>
                 <meta name="description" content="Polymarket events data" />
+                <style>{`
+                    .scrollbar-hide::-webkit-scrollbar { display: none; }
+                    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+                `}</style>
             </Head>
 
+            {/* Header */}
+            <Header />
 
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24">
-                {/* Trending Markets Section */}
-                <div className="mb-16 mt-4">
-                    <div className="mb-8">
-                        <h2 className="text-xl font-extrabold text-gray-900 tracking-tight">Trending Markets</h2>
-                        <p className="mt-2 text-base text-gray-600">Explore the most active and high-impact prediction markets across politics, crypto, and global events.</p>
+            {/* Category Tabs Bar (Top - white background) */}
+            <div className="bg-white border-b border-gray-100">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex items-center py-2 h-10">
+                        {/* Scrollable Tabs */}
+                        <div className="flex-1 flex items-center gap-1 overflow-x-auto scrollbar-hide mr-4">
+                            {categoryTabs.slice(0, -1).map((tab) => (
+                                <button
+                                    key={tab}
+                                    onClick={() => setActiveCategory(tab)}
+                                    className={`flex-shrink-0 px-3 py-1.5 text-sm font-medium transition-all ${activeCategory === tab
+                                        ? 'text-blue-600'
+                                        : 'text-gray-600 hover:text-gray-900'
+                                        }`}
+                                >
+                                    {tab === 'Trending' && <span className="mr-1">📈</span>}
+                                    <span>{tab}</span>
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Fixed More Tab */}
+                        <button
+                            onClick={() => setActiveCategory('More')}
+                            className={`flex-shrink-0 flex items-center px-3 py-1.5 text-sm font-medium border-l border-gray-100 pl-4 transition-all ${activeCategory === 'More'
+                                ? 'text-blue-600'
+                                : 'text-gray-600 hover:text-gray-900'
+                                }`}
+                        >
+                            <span>More</span>
+                            <ChevronDown className="ml-1 w-4 h-4" />
+                        </button>
                     </div>
+                </div>
+            </div>
+
+            {/* Topic Pills Bar (Bottom - white background) */}
+            <div className="sticky top-16 z-40 bg-white">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex items-center py-4 h-14">
+                        {/* Scrollable Topics */}
+                        <div className="flex-1 flex items-center gap-2 overflow-x-auto scrollbar-hide">
+                            {topicPills.map((topic) => (
+                                <button
+                                    key={topic}
+                                    onClick={() => setActiveTopic(topic)}
+                                    className={`flex-shrink-0 px-3 py-1 rounded text-sm font-medium transition-all ${activeTopic === topic
+                                        ? 'bg-blue-600 text-white'
+                                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                                        }`}
+                                >
+                                    {topic}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Fixed End Icons */}
+                        <div className="flex items-center space-x-5 pl-5 ml-4 flex-shrink-0 bg-white">
+                            <ChevronRight className="w-4 h-4 text-gray-400" />
+                            <div className="flex items-center space-x-4">
+                                <button className="text-gray-500 hover:text-gray-900 transition-colors">
+                                    <Search className="w-5 h-5" />
+                                </button>
+                                <button className="text-gray-500 hover:text-gray-900 transition-colors">
+                                    <SlidersHorizontal className="w-5 h-5" />
+                                </button>
+                                <Link href="/crypto" className="text-gray-500 hover:text-gray-900 transition-colors">
+                                    <Bookmark className="w-5 h-5" />
+                                </Link>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                {/* Featured Markets Grid */}
+                <div className="mb-12">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         {[...politicsFeaturedData, ...cryptoFeaturedData].map((event, idx) => (
-                            <FeaturedEventCard key={idx} {...event} />
+                            <FeaturedEventCard key={idx} {...event} showArrow />
                         ))}
                     </div>
                 </div>
