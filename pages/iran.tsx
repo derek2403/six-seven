@@ -406,6 +406,7 @@ export default function MarketPage() {
                             focusedMarket={focusedMarket}
                             baseProbabilities={probabilities || undefined}
                             targetDate="Jan 1, 2026"
+                            onTrade={handleTrade}
                         />
                         <p className="mt-4 text-center text-[13px] text-gray-400 font-medium leading-relaxed">
                             By trading, you agree to the <span className="underline cursor-pointer hover:text-gray-600 transition-colors">Terms of Use.</span>
