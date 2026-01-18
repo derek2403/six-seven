@@ -296,14 +296,7 @@ export default function MarketPage() {
         }));
     };
 
-    // Initialize selected markets when marketData changes
-    React.useEffect(() => {
-        if (marketData) {
-            setSelectedMarkets(
-                Object.fromEntries(marketData.markets.map(m => [m.id, true]))
-            );
-        }
-    }, [marketData]);
+    // selectedMarkets is already initialized from COMBINED_MARKETS in useState
 
     // Auto-switch views based on selections (only when in 1D/2D/3D views, NOT Table/Default)
     React.useEffect(() => {
