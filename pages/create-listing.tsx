@@ -86,7 +86,7 @@ export default function CreateListing() {
 
             <Header />
 
-            <div className="max-w-4xl mx-auto p-8 font-sans min-h-screen text-gray-900">
+            <div className="max-w-4xl mx-auto px-8 pb-8 pt-24 font-sans min-h-screen text-gray-900">
                 <h1 className="text-3xl font-bold text-center mb-10 text-gray-800">Create New Listing</h1>
 
                 <div className="flex flex-col gap-8">
