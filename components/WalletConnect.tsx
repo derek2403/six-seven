@@ -1,12 +1,30 @@
-'use client';
-
+import { useState, useEffect } from 'react';
 import { ConnectButton, useCurrentAccount, useSuiClientQuery } from '@mysten/dapp-kit';
 import { VaultControls } from './VaultControls';
 import { formatBalance } from '../lib/format';
 import { LEDGER_ID, parseUserAccountData } from '../lib/vault';
+import { ConnectModal } from './ConnectModal';
+import { storage } from '../lib/zklogin/utils';
 
 export function WalletConnect() {
     const account = useCurrentAccount();
+    const [zkAddress, setZkAddress] = useState<string | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+
+    useEffect(() => {
+        // Load zkLogin address from storage
+        setZkAddress(storage.loadZkLoginAddress());
+    }, []);
+
+    // Auto-close modal when connected
+    useEffect(() => {
+        if (account || zkAddress) {
+            setIsModalOpen(false);
+        }
+    }, [account, zkAddress]);
+
+    const activeAddress = account?.address || zkAddress;
+    const isConnected = !!activeAddress;
 
     // 1. Get Ledger Object to find the accounts table ID
     const { data: ledgerData } = useSuiClientQuery(
@@ -19,24 +37,30 @@ export function WalletConnect() {
         ? (ledgerData.data.content.fields as any).accounts?.fields?.id?.id
         : null;
 
-    // 2. Query the user's account from the table using Dynamic Field
+    // 2. Query the user's account (works for both wallet and zkLogin address)
     const { data: userAccountData } = useSuiClientQuery(
         'getDynamicFieldObject',
         {
             parentId: accountsTableId || '',
             name: {
                 type: 'address',
-                value: account?.address || '',
+                value: activeAddress || '',
             }
         },
         {
-            enabled: !!accountsTableId && !!account?.address,
+            enabled: !!accountsTableId && !!activeAddress,
             refetchInterval: 5000
         }
     );
 
     const userStats = parseUserAccountData(userAccountData);
     const cashBalance = userStats ? formatBalance(userStats.withdrawable_amount) : '0.00';
+
+    const handleZkLogout = () => {
+        storage.clearAll();
+        setZkAddress(null);
+        window.location.reload();
+    };
 
     return (
         <header className="fixed top-0 left-0 right-0 z-50 flex flex-col bg-white border-b border-zinc-200 dark:bg-zinc-950 dark:border-zinc-800">
@@ -64,13 +88,13 @@ export function WalletConnect() {
                             placeholder="Search markets"
                             className="w-full h-10 pl-10 pr-4 bg-zinc-100 dark:bg-zinc-900 border-none rounded-lg text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-300 dark:focus:ring-zinc-700"
                         />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 text-xs">/</span>
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 text-xs text-center leading-[10px]">/</span>
                     </div>
                 </div>
 
                 {/* Right: Stats and Actions */}
                 <div className="flex items-center gap-3">
-                    {account && (
+                    {isConnected && (
                         <>
                             {/* Portfolio Stats */}
                             <div className="hidden lg:flex items-center gap-4">
@@ -84,9 +108,9 @@ export function WalletConnect() {
                                 </div>
                             </div>
 
-
-
                             {/* Deposit Button with Vault Controls */}
+                            {/* Note: VaultControls currently only works with Wallet account for signing transactions. 
+                                For zkLogin, we'd need to update it to support ephemeral key signing. */}
                             <div className="hidden sm:block">
                                 <VaultControls
                                     customTrigger={
@@ -112,7 +136,31 @@ export function WalletConnect() {
 
                     {/* User/Wallet Profile */}
                     <div className="flex items-center">
-                        <ConnectButton className="!bg-zinc-100 !text-black !font-semibold !rounded-full !px-3 !py-1.5 !h-[34px] !text-xs hover:!bg-zinc-200" />
+                        {account ? (
+                            <ConnectButton className="!bg-zinc-100 !text-black !font-semibold !rounded-full !px-3 !py-1.5 !h-[34px] !text-xs hover:!bg-zinc-200" />
+                        ) : zkAddress ? (
+                            <div className="flex items-center gap-2">
+                                <div className="h-[34px] px-3 bg-zinc-100 rounded-full flex items-center gap-2 border border-zinc-200">
+                                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                                    <span className="text-xs font-semibold text-black">
+                                        Google: {zkAddress.slice(0, 4)}...{zkAddress.slice(-4)}
+                                    </span>
+                                </div>
+                                <button
+                                    onClick={handleZkLogout}
+                                    className="h-[34px] px-3 text-xs font-medium text-red-600 hover:bg-red-50 rounded-full transition-colors"
+                                >
+                                    Logout
+                                </button>
+                            </div>
+                        ) : (
+                            <button
+                                onClick={() => setIsModalOpen(true)}
+                                className="bg-zinc-100 text-black font-semibold rounded-full px-4 py-1.5 h-[34px] text-xs hover:bg-zinc-200 transition-colors"
+                            >
+                                Connect Wallet
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
@@ -144,6 +192,8 @@ export function WalletConnect() {
                     ))}
                 </div>
             </div>
+
+            <ConnectModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
         </header>
     );
 }

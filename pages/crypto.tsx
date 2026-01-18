@@ -3,7 +3,7 @@ import { CryptoMarketChart } from "@/components/market/CryptoMarketChart";
 import { MarketTimeFilter } from "@/components/market/MarketTimeFilter";
 import { MarketLegend } from "@/components/market/MarketLegend";
 import { TradeCard } from "@/components/market/TradeCard";
-import { MARKET_DATA } from "@/lib/mock/combined-markets";
+import { MARKET_DATA } from "@/data/combined-markets";
 import pricingData from '@/data/crypto-prices.json';
 import { WalletConnect } from "@/components/WalletConnect";
 import React, { useEffect, useMemo } from 'react';

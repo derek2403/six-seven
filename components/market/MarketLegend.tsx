@@ -1,6 +1,6 @@
 "use client";
 
-import { LegendItem } from "@/lib/mock/combined-markets";
+import { LegendItem } from "@/data/combined-markets";
 
 interface MarketLegendProps {
     items: LegendItem[];

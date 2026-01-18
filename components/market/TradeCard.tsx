@@ -5,7 +5,7 @@ import Image from "next/image";
 import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-import { CombinedMarketItem, COMBINED_MARKETS } from "@/lib/mock/combined-markets";
+import { CombinedMarketItem, COMBINED_MARKETS } from "@/data/combined-markets";
 
 type MarketSelection = "yes" | "no" | "any" | null;
 

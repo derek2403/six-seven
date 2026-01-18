@@ -3,7 +3,7 @@
 import React from "react";
 import { Line, LineChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
 import { Trophy, Clock, Settings, SlidersHorizontal, ArrowUpDown, Shuffle } from "lucide-react";
-import { CombinedChartPoint, CombinedMarketItem } from "@/lib/mock/combined-markets";
+import { CombinedChartPoint, CombinedMarketItem } from "@/data/combined-markets";
 import Crypto3DView from "./Crypto3DView";
 import { DateSlider } from "./DateSlider";
 

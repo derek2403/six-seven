@@ -6,7 +6,7 @@ import { MarketTimeFilter } from "@/components/market/MarketTimeFilter";
 import { MarketLegend } from "@/components/market/MarketLegend";
 import { MarketCombinedChart } from "@/components/market/MarketCombinedChart";
 import { TradeCard } from "@/components/market/TradeCard";
-import { COMBINED_MARKETS, MARKET_DATA, LEGEND_ITEMS } from "@/lib/mock/combined-markets";
+import { COMBINED_MARKETS, MARKET_DATA, LEGEND_ITEMS } from "@/data/combined-markets";
 
 export function CombinedMarketLayout() {
     const [selectedMarkets, setSelectedMarkets] = React.useState<Record<string, boolean>>(

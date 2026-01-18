@@ -31,6 +31,7 @@
     "date-fns": "^4.1.0",
     "framer-motion": "^12.26.2",
     "gsap": "^3.14.2",
+    "jwt-decode": "^4.0.0",
     "lucide-react": "^0.562.0",
     "motion": "^12.26.2",
     "next": "16.1.2",

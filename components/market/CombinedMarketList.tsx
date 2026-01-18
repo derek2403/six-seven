@@ -4,7 +4,7 @@ import * as React from "react";
 import Image from "next/image";
 import { Link2, Bookmark, ChevronDown, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { CombinedMarketItem } from "@/lib/mock/combined-markets";
+import { CombinedMarketItem } from "@/data/combined-markets";
 import { cn } from "@/lib/utils";
 import { CryptoPriceStrip } from "./CryptoPriceStrip";
 

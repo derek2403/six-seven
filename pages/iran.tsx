@@ -5,7 +5,7 @@ import { MarketLegend } from "@/components/market/MarketLegend";
 import { MarketCombinedChart } from "@/components/market/MarketCombinedChart";
 import { TradeCard } from "@/components/market/TradeCard";
 import { WalletConnect } from "@/components/WalletConnect";
-import { COMBINED_MARKETS, DEFAULT_MARKET_DATA } from "@/lib/mock/combined-markets";
+import { COMBINED_MARKETS, DEFAULT_MARKET_DATA } from "@/data/combined-markets";
 import React from 'react';
 import { useCurrentAccount, useSignTransaction, useSuiClient } from '@mysten/dapp-kit';
 import { PlaceBetRequest, PlaceBetResponse, PM_CONFIG } from '@/lib/tee';
