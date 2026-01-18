@@ -139,7 +139,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-white font-sans dark:bg-white">
       {/* Hero Section - extra height to accommodate arrow and provide white space */}
-      <section className="min-h-[120vh] w-full flex items-start justify-center pt-32 relative overflow-visible">
+      <section className="min-h-[160vh] w-full flex items-start justify-center pt-32 relative overflow-visible">
         {/* Logo at the top left */}
         <div className="absolute top-8 left-10 z-50">
           <Link href="/">
