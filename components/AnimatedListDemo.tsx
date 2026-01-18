@@ -2,8 +2,13 @@
 
 import { cn } from "../lib/utils";
 import { AnimatedList } from "./AnimatedList";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import GradientGridDistortion from "./GradientGridDistortion";
+import { LineShadowText } from "./ui/line-shadow-text";
+
+// Persistence for country animation states
+const persistentPhases: Record<string, any> = {};
 
 export interface Item {
     name: string;
@@ -33,9 +38,9 @@ const Notification = ({ name, description, icon, color, time }: Item) => {
                     <span className="text-lg">{icon}</span>
                 </div>
                 <div className="flex flex-col overflow-hidden">
-                    <figcaption className="flex flex-row items-center text-lg font-medium whitespace-pre dark:text-white">
+                    <figcaption className="flex flex-row items-center text-lg font-medium whitespace-pre text-black dark:text-white">
                         <span className="text-sm sm:text-lg text-black dark:text-white">{name}</span>
-                        <span className="mx-1">·</span>
+                        <span className="mx-1 text-gray-400">·</span>
                         <span className="text-xs text-gray-500">{time}</span>
                     </figcaption>
                     <p className="text-sm font-normal text-gray-500 dark:text-white/60">
@@ -77,24 +82,24 @@ const ArrowWithDot = ({ isActive, startDot }: { isActive: boolean; startDot: boo
                 initial={{ opacity: 0, y: 20 }}
                 animate={isActive ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
                 transition={{ delay: 0.5, duration: 0.6 }}
-                className="absolute left-[-400px] bottom-[250px] whitespace-nowrap"
+                className="absolute left-[-600px] bottom-[150px] whitespace-nowrap"
                 style={{ transform: "translateX(-50%)" }}
             >
                 <div className="leading-none">
                     {/* Line 1 */}
-                    <div className="text-4xl font-bold text-black leading-tight">
-                        Built Entirely on
+                    <div className="text-6xl font-bold text-black leading-tight italic">
+                        <LineShadowText shadowColor="rgba(0,0,0,0.5)">Built Entirely on</LineShadowText>
                     </div>
 
                     {/* Line 2 (bigger) */}
-                    <div className="mt-3 flex items-center gap-4">
+                    <div className="mt-6 flex items-center gap-6">
                         <img
                             src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR12mA3zSzz_9SWnLm4B_0OocWAQhpAnaAzYA&s"
                             alt="SUI"
-                            className="h-20 w-20 object-contain"
+                            className="h-40 w-40 object-contain"
                         />
-                        <span className="text-[#468BE6] font-extrabold text-7xl tracking-tight">
-                            SUI
+                        <span className="text-[#468BE6] font-extrabold text-7xl tracking-tight italic">
+                            <LineShadowText shadowColor="rgba(70, 139, 230, 0.8)">SUI</LineShadowText>
                         </span>
                     </div>
                 </div>
@@ -176,57 +181,93 @@ export function AnimatedListDemo({
     stopAtEnd?: boolean;
     onComplete?: () => void;
 }) {
-    const [animationPhase, setAnimationPhase] = useState<'loading' | 'traced' | 'locked' | 'arrow' | 'dot'>('loading');
+    const [animationPhase, setAnimationPhase] = useState<'loading' | 'traced' | 'distorting' | 'locked' | 'arrow' | 'dot'>(() => {
+        return persistentPhases[title] || 'loading';
+    });
 
     const handleComplete = () => {
+        // If already completed once, don't restart (sticky behavior requested)
+        if (persistentPhases[title] === 'dot') return;
+
         // Phase 1: Start trace animation
         setTimeout(() => {
-            setAnimationPhase('traced');
+            const next = 'traced';
+            setAnimationPhase(next);
+            persistentPhases[title] = next;
         }, 300);
 
-        // Phase 2: Fill blue and show lock
+        // Phase 2: Start distortion
         setTimeout(() => {
-            setAnimationPhase('locked');
+            const next = 'distorting';
+            setAnimationPhase(next);
+            persistentPhases[title] = next;
         }, 2000);
 
-        // Phase 3: Start arrow drawing
+        // Phase 3: Show lock over distortion
         setTimeout(() => {
-            setAnimationPhase('arrow');
+            const next = 'locked';
+            setAnimationPhase(next);
+            persistentPhases[title] = next;
         }, 3000);
 
-        // Phase 4: Start the dot moving
+        // Phase 4: Start arrow drawing
         setTimeout(() => {
-            setAnimationPhase('dot');
-        }, 4700);
+            const next = 'arrow';
+            setAnimationPhase(next);
+            persistentPhases[title] = next;
+        }, 4000);
+
+        // Phase 5: Start the dot moving
+        setTimeout(() => {
+            const next = 'dot';
+            setAnimationPhase(next);
+            persistentPhases[title] = next;
+        }, 5700);
 
         onComplete?.();
     };
 
-    // Reset when items change
+    // Keep persistence updated (optional addition to manual updates above)
     useEffect(() => {
-        setAnimationPhase('loading');
-    }, [items]);
+        persistentPhases[title] = animationPhase;
+    }, [animationPhase, title]);
+
+    // Reset loop ONLY if we're not already done (though logic above handles it)
+    useEffect(() => {
+        if (!persistentPhases[title]) {
+            setAnimationPhase('loading');
+        } else {
+            setAnimationPhase(persistentPhases[title]);
+        }
+    }, [items, title]);
 
     const showTrace = animationPhase === 'traced';
+    const showDistortion = ['distorting', 'locked', 'arrow', 'dot'].includes(animationPhase);
     const showLock = animationPhase === 'locked' || animationPhase === 'arrow' || animationPhase === 'dot';
     const showArrow = animationPhase === 'arrow' || animationPhase === 'dot';
     const startDot = animationPhase === 'dot';
 
     return (
-        <div className="flex flex-col items-center">
+        <div className="flex flex-col items-center relative">
+            {/* Arrow: rendered FIRST so it's behind the container in DOM order if no z-index is set, 
+                but we'll also use z-index to be sure */}
+            <div className="absolute top-full left-0 w-full z-0">
+                {showArrow && <ArrowWithDot isActive={showArrow} startDot={startDot} />}
+            </div>
+
             {/* Main container - fixed size */}
             <div
                 className={cn(
-                    "relative flex h-[400px] w-[420px] flex-col overflow-hidden p-4 rounded-3xl",
+                    "relative flex h-[400px] w-[420px] flex-col overflow-hidden p-4 rounded-3xl z-10",
                     className
                 )}
                 style={{
-                    backgroundColor: showLock ? "transparent" : "rgba(255,255,255,0.8)"
+                    backgroundColor: showDistortion ? "transparent" : "rgba(255,255,255,0.8)"
                 }}
             >
                 {/* Trace outline animation */}
                 <svg
-                    className="absolute inset-0 w-full h-full pointer-events-none z-10"
+                    className="absolute inset-0 w-full h-full pointer-events-none z-30"
                     style={{ borderRadius: '1.5rem' }}
                 >
                     <motion.rect
@@ -240,16 +281,16 @@ export function AnimatedListDemo({
                         stroke="#468BE6"
                         strokeWidth="2"
                         initial={{ pathLength: 0, opacity: 0 }}
-                        animate={showTrace ? { pathLength: 1, opacity: 1 } : showLock ? { pathLength: 1, opacity: 0 } : { pathLength: 0, opacity: 0 }}
+                        animate={showTrace ? { pathLength: 1, opacity: 1 } : showDistortion ? { pathLength: 1, opacity: 0 } : { pathLength: 0, opacity: 0 }}
                         transition={{ duration: 1.5, ease: "easeInOut" }}
                     />
                 </svg>
 
-                {/* Lock icon overlay */}
+                {/* Background Distortion & Lock icon overlay */}
                 <AnimatePresence>
-                    {showLock && (
+                    {showDistortion && (
                         <>
-                            {/* Static Distortion Background Image */}
+                            {/* Interactive Distortion Background */}
                             <motion.div
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
@@ -257,29 +298,33 @@ export function AnimatedListDemo({
                                 transition={{ duration: 0.5 }}
                                 className="absolute inset-0 z-15 rounded-3xl overflow-hidden"
                             >
-                                <img
-                                    src="/distord.png"
-                                    alt="Distortion background"
-                                    className="w-full h-full object-cover"
+                                <GradientGridDistortion
+                                    grid={15}
+                                    mouse={0.2}
+                                    strength={0.15}
+                                    relaxation={0.9}
+                                    className="w-full h-full"
                                 />
                             </motion.div>
 
                             {/* Lock GIF overlay */}
-                            <motion.div
-                                initial={{ opacity: 0, scale: 0.5 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                transition={{ delay: 0.8, duration: 0.4 }}
-                                className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none"
-                            >
-                                <LockGif />
-                            </motion.div>
+                            {showLock && (
+                                <motion.div
+                                    initial={{ opacity: 0, scale: 0.5 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{ duration: 0.4 }}
+                                    className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none"
+                                >
+                                    <LockGif />
+                                </motion.div>
+                            )}
                         </>
                     )}
                 </AnimatePresence>
 
-                {/* Events content - hidden when locked */}
+                {/* Events content - hidden when distorted */}
                 <motion.div
-                    animate={{ opacity: showLock ? 0 : 1 }}
+                    animate={{ opacity: showDistortion ? 0 : 1 }}
                     transition={{ duration: 0.4 }}
                     className="flex flex-col gap-4"
                 >
@@ -290,13 +335,10 @@ export function AnimatedListDemo({
                     </AnimatedList>
                 </motion.div>
 
-                {!showLock && (
+                {!showDistortion && (
                     <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-white dark:from-black"></div>
                 )}
             </div>
-
-            {/* Arrow: goes down from center-bottom, curves left to middle of page, then down */}
-            {showArrow && <ArrowWithDot isActive={showArrow} startDot={startDot} />}
         </div>
     )
 }

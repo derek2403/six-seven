@@ -4,6 +4,7 @@ import { MarketTimeFilter } from "@/components/market/MarketTimeFilter";
 import { MarketLegend } from "@/components/market/MarketLegend";
 import { TradeCard } from "@/components/market/TradeCard";
 import { MARKET_DATA } from "@/lib/mock/combined-markets";
+import pricingData from '@/data/crypto-prices.json';
 import { WalletConnect } from "@/components/WalletConnect";
 import React, { useEffect, useMemo } from 'react';
 import { cn } from "@/lib/utils";
@@ -14,6 +15,7 @@ export default function CryptoPage() {
     const [selectedMarkets, setSelectedMarkets] = React.useState<Record<string, boolean>>({});
     const [view, setView] = React.useState("Default");
     const [timeRange, setTimeRange] = React.useState("1d");
+    const [targetDate, setTargetDate] = React.useState("Jan 31, 2026");
 
     // Market selections for Order Ticket (lifted state)
     const [marketSelections, setMarketSelections] = React.useState<Record<string, "yes" | "no" | "any" | null>>({
@@ -78,7 +80,7 @@ export default function CryptoPage() {
         }
     }, [marketData]);
 
-    // Auto-switch views based on selections (only when in 1D/2D/3D views, NOT Table/Default)
+    // Auto-switch views based on selections (only when in 2D/3D/4D views, NOT Table/Default)
     useEffect(() => {
         // Don't auto-switch if user is in Table or Default view
         if (view === "Table" || view === "Default") {
@@ -94,32 +96,72 @@ export default function CryptoPage() {
         const yesNoCount = selections.filter(s => s === "yes" || s === "no").length;
         const anyOrNullCount = selections.filter(s => s === "any" || s === null).length;
 
-        // If all 3 markets have yes or no (not null, not "any"), switch to 3D
+        // If all 3 markets have yes or no (not null, not "any"), switch to 4D
         if (yesNoCount === 3) {
+            setView("4D");
+        }
+        // If exactly 2 have yes/no, switch to 3D
+        else if (yesNoCount === 2) {
             setView("3D");
         }
-        // If exactly 2 have yes/no, switch to 2D
-        else if (yesNoCount === 2) {
+        // If 2+ are any/null, switch to 2D
+        else if (anyOrNullCount >= 2) {
             setView("2D");
         }
-        // If 2+ are any/null, switch to 1D
-        else if (anyOrNullCount >= 2) {
-            setView("1D");
-        }
     }, [marketSelections, view]);
+
+    // Calculate "real rate" probabilities based on pricingData
+    const probabilities = useMemo(() => {
+        const monthMap: Record<string, string> = {
+            "Jan": "01", "Feb": "02", "Mar": "03", "Apr": "04", "May": "05", "Jun": "06",
+            "Jul": "07", "Aug": "08", "Sep": "09", "Oct": "10", "Nov": "11", "Dec": "12"
+        };
+
+        // targetDate format: "Jan 15, 2026" -> "2026-01-15"
+        const parts = targetDate.replace(',', '').split(' ');
+        const formattedTargetDate = `${parts[2]}-${monthMap[parts[0]]}-${parts[1].padStart(2, '0')}`;
+
+        const getProb = (asset: string, targetPrice: number) => {
+            const history = (pricingData as any)[asset] || [];
+            // Find price on or before formattedTargetDate
+            const pricePoint = history.findLast((h: any) => h.date <= formattedTargetDate) || history[history.length - 1];
+
+            if (!pricePoint) return 50; // Fallback
+
+            const currentPrice = pricePoint.price;
+            if (currentPrice >= targetPrice) {
+                // Capped at 70% per asset. (0.7 * 0.7 * 0.7 = ~34% max joint prob)
+                return Math.min(70, 65 + (currentPrice / targetPrice - 1) * 5);
+            } else {
+                // Probability scales with closeness to target (individual ~50% max)
+                return (currentPrice / targetPrice) * 50;
+            }
+        };
+
+        return {
+            m1: getProb("bitcoin", 100000),
+            m2: getProb("ethereum", 4000),
+            m3: getProb("sui", 5.0)
+        };
+    }, [targetDate]);
 
     // Merge live prices into markets
     const displayMarkets = useMemo(() => {
         return marketData.markets.map(m => {
             const coinId = CRYPTO_COIN_MAP[m.id];
             const data = coinId ? liveData[coinId] : undefined;
+            // Update title with targetDate
+            const baseTitle = m.title.split(' in ')[0];
+            const updatedTitle = `${baseTitle} by ${targetDate}?`;
+
             return {
                 ...m,
+                title: updatedTitle,
                 livePrice: data?.price,
                 priceChange24h: data?.change24h
             };
         });
-    }, [marketData, liveData]);
+    }, [marketData, liveData, targetDate]);
 
     const toggleMarket = (id: string) => {
         setSelectedMarkets(prev => ({
@@ -161,6 +203,7 @@ export default function CryptoPage() {
                                 onTimeRangeChange={setTimeRange}
                                 hideTimeRanges={true}
                                 marketSelections={marketSelections}
+                                isCrypto={true}
                             />
                         </div>
 
@@ -176,10 +219,14 @@ export default function CryptoPage() {
                         <div className="mt-4">
                             <CryptoMarketChart
                                 data={marketData.chartData}
-                                markets={marketData.markets}
+                                markets={displayMarkets}
                                 selectedMarkets={selectedMarkets}
                                 view={view}
                                 marketSelections={marketSelections}
+                                targetDate={targetDate}
+                                baseProbabilities={probabilities}
+                                onTargetDateChange={setTargetDate}
+                                onMarketSelectionsChange={setMarketSelections}
                             />
                         </div>
                     </div>
