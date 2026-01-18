@@ -90,9 +90,9 @@ const politicsFeaturedData = [
         title: "Trump Presidency",
         icon: "/market/trump_portrait.png",
         items: [
-            { title: "Will Trump end the Ukraine war in 90 days?", image: "/market/ukraine_war.png" },
-            { title: "Will Trump impose 60% tariffs on China?", image: "/market/china_tariffs.png" },
-            { title: "Will Trump deport 1M+ people in 2028?", image: "/market/deportation.png" }
+            { title: "Who will Trump nominate as Fed Chair?", image: "/market/fedchair.png" },
+            { title: "Trump out as President by March 31?", image: "/market/trump-out.png" },
+            { title: "Will Trump admin release any more Epstein related files by...?", image: "/market/eipstein.png" }
         ]
     },
     {
