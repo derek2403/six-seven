@@ -7,10 +7,10 @@ import { TradeCard } from "@/components/market/TradeCard";
 import { WalletConnect } from "@/components/WalletConnect";
 import { COMBINED_MARKETS, DEFAULT_MARKET_DATA } from "@/lib/mock/combined-markets";
 import React from 'react';
-import { useCurrentAccount, useSignAndExecuteTransaction, useSuiClient } from '@mysten/dapp-kit';
-import { Transaction } from '@mysten/sui/transactions';
+import { useCurrentAccount, useSignTransaction, useSuiClient } from '@mysten/dapp-kit';
 import { PlaceBetRequest, PlaceBetResponse, PM_CONFIG } from '@/lib/tee';
 import { VAULT_CONFIG, WORLD_CONFIG } from '@/lib/config';
+import type { BuildSponsoredBetTxRequest, BuildSponsoredTxResponse } from '@/lib/shinami-types';
 
 type MarketSelection = "yes" | "no" | "any" | null;
 
@@ -21,7 +21,7 @@ export default function MarketPage() {
     // Sui Hooks
     const account = useCurrentAccount();
     const client = useSuiClient();
-    const { mutate: signAndExecute } = useSignAndExecuteTransaction();
+    const { mutateAsync: signTransaction } = useSignTransaction();
 
     // Backend State
     const [probabilities, setProbabilities] = React.useState<Record<string, number> | null>(null);
@@ -173,7 +173,7 @@ export default function MarketPage() {
         return Array.from(bytes);
     };
 
-    // Trade function
+    // Trade function - uses Shinami sponsored transactions for gasless betting
     const handleTrade = async (amountStr: string, outcome: number) => {
         if (!account) {
             alert("Please connect wallet");
@@ -199,71 +199,87 @@ export default function MarketPage() {
                 current_probs: currentProbsArray,
             };
 
-            const response = await fetch('/api/tee-proxy', {
+            // Step 1: Get TEE response
+            const teeResponse = await fetch('/api/tee-proxy', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ endpoint: 'process_data', payload: request }),
             });
 
-            const data = await response.json();
-            if (data.response?.data && data.signature) {
-                const betResponse: PlaceBetResponse = data.response.data;
-
-                // Execute Transaction
-                const makerAddress = maker || account.address; // Fallback?
-                const makerCurrentBalance = await getUserWithdrawableBalance(makerAddress);
-                const makerNewBalance = makerCurrentBalance + BigInt(betResponse.credit_amount);
-
-                const userCurrentBalance = await getUserWithdrawableBalance(account.address);
-                const userNewBalance = userCurrentBalance - BigInt(betResponse.debit_amount);
-
-                const tx = new Transaction();
-
-                tx.moveCall({
-                    target: `${PM_CONFIG.PM_PACKAGE}::pm::submit_bet`,
-                    typeArguments: [`${PM_CONFIG.PM_PACKAGE}::pm::PM`],
-                    arguments: [
-                        tx.object(PM_CONFIG.ENCLAVE_OBJECT_ID),
-                        tx.pure.u64(betResponse.shares),
-                        tx.pure.vector('u64', betResponse.new_probs),
-                        tx.pure.u64(betResponse.pool_id),
-                        tx.pure.u8(betResponse.outcome),
-                        tx.pure.u64(betResponse.debit_amount),
-                        tx.pure.u64(betResponse.credit_amount),
-                        tx.pure.u64(data.response.timestamp_ms),
-                        tx.pure.vector('u8', fromHex(data.signature)),
-                    ],
-                });
-
-                // Update User Balance
-                tx.moveCall({
-                    target: `${VAULT_CONFIG.PACKAGE_ID}::${VAULT_CONFIG.MODULE_NAME}::set_withdrawable_balance`,
-                    arguments: [tx.object(VAULT_CONFIG.LEDGER_ID), tx.pure.address(account.address), tx.pure.u64(userNewBalance)],
-                });
-
-                // Update Maker Balance
-                tx.moveCall({
-                    target: `${VAULT_CONFIG.PACKAGE_ID}::${VAULT_CONFIG.MODULE_NAME}::set_withdrawable_balance`,
-                    arguments: [tx.object(VAULT_CONFIG.LEDGER_ID), tx.pure.address(makerAddress), tx.pure.u64(makerNewBalance)],
-                });
-
-                // Update World Probs
-                tx.moveCall({
-                    target: `${WORLD_CONFIG.PACKAGE_ID}::${WORLD_CONFIG.MODULE_NAME}::update_prob`,
-                    arguments: [tx.object(WORLD_CONFIG.WORLD_ID), tx.pure.u64(betResponse.pool_id), tx.pure.vector('u64', betResponse.new_probs)],
-                });
-
-                signAndExecute({ transaction: tx }, {
-                    onSuccess: () => {
-                        alert("Bet Placed!");
-                        fetchPoolData(); // Refresh
-                    },
-                    onError: (e) => alert("Tx Failed: " + e.message)
-                });
-
-            } else {
-                alert("TEE Error: " + JSON.stringify(data));
+            const teeData = await teeResponse.json();
+            if (!teeData.response?.data || !teeData.signature) {
+                alert("TEE Error: " + JSON.stringify(teeData));
+                return;
             }
+
+            const betResponse: PlaceBetResponse = teeData.response.data;
+
+            // Calculate new balances
+            const makerAddress = maker || account.address;
+            const makerCurrentBalance = await getUserWithdrawableBalance(makerAddress);
+            const makerNewBalance = makerCurrentBalance + BigInt(betResponse.credit_amount);
+
+            const userCurrentBalance = await getUserWithdrawableBalance(account.address);
+            const userNewBalance = userCurrentBalance - BigInt(betResponse.debit_amount);
+
+            // Step 2: Build sponsored transaction via backend
+            const buildRequest: BuildSponsoredBetTxRequest = {
+                sender: account.address,
+                poolId: 0,
+                outcome: outcome,
+                amount: parseInt(amountStr.replace(/[^0-9]/g, "")) * 1_000_000,
+                maker: makerAddress,
+                currentProbs: currentProbsArray,
+                teeResponse: {
+                    shares: betResponse.shares,
+                    newProbs: betResponse.new_probs,
+                    debitAmount: betResponse.debit_amount,
+                    creditAmount: betResponse.credit_amount,
+                    timestampMs: teeData.response.timestamp_ms,
+                },
+                teeSignature: teeData.signature,
+                userNewBalance: userNewBalance.toString(),
+                makerNewBalance: makerNewBalance.toString(),
+            };
+
+            const buildResponse = await fetch('/api/buildSponsoredBetTx', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(buildRequest),
+            });
+
+            if (!buildResponse.ok) {
+                const errorData = await buildResponse.json();
+                throw new Error(errorData.error || 'Failed to build sponsored transaction');
+            }
+
+            const sponsoredTx: BuildSponsoredTxResponse = await buildResponse.json();
+
+            // Step 3: Sign the transaction with connected wallet
+            const { signature: senderSignature } = await signTransaction({
+                transaction: sponsoredTx.txBytes,
+            });
+
+            // Step 4: Execute via backend with both signatures
+            const executeResponse = await fetch('/api/executeSponsoredTx', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    txBytes: sponsoredTx.txBytes,
+                    sponsorSignature: sponsoredTx.sponsorSignature,
+                    senderSignature: senderSignature,
+                }),
+            });
+
+            if (!executeResponse.ok) {
+                const errorData = await executeResponse.json();
+                throw new Error(errorData.error || 'Failed to execute transaction');
+            }
+
+            const result = await executeResponse.json();
+            console.log('Sponsored transaction result:', result);
+            alert("Bet Placed! (Gasless) TX: " + result.digest);
+            fetchPoolData(); // Refresh
 
         } catch (e: any) {
             console.error(e);
