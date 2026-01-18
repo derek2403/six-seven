@@ -63,7 +63,7 @@ export function WalletConnect() {
     };
 
     return (
-        <header className="fixed top-0 left-0 right-0 z-50 flex flex-col bg-white border-b border-zinc-200 dark:bg-zinc-950 dark:border-zinc-800">
+        <header className="fixed mb-16 top-0 left-0 right-0 z-50 flex flex-col bg-white border-b border-zinc-200 dark:bg-zinc-950 dark:border-zinc-800">
             {/* Top Row: Main Header */}
             <div className="flex items-center justify-between px-4 xl:px-24 py-2 h-[60px] border-b border-zinc-100 dark:border-zinc-900">
                 {/* Left: Logo and Search */}
