@@ -100,7 +100,17 @@
       background-position: 200%;
     }
   }
-}
+
+  --animate-line-shadow: line-shadow 15s linear infinite
+;
+  @keyframes line-shadow {
+  0% {
+    background-position: 0 0;
+    }
+  100% {
+    background-position: 100% -100%;
+    }
+  }}
 
 @media (prefers-color-scheme: dark) {
   :root {
