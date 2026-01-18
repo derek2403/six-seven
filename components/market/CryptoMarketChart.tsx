@@ -723,52 +723,6 @@ export function CryptoMarketChart({ data, markets, selectedMarkets, view, market
             </div>
 
             <div className="w-full relative min-h-[400px]">
-                {view === "Default" && (
-                    <div className="h-[400px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={data} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
-                                <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#e5e7eb" />
-                                <XAxis
-                                    dataKey="date"
-                                    tickLine={false}
-                                    axisLine={false}
-                                    tick={{ fill: "#9ca3af", fontSize: 12 }}
-                                    minTickGap={60}
-                                    tickFormatter={(val) => {
-                                        const [month] = val.split(' ');
-                                        return month;
-                                    }}
-                                />
-                                <YAxis
-                                    orientation="right"
-                                    axisLine={false}
-                                    tickLine={false}
-                                    tick={{ fill: "#9ca3af", fontSize: 12 }}
-                                    tickFormatter={(val) => `${val}%`}
-                                    domain={[0, 100]}
-                                    ticks={[0, 25, 50, 75, 100]}
-                                />
-                                <Tooltip
-                                    content={<CustomTooltip />}
-                                    cursor={{ stroke: '#e5e7eb', strokeWidth: 1 }}
-                                    coordinate={{ y: 0 }}
-                                    position={{ y: 20 }}
-                                />
-                                {/* Render Lines if selected */}
-                                {selectedMarkets.m1 && (
-                                    <Line type="linear" dataKey="value1" stroke="#60a5fa" strokeWidth={2} dot={(props: any) => { const { key, ...rest } = props; return <CustomDot key={key} {...rest} color="#60a5fa" lastIndex={data.length - 1} />; }} activeDot={<CustomActiveDot />} isAnimationActive={false} />
-                                )}
-                                {selectedMarkets.m2 && (
-                                    <Line type="linear" dataKey="value2" stroke="#2563eb" strokeWidth={2} dot={(props: any) => { const { key, ...rest } = props; return <CustomDot key={key} {...rest} color="#2563eb" lastIndex={data.length - 1} />; }} activeDot={<CustomActiveDot />} isAnimationActive={false} />
-                                )}
-                                {selectedMarkets.m3 && (
-                                    <Line type="linear" dataKey="value3" stroke="#facc15" strokeWidth={2} dot={(props: any) => { const { key, ...rest } = props; return <CustomDot key={key} {...rest} color="#facc15" lastIndex={data.length - 1} />; }} activeDot={<CustomActiveDot />} isAnimationActive={false} />
-                                )}
-                            </LineChart>
-                        </ResponsiveContainer>
-                    </div>
-                )}
-
                 {view === "Table" && <CryptoScenarioTable marketSelections={marketSelections} targetDate={targetDate} baseProbabilities={baseProbabilities} />}
 
                 {view === "2D" && <CryptoProbabilityDisplay markets={markets} selectedMarkets={selectedMarkets} marketSelections={marketSelections} targetDate={targetDate} baseProbabilities={baseProbabilities} />}

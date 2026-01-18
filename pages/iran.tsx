@@ -18,22 +18,8 @@ export default function MarketPage() {
     const router = useRouter();
     const { slug } = router.query;
 
-    // Sui Hooks
-    const account = useCurrentAccount();
-    const client = useSuiClient();
-    const { mutateAsync: signTransaction } = useSignTransaction();
-
-    // Backend State
-    const [probabilities, setProbabilities] = React.useState<Record<string, number> | null>(null);
-    const [vaultBalance, setVaultBalance] = React.useState<string>('0');
-    const [maker, setMaker] = React.useState<string>('');
-    const [isLoading, setIsLoading] = React.useState(false);
-
-    // Initial State
-    const [selectedMarkets, setSelectedMarkets] = React.useState<Record<string, boolean>>(
-        Object.fromEntries(COMBINED_MARKETS.map(m => [m.id, true]))
-    );
-    const [view, setView] = React.useState("Default");
+    const [selectedMarkets, setSelectedMarkets] = React.useState<Record<string, boolean>>({});
+    const [view, setView] = React.useState("1D");
     const [timeRange, setTimeRange] = React.useState("1d");
 
     // Fetch Pool 0 Data
@@ -344,6 +330,9 @@ export default function MarketPage() {
         }
     }, [marketSelections, view]);
 
+    // Mock probabilities for ROI calculation
+    const probabilities = { m1: 35, m2: 45, m3: 55 };
+
     return (
         <div className="min-h-screen bg-white font-sans">
             {/* Site Header */}
@@ -408,7 +397,8 @@ export default function MarketPage() {
                             marketSelections={marketSelections}
                             onMarketSelectionsChange={setMarketSelections}
                             focusedMarket={focusedMarket}
-                            onTrade={handleTrade}
+                            baseProbabilities={probabilities}
+                            targetDate="Jan 1, 2026"
                         />
                         <p className="mt-4 text-center text-[13px] text-gray-400 font-medium leading-relaxed">
                             By trading, you agree to the <span className="underline cursor-pointer hover:text-gray-600 transition-colors">Terms of Use.</span>
