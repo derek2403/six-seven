@@ -25,6 +25,117 @@ const formatMoney = (amount: number) => {
     return `$${amount.toFixed(0)}`;
 };
 
+const FeaturedEventCard = ({ title, icon, items }: { title: string, icon: string, items: any[] }) => {
+    return (
+        <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm hover:shadow-lg transition-all duration-200 flex flex-col h-full group">
+            <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center space-x-3">
+                    <img
+                        src={icon}
+                        alt={title}
+                        className="w-12 h-12 rounded-xl object-cover shadow-sm"
+                    />
+                    <h3 className="text-2xl font-bold text-gray-900 tracking-tight">
+                        {title}
+                    </h3>
+                </div>
+            </div>
+
+            <div className="space-y-6 flex-1">
+                {items.map((item, idx) => (
+                    <div key={idx} className="flex flex-col space-y-3">
+                        <div className="flex items-center space-x-4">
+                            <img
+                                src={item.image}
+                                alt={item.title}
+                                className="w-10 h-10 rounded-full object-cover flex-shrink-0 border border-gray-100"
+                                onError={(e) => { (e.target as HTMLImageElement).src = 'https://polymarket.com/static/error/image-error.png' }}
+                            />
+                            <span className="text-[15px] font-medium text-gray-700 leading-snug">
+                                {item.title}
+                            </span>
+                        </div>
+                        <div className="flex space-x-3 pl-14">
+                            <button className="flex-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold py-2 px-3 rounded-lg transition-colors flex justify-between items-center">
+                                <span>Yes</span>
+                                <span>0%</span>
+                            </button>
+                            <button className="flex-1 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-semibold py-2 px-3 rounded-lg transition-colors flex justify-between items-center">
+                                <span>No</span>
+                                <span>0%</span>
+                            </button>
+                            <button className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold py-2 px-3 rounded-lg transition-colors flex justify-between items-center">
+                                <span>Any</span>
+                                <span>0%</span>
+                            </button>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+const politicsFeaturedData = [
+    {
+        title: "Iran War",
+        icon: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Flag_of_Iran.svg/1200px-Flag_of_Iran.svg.png",
+        items: [
+            { title: "Khamenei out as Supreme Leader of Iran by January 31?", image: "/leader.png" },
+            { title: "US strikes Iran by January 31?", image: "/us-iran.png" },
+            { title: "Isreal next strikes Iran by January 31?", image: "/isreal-iran.png" }
+        ]
+    },
+    {
+        title: "Trump Presidency",
+        icon: "/market/trump_portrait.png",
+        items: [
+            { title: "Will Trump end the Ukraine war in 90 days?", image: "/market/ukraine_war.png" },
+            { title: "Will Trump impose 60% tariffs on China?", image: "/market/china_tariffs.png" },
+            { title: "Will Trump deport 1M+ people in 2028?", image: "/market/deportation.png" }
+        ]
+    },
+    {
+        title: "US Elections 2028",
+        icon: "/market/pre-winner.png",
+        items: [
+            { title: "Will Republicans keep the House in 2028?", image: "/market/republic.png" },
+            { title: "Will Democrats win the Senate in 2028?", image: "/market/democratic.png" },
+            { title: "Will JD Vance run for President in 2028?", image: "/market/jdvance.png" }
+        ]
+    }
+];
+
+const cryptoFeaturedData = [
+    {
+        title: "15 Min Crypto",
+        icon: "/market/btc_logo.png",
+        items: [
+            { title: "Bitcoin Up or Down - 15 minute", image: "/market/btc_logo.png" },
+            { title: "Ethereum Up or Down - 15 minute", image: "/market/eth_logo.png" },
+            { title: "Sui Up or Down - 15 minute", image: "/market/sui-logo1.png" }
+        ]
+    },
+    {
+        title: "January Price Targets",
+        icon: "/market/jan.png",
+        items: [
+            { title: "What price will Sui hit in January?", image: "/market/sui-logo1.png" },
+            { title: "What price will Bitcoin hit in January?", image: "/market/btc_logo.png" },
+            { title: "What price will Ethereum hit in January?", image: "/market/eth_logo.png" }
+        ]
+    },
+    {
+        title: "Sui Ecosystem",
+        icon: "/market/sui-coin.png",
+        items: [
+            { title: "Will Sui price hit $5 in January?", image: "/market/sui-logo1.png" },
+            { title: "Will Sui TVL exceed $1B in January?", image: "/market/sui-logo1.png" },
+            { title: "Will Sui daily active users hit 1M?", image: "/market/sui-logo1.png" }
+        ]
+    }
+];
+
 const EventCard = ({ event }: { event: any }) => {
     const marketsToDisplay = event.markets.slice(0, 3); // Limit to 3 for space
 
@@ -135,10 +246,27 @@ export default function DataPage() {
             </Head>
 
 
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                {/* Trending Markets Section */}
+                <div className="mb-16">
+                    <div className="mb-8">
+                        <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">Trending Markets</h2>
+                        <p className="mt-2 text-lg text-gray-600">Explore the most active and high-impact prediction markets across politics, crypto, and global events.</p>
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        {[...politicsFeaturedData, ...cryptoFeaturedData].map((event, idx) => (
+                            <FeaturedEventCard key={idx} {...event} />
+                        ))}
+                    </div>
+                </div>
 
-            <WalletConnect />
+                {/* Regular Events Grid */}
+                <div className="mb-8">
+                    <h2 className="text-2xl font-bold text-gray-900 mb-6">All Events</h2>
+                </div>
 
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-32">
+                <WalletConnect />
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {filteredEvents.map((event: any) => (
                         <EventCard key={event.id} event={event} />

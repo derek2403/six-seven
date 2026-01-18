@@ -35,7 +35,7 @@ const generatePoints = (
     volatility: number = 2
 ): CombinedChartPoint[] => {
     const points: CombinedChartPoint[] = [];
-    const endDate = new Date("2026-01-18T00:00:00");
+    const endDate = new Date("2028-01-18T00:00:00");
     const startDate = new Date(endDate);
     startDate.setMonth(startDate.getMonth() - 6);
 

@@ -14,13 +14,13 @@ const MARKETS = {
     { name: "Trump 2028 Candidacy?", description: "Political futures heating up.", time: "15m ago", icon: "🏛️", color: "#468BE6" }
   ],
   Portugal: [
-    { name: "Portugal WC 2026 winner?", description: "Ronaldo's last dance bets.", time: "1m ago", icon: "🇵🇹", color: "#468BE6" },
+    { name: "Portugal WC 2028 winner?", description: "Ronaldo's last dance bets.", time: "1m ago", icon: "🇵🇹", color: "#468BE6" },
     { name: "Lisbon Tech Exit > $1B?", description: "Unicorn hunting season.", time: "12m ago", icon: "🚀", color: "#468BE6" },
     { name: "Renewable Energy > 90%?", description: "Green grid targets.", time: "1h ago", icon: "🌿", color: "#468BE6" },
     { name: "Porto Housing Boom?", description: "Real estate market surge.", time: "2h ago", icon: "🏠", color: "#468BE6" }
   ],
   Iran: [
-    { name: "Oil Export Ceiling 2026?", description: "Global supply impact.", time: "8m ago", icon: "🛢️", color: "#468BE6" },
+    { name: "Oil Export Ceiling 2028?", description: "Global supply impact.", time: "8m ago", icon: "🛢️", color: "#468BE6" },
     { name: "Tehran Stock Index > 2M?", description: "Local currency hedge.", time: "4m ago", icon: "💹", color: "#468BE6" },
     { name: "Persian Gulf Trade Pack?", description: "New regional alliance.", time: "30m ago", icon: "🤝", color: "#468BE6" },
     { name: "Sanctions Relief 2025?", description: "Diplomatic developments.", time: "1h ago", icon: "🕊️", color: "#468BE6" }
