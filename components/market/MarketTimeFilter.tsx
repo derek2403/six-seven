@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
@@ -13,13 +13,27 @@ import {
 
 import { RainbowButton } from "@/components/ui/rainbow-button";
 
+type MarketSelection = "yes" | "no" | "any" | null;
+
 interface MarketTimeFilterProps {
     selectedMarkets: Record<string, boolean>;
     view: string;
     onViewChange: (view: string) => void;
+    timeRange?: string;
+    onTimeRangeChange?: (range: string) => void;
+    hideTimeRanges?: boolean;
+    marketSelections?: Record<string, MarketSelection>;
 }
 
-export function MarketTimeFilter({ selectedMarkets, view, onViewChange }: MarketTimeFilterProps) {
+export function MarketTimeFilter({
+    selectedMarkets,
+    view,
+    onViewChange,
+    timeRange = "1d",
+    onTimeRangeChange,
+    hideTimeRanges = false,
+    marketSelections
+}: MarketTimeFilterProps) {
     const selectedCount = Object.values(selectedMarkets).filter(Boolean).length;
     const commonBtnClasses = "h-[36px] !rounded-full px-4 text-sm font-bold transition-all flex items-center justify-center gap-1";
 
@@ -30,8 +44,23 @@ export function MarketTimeFilter({ selectedMarkets, view, onViewChange }: Market
 
     const isDimensionView = ["1D", "2D", "3D"].includes(view);
 
+    const timeRanges = ["15 min", "1h", "4h", "1d", "1w", "All"];
+
+    // Calculate target dimension based on marketSelections
+    const getTargetDimension = React.useMemo(() => {
+        if (!marketSelections) return availableDimensions[0] || "1D";
+
+        const selections = [marketSelections.m1, marketSelections.m2, marketSelections.m3];
+        const yesNoCount = selections.filter(s => s === "yes" || s === "no").length;
+
+        if (yesNoCount === 3) return "3D";
+        if (yesNoCount === 2) return "2D";
+        return "1D";
+    }, [marketSelections, availableDimensions]);
+
     return (
-        <div className="flex flex-wrap items-center gap-2 pl-0">
+        <div className="flex flex-wrap items-center gap-3 pl-0">
+            {/* View Selection: Chart / Table */}
             <ToggleGroup
                 type="single"
                 value={view === "Default" || view === "Table" ? view : ""}
@@ -48,11 +77,12 @@ export function MarketTimeFilter({ selectedMarkets, view, onViewChange }: Market
                             "data-[state=off]:bg-gray-100 data-[state=off]:text-gray-500 hover:bg-gray-200"
                         )}
                     >
-                        {v}
+                        {v === "Default" ? "Chart" : v}
                     </ToggleGroupItem>
                 ))}
             </ToggleGroup>
 
+            {/* Dimension Button - shows target dimension based on selections */}
             {availableDimensions.length > 0 && (
                 isDimensionView ? (
                     <DropdownMenu>
@@ -83,16 +113,51 @@ export function MarketTimeFilter({ selectedMarkets, view, onViewChange }: Market
                     </DropdownMenu>
                 ) : (
                     <RainbowButton
-                        onClick={() => onViewChange(availableDimensions[0])}
+                        onClick={() => onViewChange(getTargetDimension)}
                         variant="outline"
                         className={cn(
                             "h-[36px] text-sm font-bold px-5 flex items-center gap-2 rounded-full transition-transform active:scale-95"
                         )}
                     >
-                        {availableDimensions[0]}
+                        {getTargetDimension}
                         <ChevronDown className="size-4 opacity-70" />
                     </RainbowButton>
                 )
+            )}
+
+            {!hideTimeRanges && (
+                <>
+                    <div className="h-6 w-px bg-gray-100 mx-1" />
+
+                    {/* Time Ranges */}
+                    <ToggleGroup
+                        type="single"
+                        value={timeRange}
+                        onValueChange={(v) => {
+                            if (v && onTimeRangeChange) {
+                                onTimeRangeChange(v);
+                            }
+                        }}
+                        className="gap-1"
+                    >
+                        {timeRanges.map((range) => (
+                            <ToggleGroupItem
+                                key={range}
+                                value={range}
+                                className={cn(
+                                    "h-[32px] rounded-lg px-3 text-[13px] font-bold transition-all",
+                                    timeRange === range
+                                        ? "bg-gray-100 text-black shadow-sm"
+                                        : "text-gray-400 hover:text-gray-600 hover:bg-gray-50/50"
+                                )}
+                            >
+                                {range}
+                            </ToggleGroupItem>
+                        ))}
+                    </ToggleGroup>
+
+                    <div className="h-6 w-px bg-gray-100 mx-1" />
+                </>
             )}
         </div>
     );

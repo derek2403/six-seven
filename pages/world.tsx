@@ -1,7 +1,7 @@
 'use client';
 
 import { Geist, Geist_Mono } from "next/font/google";
-import { useCurrentAccount, useSignAndExecuteTransaction, useSuiClient, useSuiClientQuery } from "@mysten/dapp-kit";
+import { useCurrentAccount, useSignAndExecuteTransaction, useSuiClient, useSuiClientQuery, ConnectButton } from "@mysten/dapp-kit";
 import { WORLD_CONFIG } from "../lib/config";
 import { useState, useEffect } from "react";
 import { formatBalance, parseAmount } from "../lib/format";
@@ -27,29 +27,20 @@ export default function WorldPage() {
 
     return (
         <div
-            className={`${geistSans.className} ${geistMono.className} flex min-h-screen flex-col items-center bg-zinc-50 p-8 font-sans dark:bg-black`}
+            className={`${geistSans.className} ${geistMono.className} flex min-h-screen flex-col bg-zinc-50 font-sans dark:bg-black`}
         >
-            <main className="flex w-full max-w-6xl flex-col items-center gap-8">
-                {/* Video Section at Top */}
-                <div className="w-full rounded-xl overflow-hidden border border-zinc-200 shadow-lg dark:border-zinc-800">
-                    <video
-                        src="/nautilus.mp4"
-                        autoPlay
-                        muted
-                        loop
-                        playsInline
-                        className="w-full h-auto"
-                        style={{ display: 'block' }}
-                    />
+            {/* Header */}
+            <header className="border-b border-gray-100 bg-white sticky top-0 z-50 shadow-sm w-full">
+                <div className="max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
+                    <h1 className="text-xl font-bold text-black">World Prediction Market</h1>
+                    <div className="flex items-center gap-4">
+                        <VaultControls />
+                        <ConnectButton />
+                    </div>
                 </div>
+            </header>
 
-                <div className="flex w-full items-center justify-between">
-                    <h1 className="text-3xl font-bold text-black dark:text-white">
-                        World Prediction Market
-                    </h1>
-                    <VaultControls />
-                </div>
-
+            <main className="flex w-full max-w-6xl flex-col items-center gap-8 mx-auto p-8">
                 <p className="text-zinc-600 dark:text-zinc-400 text-center">
                     Create pools, provide liquidity, and manage prediction markets.
                 </p>

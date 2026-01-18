@@ -68,7 +68,12 @@ const CustomDot = (props: any) => {
     return null;
 };
 
-const OutcomeSlider = ({ selectedMarkets, currentValues, markets }: { selectedMarkets: Record<string, boolean>; currentValues: Record<string, number>; markets: CombinedMarketItem[] }) => {
+const OutcomeSlider = ({ selectedMarkets, currentValues, markets, marketSelections }: {
+    selectedMarkets: Record<string, boolean>;
+    currentValues: Record<string, number>;
+    markets: CombinedMarketItem[];
+    marketSelections?: Record<string, MarketSelection>;
+}) => {
     const activeMarkets = markets.filter(m => selectedMarkets[m.id]);
 
     // Sort markets by value to determine clumping
@@ -100,8 +105,47 @@ const OutcomeSlider = ({ selectedMarkets, currentValues, markets }: { selectedMa
         }
     }
 
+    // Check if a market is selected (has yes or no, not any/null)
+    const isMarketSelected = (marketId: string) => {
+        if (!marketSelections) return false;
+        const sel = marketSelections[marketId];
+        return sel === "yes" || sel === "no";
+    };
+
     return (
         <div className="w-full py-20 px-4 select-none max-w-[800px] mx-auto">
+            <style jsx>{`
+                @keyframes pulse-glow-blue {
+                    0%, 100% {
+                        box-shadow: 0 0 0 0 rgba(96, 165, 250, 0.7);
+                        transform: scale(1);
+                    }
+                    50% {
+                        box-shadow: 0 0 0 8px rgba(96, 165, 250, 0);
+                        transform: scale(1.15);
+                    }
+                }
+                @keyframes pulse-glow-darkblue {
+                    0%, 100% {
+                        box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.7);
+                        transform: scale(1);
+                    }
+                    50% {
+                        box-shadow: 0 0 0 8px rgba(37, 99, 235, 0);
+                        transform: scale(1.15);
+                    }
+                }
+                @keyframes pulse-glow-yellow {
+                    0%, 100% {
+                        box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.7);
+                        transform: scale(1);
+                    }
+                    50% {
+                        box-shadow: 0 0 0 8px rgba(250, 204, 21, 0);
+                        transform: scale(1.15);
+                    }
+                }
+            `}</style>
             <div className="flex items-center justify-between w-full mb-12">
                 <span className="text-[14px] font-bold text-gray-400 uppercase tracking-widest leading-none">Outcome</span>
             </div>
@@ -120,7 +164,9 @@ const OutcomeSlider = ({ selectedMarkets, currentValues, markets }: { selectedMa
                     const value = currentValues[m.id];
                     const visualValue = visualPositions[m.id] ?? value;
                     const color = m.id === "m1" ? "#60a5fa" : m.id === "m2" ? "#2563eb" : "#facc15";
+                    const animationName = m.id === "m1" ? "pulse-glow-blue" : m.id === "m2" ? "pulse-glow-darkblue" : "pulse-glow-yellow";
                     const shortTitle = MARKET_NAMES[`value${m.id.slice(1)}`];
+                    const isPulsing = isMarketSelected(m.id);
 
                     return (
                         <div
@@ -148,8 +194,11 @@ const OutcomeSlider = ({ selectedMarkets, currentValues, markets }: { selectedMa
                             </div>
 
                             <div
-                                className="size-4 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform relative z-0"
-                                style={{ backgroundColor: color }}
+                                className={`size-4 rounded-full border-2 border-white shadow-md cursor-pointer transition-transform relative z-0 ${isPulsing ? '' : 'hover:scale-110'}`}
+                                style={{
+                                    backgroundColor: color,
+                                    animation: isPulsing ? `${animationName} 1.5s ease-in-out infinite` : 'none'
+                                }}
                             />
 
                             {/* REAL numeric value below it. */}
@@ -182,6 +231,31 @@ const WorldTable = ({ probabilities }: { probabilities: Record<string, number> }
 
     const colors = ["#60a5fa", "#2563eb", "#facc15"];
 
+    // Convert marketSelections to expected state pattern for matching
+    const getExpectedPattern = () => {
+        if (!marketSelections) return null;
+        const m1 = marketSelections.m1;
+        const m2 = marketSelections.m2;
+        const m3 = marketSelections.m3;
+
+        // Build pattern: 1 = yes, 0 = no, null/any = wildcard
+        return [
+            m1 === "yes" ? "1" : m1 === "no" ? "0" : null,
+            m2 === "yes" ? "1" : m2 === "no" ? "0" : null,
+            m3 === "yes" ? "1" : m3 === "no" ? "0" : null,
+        ];
+    };
+
+    const expectedPattern = getExpectedPattern();
+
+    const isRowHighlighted = (state: string) => {
+        if (!expectedPattern) return false;
+        // Check if all non-null pattern positions match the state
+        return expectedPattern.every((char, idx) =>
+            char === null || char === state[idx]
+        );
+    };
+
     return (
         <div className="w-full max-w-[800px] mx-auto mt-4 px-4 mb-20">
             <div className="bg-gray-50/50 rounded-xl border border-gray-100 overflow-hidden shadow-sm">
@@ -195,7 +269,12 @@ const WorldTable = ({ probabilities }: { probabilities: Record<string, number> }
                     </thead>
                     <tbody className="divide-y divide-gray-50 bg-white">
                         {worlds.map((w) => (
-                            <WorldTableRow key={w.state} world={w} colors={colors} />
+                            <WorldTableRow
+                                key={w.state}
+                                world={w}
+                                colors={colors}
+                                isHighlighted={isRowHighlighted(w.state)}
+                            />
                         ))}
                     </tbody>
                 </table>
@@ -216,31 +295,35 @@ const WorldTable = ({ probabilities }: { probabilities: Record<string, number> }
     );
 };
 
-const WorldTableRow = ({ world, colors }: { world: any, colors: string[] }) => {
+const WorldTableRow = ({ world, colors, isHighlighted }: { world: any, colors: string[], isHighlighted?: boolean }) => {
     return (
-        <tr className="hover:bg-blue-50/10 transition-colors group">
+        <tr className={`transition-colors group ${isHighlighted
+            ? 'bg-blue-100/60 ring-2 ring-blue-400/50 ring-inset'
+            : 'hover:bg-blue-50/10'
+            }`}>
             <td className="px-6 py-4 w-[100px]">
                 <div className="flex items-center gap-2">
                     {world.state.split('').map((char: string, idx: number) => (
                         <div
                             key={idx}
-                            className="size-2.5 rounded-full border border-current"
+                            className={`size-2.5 rounded-full border border-current ${isHighlighted ? 'scale-125' : ''}`}
                             style={{
                                 backgroundColor: char === '1' ? colors[idx] : 'transparent',
                                 color: colors[idx],
-                                opacity: char === '1' ? 1 : 0.4
+                                opacity: char === '1' ? 1 : 0.4,
+                                transition: 'transform 0.2s'
                             }}
                         />
                     ))}
                 </div>
             </td>
             <td className="px-4 py-4">
-                <span className="text-[13px] font-medium text-gray-600">
+                <span className={`text-[13px] font-medium ${isHighlighted ? 'text-blue-800 font-semibold' : 'text-gray-600'}`}>
                     {world.meaning}
                 </span>
             </td>
             <td className="px-6 py-4 text-right w-[120px]">
-                <span className="font-black text-gray-900 text-[14px]">{world.prob}%</span>
+                <span className={`font-black text-[14px] ${isHighlighted ? 'text-blue-700' : 'text-gray-900'}`}>{world.prob}%</span>
             </td>
         </tr>
     );
@@ -326,8 +409,8 @@ const ConfusionMatrix = ({ selectedMarkets, marketSelections, onMarketSelections
 
     if (!topMarketId || !leftMarketId) return null;
 
-    const mTop = COMBINED_MARKETS.find(m => m.id === topMarketId)!;
-    const mLeft = COMBINED_MARKETS.find(m => m.id === leftMarketId)!;
+    const mTop = activeMarkets.find(m => m.id === topMarketId)!;
+    const mLeft = activeMarkets.find(m => m.id === leftMarketId)!;
 
     const mTopName = MARKET_NAMES[`value${mTop.id.slice(1)}`];
     const mLeftName = MARKET_NAMES[`value${mLeft.id.slice(1)}`];
@@ -726,7 +809,7 @@ export function MarketCombinedChart({ data, selectedMarkets, view, marketSelecti
                     </div>
                 )}
 
-                {view === "Table" && <WorldTable probabilities={probabilities || DEFAULT_PROBS} />}
+                {view === "Table" && <WorldTable marketSelections={marketSelections} />}
 
                 {view === "1D" && (
                     <div className="h-[400px] w-full">

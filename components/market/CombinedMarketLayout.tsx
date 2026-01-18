@@ -6,7 +6,7 @@ import { MarketTimeFilter } from "@/components/market/MarketTimeFilter";
 import { MarketLegend } from "@/components/market/MarketLegend";
 import { MarketCombinedChart } from "@/components/market/MarketCombinedChart";
 import { TradeCard } from "@/components/market/TradeCard";
-import { COMBINED_MARKETS } from "@/lib/mock/combined-markets";
+import { COMBINED_MARKETS, MARKET_DATA, LEGEND_ITEMS } from "@/lib/mock/combined-markets";
 
 export function CombinedMarketLayout() {
     const [selectedMarkets, setSelectedMarkets] = React.useState<Record<string, boolean>>(
@@ -29,6 +29,9 @@ export function CombinedMarketLayout() {
                     <div className="min-w-0 w-full overflow-hidden">
                         {/* 1. Combined Market List (Header + List Items) */}
                         <CombinedMarketList
+                            title={MARKET_DATA.iran.title}
+                            avatar={MARKET_DATA.iran.avatar}
+                            markets={COMBINED_MARKETS}
                             selectedMarkets={selectedMarkets}
                             onToggleMarket={toggleMarket}
                         />
@@ -45,6 +48,7 @@ export function CombinedMarketLayout() {
                         {/* 3. Legend */}
                         <div className="mt-10">
                             <MarketLegend
+                                items={LEGEND_ITEMS}
                                 selectedMarkets={selectedMarkets}
                                 view={view}
                                 onViewChange={setView}
