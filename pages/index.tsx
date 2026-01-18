@@ -137,8 +137,8 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-white font-sans dark:bg-white">
-      {/* Hero Section - extra height to accommodate arrow */}
-      <section className="min-h-[120vh] w-full flex items-start justify-center pt-32 relative overflow-visible">
+      {/* Hero Section - extra height to accommodate arrow and provide white space */}
+      <section className="min-h-[180vh] w-full flex items-start justify-center pt-32 relative overflow-visible">
         <div className="flex items-start justify-center gap-8 w-full max-w-7xl px-10">
           {/* Globe - static position, stays on this page */}
           <motion.div

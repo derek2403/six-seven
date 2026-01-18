@@ -10,7 +10,8 @@
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { buildGaslessTransaction } from '@shinami/clients/sui';
-import { getGasStationClient, getShinamiSuiClient } from '@/lib/shinami-client';
+import { getGasStationClient } from '@/lib/shinami-client';
+import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
 import { PM_CONFIG } from '@/lib/tee';
 import { VAULT_CONFIG, WORLD_CONFIG } from '@/lib/config';
 import type {
@@ -57,7 +58,8 @@ export default async function handler(
             return res.status(400).json({ error: 'TEE response and signature are required' });
         }
 
-        const suiClient = getShinamiSuiClient();
+        // Use public testnet RPC for building transaction (Shinami nodes timing out)
+        const suiClient = new SuiClient({ url: getFullnodeUrl('testnet') });
         const gasStationClient = getGasStationClient();
 
         // Build a gasless transaction using Shinami's helper

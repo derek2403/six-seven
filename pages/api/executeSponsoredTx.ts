@@ -8,7 +8,7 @@
  */
 
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getShinamiSuiClient } from '@/lib/shinami-client';
+import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
 import type {
     ExecuteSponsoredTxRequest,
     ExecuteSponsoredTxResponse,
@@ -33,7 +33,8 @@ export default async function handler(
             });
         }
 
-        const suiClient = getShinamiSuiClient();
+        // Use public testnet RPC for execution (more reliable for submission)
+        const suiClient = new SuiClient({ url: getFullnodeUrl('testnet') });
 
         // Execute the transaction with both signatures
         const result = await suiClient.executeTransactionBlock({

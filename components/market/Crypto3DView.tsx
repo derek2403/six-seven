@@ -28,15 +28,18 @@ const WORLDS: WorldData[] = [
     { state: "111", meaning: "BTC Yes, ETH Yes, SUI Yes", prob: 12.0 },
 ];
 
-const COLORS = ["#60a5fa", "#2563eb", "#facc15"];
+const COLORS = ["#60a5fa", "#2563eb", "#0ea5e9"];
 
-function Cube({ position, prob, state, isHovered, isSelected, onHover }: {
+function Cube({ position, prob, state, isHovered, isSelected, onHover, onClick, targetDate, color }: {
     position: [number, number, number],
     prob: number,
     state: string,
     isHovered: boolean,
     isSelected: boolean,
-    onHover: (hover: boolean) => void
+    onHover: (hover: boolean) => void,
+    onClick: () => void,
+    targetDate?: string,
+    color: string
 }) {
     const mesh = useRef<THREE.Mesh>(null!);
     const pulseRef = useRef(0);
@@ -73,44 +76,42 @@ function Cube({ position, prob, state, isHovered, isSelected, onHover }: {
                     e.stopPropagation();
                     onHover(false);
                 }}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onClick();
+                }}
             >
                 <boxGeometry args={[1, 1, 1]} />
                 <meshPhysicalMaterial
                     transparent
-                    opacity={isSelected ? 0.95 : isHovered ? 0.9 : 0.3 * intensity + 0.1}
-                    color={isSelected ? "#06b6d4" : isMostProbable ? "#facc15" : "#60a5fa"}
+                    opacity={isSelected ? 0.95 : isHovered ? 0.9 : 0.3 * intensity + 0.15}
+                    color={isSelected ? "#06b6d4" : color}
                     roughness={0.1}
                     metalness={0.2}
-                    transmission={0.5}
-                    thickness={1}
+                    transmission={0.4}
+                    thickness={1.5}
                     clearcoat={1}
-                    emissive={isSelected ? "#06b6d4" : isMostProbable ? "#facc15" : "#60a5fa"}
-                    emissiveIntensity={isSelected ? 0.8 : isHovered ? 0.6 : 0.2 * intensity}
+                    emissive={isSelected ? "#06b6d4" : color}
+                    emissiveIntensity={isSelected ? 0.8 : isHovered ? 0.6 : 0.3 * intensity}
                 />
 
-                {/* Always-visible probability on the cube */}
-                {prob > 5 && !isHovered && (
-                    <Billboard>
-                        <Text
-                            fontSize={0.22}
-                            color={isSelected ? "white" : "black"}
-                            anchorX="center"
-                            anchorY="middle"
-                            fontWeight="bold"
-                        >
-                            {prob}%
-                        </Text>
-                    </Billboard>
-                )}
             </mesh>
 
-            {/* Selection indicator ring */}
-            {isSelected && (
-                <mesh rotation={[Math.PI / 2, 0, 0]}>
-                    <ringGeometry args={[0.6, 0.7, 32]} />
-                    <meshBasicMaterial color="#06b6d4" transparent opacity={0.8} side={THREE.DoubleSide} />
-                </mesh>
+            {/* Probability label on top of the cube */}
+            {prob > 3 && !isHovered && (
+                <Billboard position={[0, 0.75, 0]}>
+                    <Text
+                        fontSize={0.24}
+                        color={isSelected ? "#06b6d4" : "black"}
+                        anchorX="center"
+                        anchorY="middle"
+                        fontWeight="black"
+                    >
+                        {prob.toFixed(1)}%
+                    </Text>
+                </Billboard>
             )}
+
 
             {/* Detailed Info on Hover */}
             {isHovered && (
@@ -122,41 +123,24 @@ function Cube({ position, prob, state, isHovered, isSelected, onHover }: {
                 >
                     <div style={{
                         background: 'white',
-                        border: isSelected ? '3px solid #06b6d4' : '2px solid black',
+                        border: '2px solid black',
                         borderRadius: '8px',
                         padding: '12px 16px',
                         minWidth: '180px',
-                        boxShadow: isSelected ? '0 0 20px rgba(6, 182, 212, 0.5)' : '0 4px 12px rgba(0,0,0,0.15)',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
                     }}>
-                        {/* Selection badge */}
-                        {isSelected && (
-                            <div style={{
-                                background: '#06b6d4',
-                                color: 'white',
-                                fontWeight: 'bold',
-                                fontSize: '10px',
-                                padding: '2px 8px',
-                                borderRadius: '4px',
-                                textAlign: 'center',
-                                marginBottom: '8px',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.5px'
-                            }}>
-                                ✓ Selected
-                            </div>
-                        )}
                         {/* Probability */}
                         <div style={{
-                            background: isSelected ? '#06b6d4' : isMostProbable ? '#fbbf24' : '#2563eb',
-                            color: isSelected || isMostProbable ? 'black' : 'white',
+                            background: 'transparent',
+                            color: '#2563eb',
                             fontWeight: 'bold',
-                            fontSize: '18px',
+                            fontSize: '40px',
                             padding: '6px 12px',
                             borderRadius: '4px',
                             textAlign: 'center',
-                            marginBottom: '10px',
+                            marginBottom: '4px',
                         }}>
-                            {prob}%
+                            {prob.toFixed(2)}%
                         </div>
 
                         {/* Market Results */}
@@ -230,8 +214,88 @@ function Labels() {
 
 
 
-function Scene({ marketSelections }: { marketSelections?: Record<string, MarketSelection> }) {
+function Scene({ marketSelections, onMarketSelectionsChange, targetDate, baseProbabilities, probabilities }: {
+    marketSelections?: Record<string, MarketSelection>,
+    onMarketSelectionsChange?: (selections: Record<string, MarketSelection>) => void,
+    targetDate?: string,
+    baseProbabilities: Record<string, number>,
+    probabilities?: Record<string, number> | null // Pool 1 data from blockchain
+}) {
     const [hoveredState, setHoveredState] = useState<string | null>(null);
+
+    // Base probabilities derived from real price data
+    const p1 = (baseProbabilities.m1 || 0) / 100;
+    const p2 = (baseProbabilities.m2 || 0) / 100;
+    const p3 = (baseProbabilities.m3 || 0) / 100;
+
+    const getJitteredProb = (state: string) => {
+        // Calculate base probability from pricing data (varies by targetDate)
+        let prob = 0;
+        const bits = state.split('').map(b => b === '1');
+        prob = (bits[0] ? p1 : 1 - p1) * (bits[1] ? p2 : 1 - p2) * (bits[2] ? p3 : 1 - p3) * 100;
+
+        // Apply small jitter based on targetDate for visual variation
+        if (targetDate) {
+            const hash = targetDate.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+            prob += (hash % 6) - 3;
+        }
+
+        // If we have Pool 1 data from blockchain, blend it in as a bias
+        // This represents "market sentiment" from actual bets
+        if (probabilities && probabilities[state] !== undefined) {
+            const poolProb = probabilities[state];
+            // Blend: 70% base (varies by date) + 30% pool (bet-influenced)
+            prob = prob * 0.7 + poolProb * 0.3;
+        }
+
+        // Apply selection highlighting bias
+        if (marketSelections) {
+            const m1 = marketSelections.m1;
+            const m2 = marketSelections.m2;
+            const m3 = marketSelections.m3;
+
+            const matchCount = [
+                m1 === (state[0] === '1' ? 'yes' : 'no'),
+                m2 === (state[1] === '1' ? 'yes' : 'no'),
+                m3 === (state[2] === '1' ? 'yes' : 'no')
+            ].filter(Boolean).length;
+
+            prob += matchCount * 1.5;
+        }
+
+        return Math.max(0.1, Math.min(99.9, prob));
+    };
+
+    const handleCubeClick = (state: string) => {
+        if (!onMarketSelectionsChange) return;
+
+        // Map state characters to yes/no for each market
+        const newSelections: Record<string, MarketSelection> = {
+            m1: state[0] === '1' ? 'yes' : 'no',
+            m2: state[1] === '1' ? 'yes' : 'no',
+            m3: state[2] === '1' ? 'yes' : 'no',
+        };
+
+        onMarketSelectionsChange(newSelections);
+    };
+
+    const getHeatmapColor = (prob: number, min: number, max: number) => {
+        const normalized = max === min ? 0.5 : (prob - min) / (max - min);
+        const colors = [
+            { r: 224, g: 242, b: 254 },  // Sky 100 (Light Blue)
+            { r: 125, g: 211, b: 252 },  // Sky 300
+            { r: 56, g: 189, b: 248 },   // Sky 400
+            { r: 14, g: 165, b: 233 },   // Sky 500 (Deep Blue)
+        ];
+        const idx = normalized * (colors.length - 1);
+        const lowerIdx = Math.floor(idx);
+        const upperIdx = Math.ceil(idx);
+        const t = idx - lowerIdx;
+        const r = Math.round(colors[lowerIdx].r + (colors[upperIdx].r - colors[lowerIdx].r) * t);
+        const g = Math.round(colors[lowerIdx].g + (colors[upperIdx].g - colors[lowerIdx].g) * t);
+        const b = Math.round(colors[lowerIdx].b + (colors[upperIdx].b - colors[lowerIdx].b) * t);
+        return `rgb(${r}, ${g}, ${b})`;
+    };
 
     // Determine the selected state based on marketSelections
     const selectedState = useMemo(() => {
@@ -255,14 +319,26 @@ function Scene({ marketSelections }: { marketSelections?: Record<string, MarketS
     }, [marketSelections]);
 
     const cubes = useMemo(() => {
-        return WORLDS.map((w) => {
-            // state[0] = x, state[1] = y, state[2] = z
+        const items = WORLDS.map((w) => {
             const x = w.state[0] === "1" ? 0.55 : -0.55;
             const y = w.state[1] === "1" ? 0.55 : -0.55;
             const z = w.state[2] === "1" ? 0.55 : -0.55;
-            return { ...w, position: [x, y, z] as [number, number, number] };
+            return {
+                ...w,
+                prob: getJitteredProb(w.state),
+                position: [x, y, z] as [number, number, number]
+            };
         });
-    }, []);
+
+        const probs = items.map(i => i.prob);
+        const min = Math.min(...probs);
+        const max = Math.max(...probs);
+
+        return items.map(item => ({
+            ...item,
+            color: getHeatmapColor(item.prob, min, max)
+        }));
+    }, [targetDate, marketSelections, baseProbabilities, probabilities]);
 
     return (
         <>
@@ -281,6 +357,9 @@ function Scene({ marketSelections }: { marketSelections?: Record<string, MarketS
                             isHovered={hoveredState === c.state}
                             isSelected={selectedState === c.state}
                             onHover={(h) => setHoveredState(h ? c.state : null)}
+                            onClick={() => handleCubeClick(c.state)}
+                            targetDate={targetDate}
+                            color={c.color}
                         />
                     ))}
 
@@ -297,11 +376,16 @@ function Scene({ marketSelections }: { marketSelections?: Record<string, MarketS
             <Environment preset="city" />
             <OrbitControls enableZoom={true} minPolarAngle={Math.PI / 4} maxPolarAngle={Math.PI / 1.5} />
         </>
-
     );
 }
 
-export default function Crypto3DView({ marketSelections }: { marketSelections?: Record<string, MarketSelection> }) {
+export default function Crypto3DView({ marketSelections, onMarketSelectionsChange, targetDate, baseProbabilities, probabilities }: {
+    marketSelections?: Record<string, MarketSelection>,
+    onMarketSelectionsChange?: (selections: Record<string, MarketSelection>) => void,
+    targetDate?: string,
+    baseProbabilities: Record<string, number>,
+    probabilities?: Record<string, number> | null // Pool 1 data from blockchain
+}) {
     return (
         <div className="w-full h-[500px] bg-white rounded-2xl border border-gray-100 shadow-sm relative overflow-hidden">
             <div className="absolute top-6 left-6 z-10">
@@ -311,7 +395,13 @@ export default function Crypto3DView({ marketSelections }: { marketSelections?: 
 
             <Canvas shadows dpr={[1, 2]}>
                 <PerspectiveCamera makeDefault position={[0, 0, 5]} fov={50} />
-                <Scene marketSelections={marketSelections} />
+                <Scene
+                    marketSelections={marketSelections}
+                    onMarketSelectionsChange={onMarketSelectionsChange}
+                    targetDate={targetDate}
+                    baseProbabilities={baseProbabilities}
+                    probabilities={probabilities}
+                />
             </Canvas>
 
             <div className="absolute bottom-6 right-6 text-right z-10 pointer-events-none">

@@ -5,6 +5,7 @@ import { Line, LineChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tool
 import { Trophy, Clock, Settings, SlidersHorizontal, ArrowUpDown, Shuffle } from "lucide-react";
 import { CombinedChartPoint, CombinedMarketItem } from "@/lib/mock/combined-markets";
 import Crypto3DView from "./Crypto3DView";
+import { DateSlider } from "./DateSlider";
 
 type MarketSelection = "yes" | "no" | "any" | null;
 
@@ -63,18 +64,53 @@ const CustomDot = (props: any) => {
 // --- CRYPTO SPECIFIC VIEWS ---
 
 // 1. World Table (matching Iran design with outcome dots)
-const CryptoScenarioTable = ({ marketSelections }: { marketSelections?: Record<string, MarketSelection> }) => {
-    // state[0] = BTC > $100k, state[1] = ETH > $4k, state[2] = SUI > $5
+const CryptoScenarioTable = ({ marketSelections, targetDate, baseProbabilities }: {
+    marketSelections?: Record<string, MarketSelection>,
+    targetDate?: string,
+    baseProbabilities: Record<string, number>
+}) => {
+    // Joint probabilities calculated based on baseProbabilities (real prices)
+    const p1 = (baseProbabilities.m1 || 0) / 100;
+    const p2 = (baseProbabilities.m2 || 0) / 100;
+    const p3 = (baseProbabilities.m3 || 0) / 100;
+
     const worlds = [
-        { state: "000", meaning: "BTC No, ETH No, SUI No", prob: 8.5 },
-        { state: "001", meaning: "BTC No, ETH No, SUI Yes", prob: 5.2 },
-        { state: "010", meaning: "BTC No, ETH Yes, SUI No", prob: 4.8 },
-        { state: "011", meaning: "BTC No, ETH Yes, SUI Yes", prob: 3.5 },
-        { state: "100", meaning: "BTC Yes, ETH No, SUI No", prob: 35.0 },
-        { state: "101", meaning: "BTC Yes, ETH No, SUI Yes", prob: 18.5 },
-        { state: "110", meaning: "BTC Yes, ETH Yes, SUI No", prob: 12.5 },
-        { state: "111", meaning: "BTC Yes, ETH Yes, SUI Yes", prob: 12.0 },
+        { state: "000", meaning: "BTC No, ETH No, SUI No", prob: (1 - p1) * (1 - p2) * (1 - p3) * 100 },
+        { state: "001", meaning: "BTC No, ETH No, SUI Yes", prob: (1 - p1) * (1 - p2) * p3 * 100 },
+        { state: "010", meaning: "BTC No, ETH Yes, SUI No", prob: (1 - p1) * p2 * (1 - p3) * 100 },
+        { state: "011", meaning: "BTC No, ETH Yes, SUI Yes", prob: (1 - p1) * p2 * p3 * 100 },
+        { state: "100", meaning: "BTC Yes, ETH No, SUI No", prob: p1 * (1 - p2) * (1 - p3) * 100 },
+        { state: "101", meaning: "BTC Yes, ETH No, SUI Yes", prob: p1 * (1 - p2) * p3 * 100 },
+        { state: "110", meaning: "BTC Yes, ETH Yes, SUI No", prob: p1 * p2 * (1 - p3) * 100 },
+        { state: "111", meaning: "BTC Yes, ETH Yes, SUI Yes", prob: p1 * p2 * p3 * 100 },
     ];
+
+    const getJitteredProb = (baseProb: number, state: string) => {
+        let prob = baseProb;
+
+        // Minor jitter for visual interest
+        if (targetDate) {
+            const hash = targetDate.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+            prob += (hash % 4) - 2;
+        }
+
+        // Selection bias
+        if (marketSelections) {
+            const m1 = marketSelections.m1;
+            const m2 = marketSelections.m2;
+            const m3 = marketSelections.m3;
+
+            const matchCount = [
+                m1 === (state[0] === '1' ? 'yes' : 'no'),
+                m2 === (state[1] === '1' ? 'yes' : 'no'),
+                m3 === (state[2] === '1' ? 'yes' : 'no')
+            ].filter(Boolean).length;
+
+            prob += matchCount * 1.5;
+        }
+
+        return Math.max(0.1, Math.min(99.9, prob)).toFixed(1);
+    };
 
     const colors = ["#60a5fa", "#2563eb", "#facc15"]; // BTC, ETH, SUI
 
@@ -96,6 +132,11 @@ const CryptoScenarioTable = ({ marketSelections }: { marketSelections?: Record<s
 
     const isRowHighlighted = (state: string) => {
         if (!expectedPattern) return false;
+
+        // If all are null (no selections/wild cards), do not highlight anything
+        const hasSelection = expectedPattern.some(char => char !== null);
+        if (!hasSelection) return false;
+
         return expectedPattern.every((char, idx) => char === null || char === state[idx]);
     };
 
@@ -137,7 +178,7 @@ const CryptoScenarioTable = ({ marketSelections }: { marketSelections?: Record<s
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-right w-[120px]">
-                                        <span className={`font-black text-[14px] ${highlighted ? 'text-blue-700' : 'text-gray-900'}`}>{w.prob}%</span>
+                                        <span className={`font-black text-[14px] ${highlighted ? 'text-blue-700' : 'text-gray-900'}`}>{getJitteredProb(w.prob, w.state)}%</span>
                                     </td>
                                 </tr>
                             );
@@ -162,15 +203,54 @@ const CryptoScenarioTable = ({ marketSelections }: { marketSelections?: Record<s
 };
 
 // 2. Probability Slider (1D) - Matches Iran OutcomeSlider design exactly
-const CryptoProbabilityDisplay = ({ markets, selectedMarkets, marketSelections }: {
+const CryptoProbabilityDisplay = ({ markets, selectedMarkets, marketSelections, onMarketSelectionsChange, targetDate, baseProbabilities }: {
     markets: CombinedMarketItem[],
     selectedMarkets: Record<string, boolean>,
-    marketSelections?: Record<string, MarketSelection>
+    marketSelections?: Record<string, MarketSelection>,
+    onMarketSelectionsChange?: (selections: Record<string, MarketSelection>) => void,
+    targetDate?: string,
+    baseProbabilities: Record<string, number>
 }) => {
     const activeMarkets = markets.filter(m => selectedMarkets[m.id]);
 
-    // Mocked current probability values
-    const currentValues: Record<string, number> = { m1: 65, m2: 42, m3: 88 };
+    // Calculate marginal probabilities from joint probabilities
+    // baseProbabilities is now keyed by "000", "001", etc.
+    // m1 (BTC, bit 0): states where bit[0] = 1 → "100", "101", "110", "111"
+    // m2 (ETH, bit 1): states where bit[1] = 1 → "010", "011", "110", "111"
+    // m3 (SUI, bit 2): states where bit[2] = 1 → "001", "011", "101", "111"
+    const probs = baseProbabilities || {};
+    let currentValues: Record<string, number> = {
+        m1: (probs["100"] || 0) + (probs["101"] || 0) + (probs["110"] || 0) + (probs["111"] || 0),
+        m2: (probs["010"] || 0) + (probs["011"] || 0) + (probs["110"] || 0) + (probs["111"] || 0),
+        m3: (probs["001"] || 0) + (probs["011"] || 0) + (probs["101"] || 0) + (probs["111"] || 0)
+    };
+
+    // Fallback to 50% if no probs available
+    if (currentValues.m1 === 0 && currentValues.m2 === 0 && currentValues.m3 === 0) {
+        currentValues = { m1: 50, m2: 50, m3: 50 };
+    }
+
+    // Jitter values based on targetDate and marketSelections
+    if (targetDate || marketSelections) {
+        const dateHash = targetDate ? targetDate.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) : 0;
+
+        const getBias = (id: string, base: number) => {
+            let bias = 0;
+            if (marketSelections) {
+                const sel = marketSelections[id];
+                if (sel === "yes") bias = 20;
+                if (sel === "no") bias = -20;
+            }
+            const jitter = (dateHash % 8 - 4);
+            return Math.max(0.1, Math.min(99.9, base + bias + jitter));
+        };
+
+        currentValues = {
+            m1: getBias('m1', currentValues.m1),
+            m2: getBias('m2', currentValues.m2),
+            m3: getBias('m3', currentValues.m3)
+        };
+    }
 
     // Sort markets by value to determine clumping
     const sortedMarkets = [...activeMarkets].sort((a, b) => currentValues[a.id] - currentValues[b.id]);
@@ -253,27 +333,33 @@ const CryptoProbabilityDisplay = ({ markets, selectedMarkets, marketSelections }
                 <div className="absolute -bottom-6 right-0 text-[11px] font-bold text-gray-300">100%</div>
 
                 {/* Points for each selected market */}
-                {activeMarkets.map((m) => {
+                {sortedMarkets.map((m, index) => {
                     const value = currentValues[m.id];
                     const visualValue = visualPositions[m.id] ?? value;
                     const color = m.id === "m1" ? "#60a5fa" : m.id === "m2" ? "#2563eb" : "#facc15";
                     const animationName = m.id === "m1" ? "pulse-glow-blue" : m.id === "m2" ? "pulse-glow-darkblue" : "pulse-glow-yellow";
                     const shortTitle = MARKET_NAMES[`value${m.id.slice(1)}`] || m.title;
                     const isPulsing = isMarketSelected(m.id);
+                    const handleDotClick = (e: React.MouseEvent) => {
+                        e.stopPropagation();
+                        if (!onMarketSelectionsChange) return;
+
+                        const current = marketSelections?.[m.id];
+                        const next = current === "yes" ? "any" : "yes";
+
+                        onMarketSelectionsChange({
+                            ...marketSelections,
+                            [m.id]: next
+                        });
+                    };
 
                     return (
                         <div
                             key={m.id}
                             className="absolute top-1/2 -translate-y-1/2 transition-all duration-500 ease-out flex flex-col items-center group/marker"
                             style={{ left: `${visualValue}%` }}
+                            onClick={handleDotClick}
                         >
-                            {/* Connector line to actual value if offset is significant */}
-                            {Math.abs(visualValue - value) > 0.1 && (
-                                <div
-                                    className="absolute top-0 w-px bg-gray-200 h-4 -translate-y-full"
-                                    style={{ left: `${(value - visualValue) * (800 / 100)}px` }}
-                                />
-                            )}
 
                             {/* Tooltip on Hover */}
                             <div className="absolute bottom-6 opacity-0 group-hover/marker:opacity-100 transition-all duration-300 translate-y-2 group-hover/marker:translate-y-0 pointer-events-none z-10">
@@ -281,7 +367,7 @@ const CryptoProbabilityDisplay = ({ markets, selectedMarkets, marketSelections }
                                     className="px-2.5 py-1 rounded text-[11px] font-bold text-white whitespace-nowrap shadow-md flex items-center gap-1.5"
                                     style={{ backgroundColor: color }}
                                 >
-                                    {shortTitle} {value}%
+                                    {shortTitle} {value.toFixed(1)}%
                                 </div>
                             </div>
 
@@ -296,14 +382,14 @@ const CryptoProbabilityDisplay = ({ markets, selectedMarkets, marketSelections }
 
                             {/* Value Label below */}
                             <div className="absolute top-6 text-[13px] font-extrabold tracking-tight whitespace-nowrap" style={{ color }}>
-                                {value}%
+                                {value.toFixed(1)}%
                             </div>
                         </div>
                     );
                 })}
             </div>
 
-            <p className="text-[11px] text-gray-400 mt-20 text-center italic font-medium">
+            <p className="text-[11px] text-gray-400 mt-6 text-center italic font-medium">
                 Probabilities derived from option pricing models.
             </p>
         </div>
@@ -334,11 +420,13 @@ const CryptoHeatmapColorLegend = () => {
 };
 
 // 3. Joint Probability Heatmap (2D) - Matches Iran ConfusionMatrix design
-const CryptoCorrelationHeatmap = ({ markets, selectedMarkets, marketSelections, onMarketSelectionsChange }: {
+const CryptoCorrelationHeatmap = ({ markets, selectedMarkets, marketSelections, onMarketSelectionsChange, targetDate, baseProbabilities }: {
     markets: CombinedMarketItem[],
     selectedMarkets: Record<string, boolean>,
     marketSelections?: Record<string, MarketSelection>,
-    onMarketSelectionsChange?: (selections: Record<string, MarketSelection>) => void
+    onMarketSelectionsChange?: (selections: Record<string, MarketSelection>) => void,
+    targetDate?: string,
+    baseProbabilities: Record<string, number>
 }) => {
     const activeMarkets = markets.filter(m => selectedMarkets[m.id]);
 
@@ -375,6 +463,61 @@ const CryptoCorrelationHeatmap = ({ markets, selectedMarkets, marketSelections, 
         }
     }, [marketSelections, topMarketId, leftMarketId]);
 
+    // Joint probability calculation based on real rates
+    const matrix = React.useMemo(() => {
+        const topIdx = topMarketId ? parseInt(topMarketId.slice(1)) - 1 : 0;
+        const leftIdx = leftMarketId ? parseInt(leftMarketId.slice(1)) - 1 : 1;
+
+        const p1 = (baseProbabilities.m1 || 0) / 100;
+        const p2 = (baseProbabilities.m2 || 0) / 100;
+        const p3 = (baseProbabilities.m3 || 0) / 100;
+
+        const worlds = [
+            { state: "000", prob: (1 - p1) * (1 - p2) * (1 - p3) * 100 },
+            { state: "001", prob: (1 - p1) * (1 - p2) * p3 * 100 },
+            { state: "010", prob: (1 - p1) * p2 * (1 - p3) * 100 },
+            { state: "011", prob: (1 - p1) * p2 * p3 * 100 },
+            { state: "100", prob: p1 * (1 - p2) * (1 - p3) * 100 },
+            { state: "101", prob: p1 * (1 - p2) * p3 * 100 },
+            { state: "110", prob: p1 * p2 * (1 - p3) * 100 },
+            { state: "111", prob: p1 * p2 * p3 * 100 },
+        ];
+
+        const result: Record<string, number> = { "11": 0, "10": 0, "01": 0, "00": 0 };
+        worlds.forEach(w => {
+            let prob = w.prob;
+
+            // Apply bias if selection matches world
+            if (marketSelections) {
+                const m1 = marketSelections.m1;
+                const m2 = marketSelections.m2;
+                const m3 = marketSelections.m3;
+
+                const matchCount = [
+                    m1 === (w.state[0] === '1' ? 'yes' : 'no'),
+                    m2 === (w.state[1] === '1' ? 'yes' : 'no'),
+                    m3 === (w.state[2] === '1' ? 'yes' : 'no')
+                ].filter(Boolean).length;
+
+                prob += matchCount * 1.5;
+            }
+
+            const sTop = w.state[topIdx];
+            const sLeft = w.state[leftIdx];
+            result[`${sTop}${sLeft}`] += prob;
+        });
+
+        // Add small jitter for "live" feel
+        if (targetDate) {
+            const dateHash = targetDate.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+            Object.keys(result).forEach(key => {
+                result[key] = Math.max(0.1, Math.min(99.9, result[key] + (dateHash % 4) - 2));
+            });
+        }
+
+        return result;
+    }, [baseProbabilities, topMarketId, leftMarketId, marketSelections, targetDate]);
+
     if (activeMarkets.length < 2) {
         return (
             <div className="flex items-center justify-center min-h-[300px] text-gray-400 font-medium italic bg-gray-50/50 rounded-xl border border-dashed border-gray-200 mx-4">
@@ -391,13 +534,6 @@ const CryptoCorrelationHeatmap = ({ markets, selectedMarkets, marketSelections, 
     const mTopName = MARKET_NAMES[`value${mTop.id.slice(1)}`] || mTop.title.split(' >')[0];
     const mLeftName = MARKET_NAMES[`value${mLeft.id.slice(1)}`] || mLeft.title.split(' >')[0];
 
-    // Mock joint probability data for crypto
-    const matrix: Record<string, number> = {
-        "11": 28.5, // Both hit target
-        "10": 36.5, // Top hits, Left misses
-        "01": 12.0, // Top misses, Left hits
-        "00": 23.0  // Both miss
-    };
 
     const probValues = Object.values(matrix);
     const minProb = Math.min(...probValues);
@@ -422,6 +558,25 @@ const CryptoCorrelationHeatmap = ({ markets, selectedMarkets, marketSelections, 
         return `rgb(${r}, ${g}, ${b})`;
     };
 
+    const handleCellClick = (topLabel: string, leftLabel: string) => {
+        if (!onMarketSelectionsChange || !topMarketId || !leftMarketId) return;
+
+        const newSelections = { ...marketSelections };
+
+        // Set the active markets
+        newSelections[topMarketId] = topLabel === "Yes" ? "yes" : "no";
+        newSelections[leftMarketId] = leftLabel === "Yes" ? "yes" : "no";
+
+        // Reset all other markets to "any"
+        Object.keys(newSelections).forEach(key => {
+            if (key !== topMarketId && key !== leftMarketId) {
+                newSelections[key] = "any";
+            }
+        });
+
+        onMarketSelectionsChange(newSelections);
+    };
+
     const HeatmapCell = ({ prob, topLabel, leftLabel }: { prob: number, topLabel: string, leftLabel: string }) => {
         const bgColor = getHeatmapColor(prob);
         const normalized = maxProb === minProb ? 0.5 : (prob - minProb) / (maxProb - minProb);
@@ -433,7 +588,7 @@ const CryptoCorrelationHeatmap = ({ markets, selectedMarkets, marketSelections, 
             <div
                 className="relative w-full h-full flex flex-col items-center justify-center transition-all duration-300 hover:scale-[1.02] hover:shadow-lg cursor-pointer group overflow-hidden"
                 style={{ backgroundColor: bgColor }}
-                onClick={() => setShiningBox(isShining ? null : boxId)}
+                onClick={() => handleCellClick(topLabel, leftLabel)}
             >
                 {/* Pulsing glow effect from all 4 sides */}
                 {isShining && (
@@ -525,7 +680,7 @@ const CryptoCorrelationHeatmap = ({ markets, selectedMarkets, marketSelections, 
     };
 
     return (
-        <div className="w-full max-w-[900px] mx-auto mt-4 px-4 pb-20 select-none">
+        <div className="w-full max-w-[900px] mx-auto mt-4 px-4 pb-4 select-none">
             <div className="text-center mb-8">
                 <h3 className="text-sm font-semibold text-gray-700 mb-1">Joint Probability Heatmap</h3>
                 <p className="text-xs text-gray-400">{mTopName} vs {mLeftName}</p>
@@ -571,7 +726,7 @@ const CryptoCorrelationHeatmap = ({ markets, selectedMarkets, marketSelections, 
                 <CryptoHeatmapColorLegend />
             </div>
 
-            <p className="text-[11px] text-gray-400 mt-12 text-center italic font-medium">
+            <p className="text-[11px] text-gray-400 mt-6 text-center italic font-medium">
                 Probabilities derived from historical price correlation data.
             </p>
         </div>
@@ -586,76 +741,52 @@ interface CryptoMarketChartProps {
     selectedMarkets: Record<string, boolean>;
     view: string;
     marketSelections?: Record<string, MarketSelection>;
+    targetDate: string;
+    baseProbabilities: Record<string, number>;
+    poolProbabilities?: Record<string, number> | null; // Pool 1 probabilities from blockchain
+    onTargetDateChange: (date: string) => void;
+    onMarketSelectionsChange?: (selections: Record<string, MarketSelection>) => void;
 }
 
-export function CryptoMarketChart({ data, markets, selectedMarkets, view, marketSelections }: CryptoMarketChartProps) {
+export function CryptoMarketChart({ data, markets, selectedMarkets, view, marketSelections, targetDate, baseProbabilities, poolProbabilities, onTargetDateChange, onMarketSelectionsChange }: CryptoMarketChartProps) {
     const selectedCount = Object.values(selectedMarkets).filter(Boolean).length;
     const availableFilters = ["1H", "6H", "1D", "1W", "1M", "MAX"];
 
+    const handleMarketSelectionsChange = (newSelections: Record<string, MarketSelection>) => {
+        if (onMarketSelectionsChange) {
+            onMarketSelectionsChange(newSelections);
+        }
+    };
+
     return (
         <div className="w-full flex flex-col">
+            <div className="mb-6 border-b border-gray-50 pb-4">
+                <DateSlider selectedDate={targetDate} onDateChange={onTargetDateChange} />
+            </div>
+
             <div className="w-full relative min-h-[400px]">
-                {view === "Default" && (
-                    <div className="h-[400px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={data} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
-                                <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#e5e7eb" />
-                                <XAxis
-                                    dataKey="date"
-                                    tickLine={false}
-                                    axisLine={false}
-                                    tick={{ fill: "#9ca3af", fontSize: 12 }}
-                                    minTickGap={60}
-                                    tickFormatter={(val) => {
-                                        const [month] = val.split(' ');
-                                        return month;
-                                    }}
-                                />
-                                <YAxis
-                                    orientation="right"
-                                    axisLine={false}
-                                    tickLine={false}
-                                    tick={{ fill: "#9ca3af", fontSize: 12 }}
-                                    tickFormatter={(val) => `${val}%`}
-                                    domain={[0, 100]}
-                                    ticks={[0, 25, 50, 75, 100]}
-                                />
-                                <Tooltip
-                                    content={<CustomTooltip />}
-                                    cursor={{ stroke: '#e5e7eb', strokeWidth: 1 }}
-                                    coordinate={{ y: 0 }}
-                                    position={{ y: 20 }}
-                                />
-                                {/* Render Lines if selected */}
-                                {selectedMarkets.m1 && (
-                                    <Line type="linear" dataKey="value1" stroke="#60a5fa" strokeWidth={2} dot={(props: any) => { const { key, ...rest } = props; return <CustomDot key={key} {...rest} color="#60a5fa" lastIndex={data.length - 1} />; }} activeDot={<CustomActiveDot />} isAnimationActive={false} />
-                                )}
-                                {selectedMarkets.m2 && (
-                                    <Line type="linear" dataKey="value2" stroke="#2563eb" strokeWidth={2} dot={(props: any) => { const { key, ...rest } = props; return <CustomDot key={key} {...rest} color="#2563eb" lastIndex={data.length - 1} />; }} activeDot={<CustomActiveDot />} isAnimationActive={false} />
-                                )}
-                                {selectedMarkets.m3 && (
-                                    <Line type="linear" dataKey="value3" stroke="#facc15" strokeWidth={2} dot={(props: any) => { const { key, ...rest } = props; return <CustomDot key={key} {...rest} color="#facc15" lastIndex={data.length - 1} />; }} activeDot={<CustomActiveDot />} isAnimationActive={false} />
-                                )}
-                            </LineChart>
-                        </ResponsiveContainer>
-                    </div>
-                )}
+                {view === "Table" && <CryptoScenarioTable marketSelections={marketSelections} targetDate={targetDate} baseProbabilities={baseProbabilities} />}
 
-                {view === "Table" && <CryptoScenarioTable marketSelections={marketSelections} />}
+                {view === "2D" && <CryptoProbabilityDisplay markets={markets} selectedMarkets={selectedMarkets} marketSelections={marketSelections} onMarketSelectionsChange={handleMarketSelectionsChange} targetDate={targetDate} baseProbabilities={baseProbabilities} />}
 
-                {view === "1D" && <CryptoProbabilityDisplay markets={markets} selectedMarkets={selectedMarkets} marketSelections={marketSelections} />}
+                {view === "3D" && <CryptoCorrelationHeatmap markets={markets} selectedMarkets={selectedMarkets} marketSelections={marketSelections} onMarketSelectionsChange={handleMarketSelectionsChange} targetDate={targetDate} baseProbabilities={baseProbabilities} />}
 
-                {view === "2D" && <CryptoCorrelationHeatmap markets={markets} selectedMarkets={selectedMarkets} marketSelections={marketSelections} />}
-
-                {view === "3D" && (
-                    <div className="flex flex-col py-4">
-                        <Crypto3DView marketSelections={marketSelections} />
+                {view === "4D" && (
+                    <div className="flex flex-col pt-0 pb-4">
+                        <Crypto3DView
+                            marketSelections={marketSelections}
+                            onMarketSelectionsChange={handleMarketSelectionsChange}
+                            targetDate={targetDate}
+                            baseProbabilities={baseProbabilities}
+                            probabilities={poolProbabilities}
+                        />
                         <p className="text-[11px] text-gray-400 mt-4 text-center italic font-medium">
-                            3D Visualization of Joint Probability Space
+                            4D Visualization (Joint Probability Space × Time Dimension) for {targetDate}
                         </p>
                     </div>
                 )}
             </div>
+
 
             {/* Footer Stats and Filters */}
             <div className="flex items-center justify-between mt-6 px-1 border-t border-gray-50 pt-5">
@@ -668,7 +799,7 @@ export function CryptoMarketChart({ data, markets, selectedMarkets, view, market
                     <span className="text-gray-200">|</span>
                     <div className="flex items-center gap-2">
                         <Clock className="size-4 opacity-50" />
-                        <span className="text-[13px] font-medium text-gray-400">Jan 31, 2026</span>
+                        <span className="text-[13px] font-medium text-gray-400">{targetDate}</span>
                     </div>
                 </div>
 

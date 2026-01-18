@@ -18,11 +18,12 @@ type MarketSelection = "yes" | "no" | "any" | null;
 interface MarketTimeFilterProps {
     selectedMarkets: Record<string, boolean>;
     view: string;
-    onViewChange: (view: string) => void;
+    onViewChange: (view: string, isAuto?: boolean) => void;
     timeRange?: string;
     onTimeRangeChange?: (range: string) => void;
     hideTimeRanges?: boolean;
     marketSelections?: Record<string, MarketSelection>;
+    isCrypto?: boolean;
 }
 
 export function MarketTimeFilter({
@@ -32,54 +33,63 @@ export function MarketTimeFilter({
     timeRange = "1d",
     onTimeRangeChange,
     hideTimeRanges = false,
-    marketSelections
+    marketSelections,
+    isCrypto = false
 }: MarketTimeFilterProps) {
     const selectedCount = Object.values(selectedMarkets).filter(Boolean).length;
     const commonBtnClasses = "h-[36px] !rounded-full px-4 text-sm font-bold transition-all flex items-center justify-center gap-1";
 
     let availableDimensions: string[] = [];
-    if (selectedCount >= 1) availableDimensions.push("1D");
-    if (selectedCount >= 2) availableDimensions.push("2D");
-    if (selectedCount >= 3) availableDimensions.push("3D");
+    if (isCrypto) {
+        availableDimensions = ["2D", "3D", "4D"];
+    } else {
+        availableDimensions = ["1D", "2D", "3D"];
+    }
 
-    const isDimensionView = ["1D", "2D", "3D"].includes(view);
+    const isDimensionView = isCrypto
+        ? ["2D", "3D", "4D"].includes(view)
+        : ["1D", "2D", "3D"].includes(view);
 
     const timeRanges = ["15 min", "1h", "4h", "1d", "1w", "All"];
 
     // Calculate target dimension based on marketSelections
     const getTargetDimension = React.useMemo(() => {
-        if (!marketSelections) return availableDimensions[0] || "1D";
+        const defaultDim = isCrypto ? "2D" : "1D";
+        if (!marketSelections) return availableDimensions[0] || defaultDim;
 
         const selections = [marketSelections.m1, marketSelections.m2, marketSelections.m3];
         const yesNoCount = selections.filter(s => s === "yes" || s === "no").length;
 
-        if (yesNoCount === 3) return "3D";
-        if (yesNoCount === 2) return "2D";
-        return "1D";
-    }, [marketSelections, availableDimensions]);
+        if (isCrypto) {
+            if (yesNoCount === 3) return "4D";
+            if (yesNoCount === 2) return "3D";
+            return "2D";
+        } else {
+            if (yesNoCount === 3) return "3D";
+            if (yesNoCount === 2) return "2D";
+            return "1D";
+        }
+    }, [marketSelections, availableDimensions, isCrypto]);
 
     return (
         <div className="flex flex-wrap items-center gap-3 pl-0">
-            {/* View Selection: Chart / Table */}
+            {/* View Selection: Table only */}
             <ToggleGroup
                 type="single"
-                value={view === "Default" || view === "Table" ? view : ""}
-                onValueChange={(v) => v && onViewChange(v)}
+                value={view === "Table" ? view : ""}
+                onValueChange={(v) => v && onViewChange(v, false)}
                 className="gap-2"
             >
-                {["Default", "Table"].map((v) => (
-                    <ToggleGroupItem
-                        key={v}
-                        value={v}
-                        className={cn(
-                            commonBtnClasses,
-                            "data-[state=on]:bg-black data-[state=on]:text-white data-[state=on]:hover:bg-black",
-                            "data-[state=off]:bg-gray-100 data-[state=off]:text-gray-500 hover:bg-gray-200"
-                        )}
-                    >
-                        {v === "Default" ? "Chart" : v}
-                    </ToggleGroupItem>
-                ))}
+                <ToggleGroupItem
+                    value="Table"
+                    className={cn(
+                        commonBtnClasses,
+                        "data-[state=on]:bg-black data-[state=on]:text-white data-[state=on]:hover:bg-black",
+                        "data-[state=off]:bg-gray-100 data-[state=off]:text-gray-500 hover:bg-gray-200"
+                    )}
+                >
+                    Table
+                </ToggleGroupItem>
             </ToggleGroup>
 
             {/* Dimension Button - shows target dimension based on selections */}
@@ -103,7 +113,7 @@ export function MarketTimeFilter({
                             {availableDimensions.map((d) => (
                                 <DropdownMenuItem
                                     key={d}
-                                    onClick={() => onViewChange(d)}
+                                    onClick={() => onViewChange(d, false)}
                                     className={`font-bold text-[13px] cursor-pointer hover:bg-gray-50 rounded-lg px-3 py-2 justify-center ${view === d ? "text-blue-600 bg-blue-50/50" : "text-gray-900"}`}
                                 >
                                     {d}
@@ -113,7 +123,7 @@ export function MarketTimeFilter({
                     </DropdownMenu>
                 ) : (
                     <RainbowButton
-                        onClick={() => onViewChange(getTargetDimension)}
+                        onClick={() => onViewChange(getTargetDimension, true)}
                         variant="outline"
                         className={cn(
                             "h-[36px] text-sm font-bold px-5 flex items-center gap-2 rounded-full transition-transform active:scale-95"
