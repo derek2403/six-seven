@@ -9,58 +9,58 @@ import Link from "next/link";
 
 const MARKETS = {
   US: [
-    { name: "Fed rate cut in Feb?", description: "High conviction among analysts.", time: "2m ago", icon: "🇺🇸", color: "#468BE6" },
-    { name: "S&P 500 above 6000?", description: "Market sentiment is bullish.", time: "10m ago", icon: "📈", color: "#468BE6" },
-    { name: "US Tech Regulation Bill?", description: "Senate vote expected soon.", time: "5m ago", icon: "⚖️", color: "#468BE6" },
-    { name: "Trump 2028 Candidacy?", description: "Political futures heating up.", time: "15m ago", icon: "🏛️", color: "#468BE6" }
+    { name: "Fed rate cut in Feb?", description: "High conviction among analysts.", time: "2m ago", icon: "/market/fedchair.png", color: "#468BE6" },
+    { name: "S&P 500 above 6000?", description: "Market sentiment is bullish.", time: "10m ago", icon: "/market/pre-winner.png", color: "#468BE6" },
+    { name: "US Tech Regulation Bill?", description: "Senate vote expected soon.", time: "5m ago", icon: "/market/republic.png", color: "#468BE6" },
+    { name: "Trump 2028 Candidacy?", description: "Political futures heating up.", time: "15m ago", icon: "/market/trump_portrait.png", color: "#468BE6" }
   ],
   Portugal: [
-    { name: "Portugal WC 2028 winner?", description: "Ronaldo's last dance bets.", time: "1m ago", icon: "🇵🇹", color: "#468BE6" },
-    { name: "Lisbon Tech Exit > $1B?", description: "Unicorn hunting season.", time: "12m ago", icon: "🚀", color: "#468BE6" },
-    { name: "Renewable Energy > 90%?", description: "Green grid targets.", time: "1h ago", icon: "🌿", color: "#468BE6" },
-    { name: "Porto Housing Boom?", description: "Real estate market surge.", time: "2h ago", icon: "🏠", color: "#468BE6" }
+    { name: "Portugal WC 2028 winner?", description: "Ronaldo's last dance bets.", time: "1m ago", icon: "/market/slush.png", color: "#468BE6" },
+    { name: "Lisbon Tech Exit > $1B?", description: "Unicorn hunting season.", time: "12m ago", icon: "/market/suidex.png", color: "#468BE6" },
+    { name: "Renewable Energy > 90%?", description: "Green grid targets.", time: "1h ago", icon: "/market/sui-logo1.png", color: "#468BE6" },
+    { name: "Porto Housing Boom?", description: "Real estate market surge.", time: "2h ago", icon: "/market/jan.png", color: "#468BE6" }
   ],
   Iran: [
-    { name: "Oil Export Ceiling 2028?", description: "Global supply impact.", time: "8m ago", icon: "🛢️", color: "#468BE6" },
-    { name: "Tehran Stock Index > 2M?", description: "Local currency hedge.", time: "4m ago", icon: "💹", color: "#468BE6" },
-    { name: "Persian Gulf Trade Pack?", description: "New regional alliance.", time: "30m ago", icon: "🤝", color: "#468BE6" },
-    { name: "Sanctions Relief 2025?", description: "Diplomatic developments.", time: "1h ago", icon: "🕊️", color: "#468BE6" }
+    { name: "Oil Export Ceiling 2028?", description: "Global supply impact.", time: "8m ago", icon: "/market/deportation.png", color: "#468BE6" },
+    { name: "Tehran Stock Index > 2M?", description: "Local currency hedge.", time: "4m ago", icon: "/market/btc_logo.png", color: "#468BE6" },
+    { name: "Persian Gulf Trade Pack?", description: "New regional alliance.", time: "30m ago", icon: "/market/china_tariffs.png", color: "#468BE6" },
+    { name: "Sanctions Relief 2025?", description: "Diplomatic developments.", time: "1h ago", icon: "/market/democratic.png", color: "#468BE6" }
   ],
   Ukraine: [
-    { name: "Reconstruction Fund Goal?", description: "EU-led recovery plan.", time: "3m ago", icon: "🏗️", color: "#468BE6" },
-    { name: "Agriculture Export Record?", description: "Grain corridor stability.", time: "15m ago", icon: "🌾", color: "#468BE6" },
-    { name: "IT Sector Growth > 20%?", description: "Digital resilience.", time: "2h ago", icon: "💻", color: "#468BE6" },
-    { name: "Ceasefire by Summer?", description: "Peace talks progress.", time: "30m ago", icon: "🕊️", color: "#468BE6" }
+    { name: "Reconstruction Fund Goal?", description: "EU-led recovery plan.", time: "3m ago", icon: "/market/ukraine_war.png", color: "#468BE6" },
+    { name: "Agriculture Export Record?", description: "Grain corridor stability.", time: "15m ago", icon: "/market/sui-coin.png", color: "#468BE6" },
+    { name: "IT Sector Growth > 20%?", description: "Digital resilience.", time: "2h ago", icon: "/market/suidex.png", color: "#468BE6" },
+    { name: "Ceasefire by Summer?", description: "Peace talks progress.", time: "30m ago", icon: "/market/ukraine_war.png", color: "#468BE6" }
   ],
   Australia: [
-    { name: "ASX 200 All-Time High?", description: "Mining sector rally.", time: "6m ago", icon: "🇦🇺", color: "#468BE6" },
-    { name: "Great Barrier Reef Health?", description: "Restoration success.", time: "11m ago", icon: "🪸", color: "#468BE6" },
-    { name: "Australia-UK Trade Deal?", description: "New export quotas.", time: "45m ago", icon: "🚢", color: "#468BE6" },
-    { name: "Lithium Export Boom?", description: "EV battery demand surge.", time: "1h ago", icon: "🔋", color: "#468BE6" }
+    { name: "ASX 200 All-Time High?", description: "Mining sector rally.", time: "6m ago", icon: "/market/pre-winner.png", color: "#468BE6" },
+    { name: "Great Barrier Reef Health?", description: "Restoration success.", time: "11m ago", icon: "/market/sui-logo1.png", color: "#468BE6" },
+    { name: "Australia-UK Trade Deal?", description: "New export quotas.", time: "45m ago", icon: "/market/china_tariffs.png", color: "#468BE6" },
+    { name: "Lithium Export Boom?", description: "EV battery demand surge.", time: "1h ago", icon: "/market/eth_logo.png", color: "#468BE6" }
   ],
   Greenland: [
-    { name: "New Nuuk Airport Open?", description: "Tourism expansion.", time: "20m ago", icon: "✈️", color: "#468BE6" },
-    { name: "Ice Shelf Stability 2026?", description: "Arctic research data.", time: "1h ago", icon: "❄️", color: "#468BE6" },
-    { name: "Mineral Export License?", description: "Northern mining rights.", time: "2h ago", icon: "⛏️", color: "#468BE6" },
-    { name: "Independence Vote 2030?", description: "Political self-determination.", time: "3h ago", icon: "🗳️", color: "#468BE6" }
+    { name: "New Nuuk Airport Open?", description: "Tourism expansion.", time: "20m ago", icon: "/market/slush.png", color: "#468BE6" },
+    { name: "Ice Shelf Stability 2026?", description: "Arctic research data.", time: "1h ago", icon: "/market/sui-coin.png", color: "#468BE6" },
+    { name: "Mineral Export License?", description: "Northern mining rights.", time: "2h ago", icon: "/market/btc_logo.png", color: "#468BE6" },
+    { name: "Independence Vote 2030?", description: "Political self-determination.", time: "3h ago", icon: "/market/democratic.png", color: "#468BE6" }
   ],
   China: [
-    { name: "GDP Growth > 5%?", description: "Stimulus package effect.", time: "5m ago", icon: "🐉", color: "#468BE6" },
-    { name: "EV Export Record?", description: "Global market dominance.", time: "20m ago", icon: "🚗", color: "#468BE6" },
-    { name: "Space Station Complete?", description: "New module launch.", time: "1h ago", icon: "🛰️", color: "#468BE6" },
-    { name: "Yuan Internationalization?", description: "Currency adoption growth.", time: "2h ago", icon: "💴", color: "#468BE6" }
+    { name: "GDP Growth > 5%?", description: "Stimulus package effect.", time: "5m ago", icon: "/market/china_tariffs.png", color: "#468BE6" },
+    { name: "EV Export Record?", description: "Global market dominance.", time: "20m ago", icon: "/market/eth_featured.png", color: "#468BE6" },
+    { name: "Space Station Complete?", description: "New module launch.", time: "1h ago", icon: "/market/sui-logo1.png", color: "#468BE6" },
+    { name: "Yuan Internationalization?", description: "Currency adoption growth.", time: "2h ago", icon: "/market/btc_logo.png", color: "#468BE6" }
   ],
   Russia: [
-    { name: "Tech Sovereignty 2025?", description: "Domestic chip production.", time: "10m ago", icon: "🐻", color: "#468BE6" },
-    { name: "Arctic Trade Route?", description: "New shipping lanes.", time: "30m ago", icon: "🚢", color: "#468BE6" },
-    { name: "Crypto Regulation Bill?", description: "Digital ruble launch.", time: "1h ago", icon: "🪙", color: "#468BE6" },
-    { name: "Gas Pipeline Expansion?", description: "Energy infrastructure.", time: "2h ago", icon: "⛽", color: "#468BE6" }
+    { name: "Tech Sovereignty 2025?", description: "Domestic chip production.", time: "10m ago", icon: "/market/suidex.png", color: "#468BE6" },
+    { name: "Arctic Trade Route?", description: "New shipping lanes.", time: "30m ago", icon: "/market/slush.png", color: "#468BE6" },
+    { name: "Crypto Regulation Bill?", description: "Digital ruble launch.", time: "1h ago", icon: "/market/crypto-logo.png", color: "#468BE6" },
+    { name: "Gas Pipeline Expansion?", description: "Energy infrastructure.", time: "2h ago", icon: "/market/deportation.png", color: "#468BE6" }
   ],
   Kenya: [
-    { name: "Konza Tech City Launch?", description: "Silicon Savannah progress.", time: "15m ago", icon: "🦁", color: "#468BE6" },
-    { name: "Tourism Rebound 2025?", description: "Safari bookings surge.", time: "45m ago", icon: "🦓", color: "#468BE6" },
-    { name: "Shilling Stability?", description: "Forex reserve targets.", time: "2h ago", icon: "💱", color: "#468BE6" },
-    { name: "M-Pesa Global Expansion?", description: "Fintech dominance.", time: "3h ago", icon: "📱", color: "#468BE6" }
+    { name: "Konza Tech City Launch?", description: "Silicon Savannah progress.", time: "15m ago", icon: "/market/suidex.png", color: "#468BE6" },
+    { name: "Tourism Rebound 2025?", description: "Safari bookings surge.", time: "45m ago", icon: "/market/slush.png", color: "#468BE6" },
+    { name: "Shilling Stability?", description: "Forex reserve targets.", time: "2h ago", icon: "/market/btc_logo.png", color: "#468BE6" },
+    { name: "M-Pesa Global Expansion?", description: "Fintech dominance.", time: "3h ago", icon: "/market/sui-coin.png", color: "#468BE6" }
   ]
 };
 

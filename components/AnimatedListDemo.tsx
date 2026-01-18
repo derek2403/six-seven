@@ -35,7 +35,11 @@ const Notification = ({ name, description, icon, color, time }: Item) => {
                     className="flex size-10 items-center justify-center rounded-2xl flex-shrink-0"
                     style={{ backgroundColor: color }}
                 >
-                    <span className="text-lg">{icon}</span>
+                    {icon && icon.startsWith('/') ? (
+                        <img src={icon} alt="" className="w-6 h-6 object-cover rounded" />
+                    ) : (
+                        <span className="text-lg">{icon}</span>
+                    )}
                 </div>
                 <div className="flex flex-col overflow-hidden">
                     <figcaption className="flex flex-row items-center text-lg font-medium whitespace-pre text-black dark:text-white">
