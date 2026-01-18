@@ -5,6 +5,41 @@ import { createListingTx } from '../lib/listing';
 import { LISTING_CONFIG } from '../lib/config';
 import { Header } from '../components/header';
 
+// Import JSON data
+import politicsEventsData from '../data/metadata/politics_events.json';
+import sportsData from '../data/metadata/sports.json';
+
+// Define types for the data structure
+interface Market {
+    id: string;
+    question: string;
+    image?: string;
+    icon?: string;
+    groupItemTitle?: string;
+}
+
+interface EventData {
+    id: string;
+    title: string;
+    description: string;
+    image: string;
+    icon?: string;
+    markets?: Market[];
+}
+
+// Pre-select 2 main listings from each category (high liquidity/notable events)
+const POLITICS_OPTIONS: EventData[] = [
+    politicsEventsData[0], // First event from politics
+    politicsEventsData[1]  // Second event from politics
+].filter(Boolean) as EventData[];
+
+const SPORTS_OPTIONS: EventData[] = [
+    sportsData[0], // First event from sports
+    sportsData[1]  // Second event from sports
+].filter(Boolean) as EventData[];
+
+type CategoryType = '' | 'politics' | 'sports';
+
 export default function CreateListing() {
     const currentAccount = useCurrentAccount();
     const { mutateAsync: signAndExecuteTransaction } = useSignAndExecuteTransaction();
@@ -12,6 +47,10 @@ export default function CreateListing() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+
+    // Category Selection State
+    const [selectedCategory, setSelectedCategory] = useState<CategoryType>('');
+    const [selectedEvent, setSelectedEvent] = useState<EventData | null>(null);
 
     // Form State
     const [title, setTitle] = useState('');
@@ -23,6 +62,63 @@ export default function CreateListing() {
         { title: '', image: '' },
         { title: '', image: '' }
     ]);
+
+    // Get options based on selected category
+    const getCategoryOptions = () => {
+        if (selectedCategory === 'politics') return POLITICS_OPTIONS;
+        if (selectedCategory === 'sports') return SPORTS_OPTIONS;
+        return [];
+    };
+
+    // Handle event selection - auto-fill form
+    const handleEventSelect = (event: EventData) => {
+        setSelectedEvent(event);
+        setTitle(event.title);
+        setDescription(event.description);
+        setImageUrl(event.image || event.icon || '');
+
+        // Extract submarkets from the event's markets array (first 3)
+        if (event.markets && event.markets.length >= 3) {
+            const newSubmarkets = event.markets.slice(0, 3).map(market => ({
+                title: market.groupItemTitle || market.question || '',
+                image: market.image || market.icon || event.image || ''
+            }));
+            setSubmarkets(newSubmarkets);
+        } else if (event.markets && event.markets.length > 0) {
+            // Fill available markets and keep empty for the rest
+            const newSubmarkets = [
+                { title: '', image: '' },
+                { title: '', image: '' },
+                { title: '', image: '' }
+            ];
+            event.markets.forEach((market, idx) => {
+                if (idx < 3) {
+                    newSubmarkets[idx] = {
+                        title: market.groupItemTitle || market.question || '',
+                        image: market.image || market.icon || event.image || ''
+                    };
+                }
+            });
+            setSubmarkets(newSubmarkets);
+        }
+    };
+
+    // Reset form when category changes
+    const handleCategoryChange = (category: CategoryType) => {
+        setSelectedCategory(category);
+        setSelectedEvent(null);
+        if (!category) {
+            // Reset form if no category selected
+            setTitle('');
+            setDescription('');
+            setImageUrl('');
+            setSubmarkets([
+                { title: '', image: '' },
+                { title: '', image: '' },
+                { title: '', image: '' }
+            ]);
+        }
+    };
 
     const handleSubmarketChange = (index: number, field: 'title' | 'image', value: string) => {
         const newSubmarkets = [...submarkets];
@@ -90,6 +186,70 @@ export default function CreateListing() {
                 <h1 className="text-3xl font-bold text-center mb-10 text-gray-800">Create New Listing</h1>
 
                 <div className="flex flex-col gap-8">
+                    {/* Category Selection */}
+                    <section className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
+                        <h2 className="text-xl font-semibold mb-5 text-blue-800 border-b border-blue-200 pb-2">Quick Create from Template</h2>
+                        
+                        <div className="mb-4">
+                            <label className="block mb-2 text-sm font-medium text-blue-700">Select Category</label>
+                            <select
+                                className="w-full p-3 rounded-lg border border-blue-300 bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all cursor-pointer"
+                                value={selectedCategory}
+                                onChange={(e) => handleCategoryChange(e.target.value as CategoryType)}
+                            >
+                                <option value="">-- Choose a category --</option>
+                                <option value="politics">🏛️ Politics Events</option>
+                                <option value="sports">⚽ Sports</option>
+                            </select>
+                        </div>
+
+                        {selectedCategory && (
+                            <div className="mt-4">
+                                <label className="block mb-3 text-sm font-medium text-blue-700">Select an Event</label>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {getCategoryOptions().map((event) => (
+                                        <button
+                                            key={event.id}
+                                            type="button"
+                                            onClick={() => handleEventSelect(event)}
+                                            className={`p-4 rounded-lg border-2 text-left transition-all hover:shadow-md ${
+                                                selectedEvent?.id === event.id
+                                                    ? 'border-blue-500 bg-blue-50 shadow-md'
+                                                    : 'border-gray-200 bg-white hover:border-blue-300'
+                                            }`}
+                                        >
+                                            <div className="flex items-start gap-3">
+                                                <img
+                                                    src={event.image || event.icon}
+                                                    alt={event.title}
+                                                    className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
+                                                    onError={(e) => (e.currentTarget.src = 'https://placehold.co/64x64?text=?')}
+                                                />
+                                                <div className="flex-1 min-w-0">
+                                                    <h3 className="font-semibold text-gray-900 truncate">{event.title}</h3>
+                                                    <p className="text-sm text-gray-500 line-clamp-2 mt-1">
+                                                        {event.description?.slice(0, 100)}...
+                                                    </p>
+                                                    {event.markets && (
+                                                        <span className="inline-block mt-2 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                                                            {event.markets.length} submarkets
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {!selectedCategory && (
+                            <p className="text-sm text-gray-500 mt-2">
+                                Or fill in the form manually below
+                            </p>
+                        )}
+                    </section>
+
                     {/* Main Listing Info */}
                     <section className="bg-gray-50 rounded-xl p-6 border border-gray-200">
                         <h2 className="text-xl font-semibold mb-5 text-gray-700 border-b border-gray-200 pb-2">Main Listing Details</h2>
