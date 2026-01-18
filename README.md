@@ -526,8 +526,8 @@ The more dimensions, the more specific a bet can be — and the easier it is to 
 - https://walruscan.com/testnet/blob/Ok0Uune5egOJHGNg8k_F3FZVBNYQ6al2oilImJuzzl4  
 
 **Walrus Aggregator Blob Endpoints**  
-- https://aggregator.walrus-testnet.walrus.space/v1/blobs/8jGqnY8qR9UqNDp1W-0H4q9_uvD5SOdlE0cWVPFlI5c  
-- https://aggregator.walrus-testnet.walrus.space/v1/blobs/Ok0Uune5egOJHGNg8k_F3FZVBNYQ6al2oilImJuzzl4  
+- https://aggregator.walrus-testnet.walrus.space/v1/blobs/8jGqnY8qR9UqNDp1W-0H4q9_uvD5SOdlE0cWVPFlI5c
+- https://aggregator.walrus-testnet.walrus.space/v1/blobs/Ok0Uune5egOJHGNg8k_F3FZVBNYQ6al2oilImJuzzl4
 
 ---
 
