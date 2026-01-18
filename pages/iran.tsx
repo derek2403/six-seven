@@ -25,15 +25,15 @@ export default function MarketPage() {
 
     // Backend State
     const [probabilities, setProbabilities] = React.useState<Record<string, number> | null>(null);
-    const [vaultBalance, setVaultBalance] = React.useState<string>('0');
     const [maker, setMaker] = React.useState<string>('');
     const [isLoading, setIsLoading] = React.useState(false);
 
-    // Initial State
-    const [selectedMarkets, setSelectedMarkets] = React.useState<Record<string, boolean>>(
-        Object.fromEntries(COMBINED_MARKETS.map(m => [m.id, true]))
-    );
-    const [view, setView] = React.useState("Default");
+    const [selectedMarkets, setSelectedMarkets] = React.useState<Record<string, boolean>>({
+        m1: true,
+        m2: true,
+        m3: true
+    });
+    const [view, setView] = React.useState("1D");
     const [timeRange, setTimeRange] = React.useState("1d");
 
     // Fetch Pool 0 Data
@@ -314,10 +314,28 @@ export default function MarketPage() {
 
     // selectedMarkets is already initialized from COMBINED_MARKETS in useState
 
+    const [isAutoView, setIsAutoView] = React.useState(true);
+
+    // Track previous selections to detect changes
+    const prevSelectionsRef = React.useRef(marketSelections);
+
+    const handleViewChange = (v: string, isAuto?: boolean) => {
+        setView(v);
+        if (isAuto !== undefined) {
+            setIsAutoView(isAuto);
+        }
+    };
+
     // Auto-switch views based on selections (only when in 1D/2D/3D views, NOT Table/Default)
     React.useEffect(() => {
-        // Don't auto-switch if user is in Table or Default view
-        if (view === "Table" || view === "Default") {
+        // Detect if selections actually changed
+        const hasChanged = JSON.stringify(prevSelectionsRef.current) !== JSON.stringify(marketSelections);
+        prevSelectionsRef.current = marketSelections;
+
+        // Requirement: Only auto-switch if we are in AUTO mode and currently in a dimensional view
+        const isDimensionalView = ["1D", "2D", "3D"].includes(view);
+
+        if (!hasChanged || !isAutoView || !isDimensionalView) {
             return;
         }
 
@@ -332,17 +350,17 @@ export default function MarketPage() {
 
         // If all 3 markets have yes or no (not null, not "any"), switch to 3D
         if (yesNoCount === 3) {
-            setView("3D");
+            if (view !== "3D") setView("3D");
         }
         // If exactly 2 have yes/no, switch to 2D
         else if (yesNoCount === 2) {
-            setView("2D");
+            if (view !== "2D") setView("2D");
         }
         // If 2+ are any/null, switch to 1D
         else if (anyOrNullCount >= 2) {
-            setView("1D");
+            if (view !== "1D") setView("1D");
         }
-    }, [marketSelections, view]);
+    }, [marketSelections, view, isAutoView]);
 
     return (
         <div className="min-h-screen bg-white font-sans">
@@ -372,7 +390,7 @@ export default function MarketPage() {
                             <MarketTimeFilter
                                 selectedMarkets={selectedMarkets}
                                 view={view}
-                                onViewChange={setView}
+                                onViewChange={handleViewChange}
                                 timeRange={timeRange}
                                 onTimeRangeChange={setTimeRange}
                                 hideTimeRanges={true}
@@ -385,7 +403,7 @@ export default function MarketPage() {
                                 items={DEFAULT_MARKET_DATA.legendItems}
                                 selectedMarkets={selectedMarkets}
                                 view={view}
-                                onViewChange={setView}
+                                onViewChange={handleViewChange}
                             />
                         </div>
 
@@ -408,6 +426,8 @@ export default function MarketPage() {
                             marketSelections={marketSelections}
                             onMarketSelectionsChange={setMarketSelections}
                             focusedMarket={focusedMarket}
+                            baseProbabilities={probabilities || undefined}
+                            targetDate="Jan 1, 2026"
                             onTrade={handleTrade}
                         />
                         <p className="mt-4 text-center text-[13px] text-gray-400 font-medium leading-relaxed">

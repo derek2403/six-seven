@@ -16,17 +16,62 @@ interface TradeCardProps {
     marketSelections?: Record<string, MarketSelection>;
     onMarketSelectionsChange?: (selections: Record<string, MarketSelection>) => void;
     focusedMarket?: string | null;
+    targetDate?: string;
+    // Real probabilities for ROI calculation
+    baseProbabilities?: Record<string, number>;
     // Old prop for legacy compatibility
     market?: CombinedMarketItem;
     onTrade?: (amount: string, outcome: number) => Promise<void>;
 }
 
-export function TradeCard({ markets, marketSelections, onMarketSelectionsChange, focusedMarket, market, onTrade }: TradeCardProps) {
+export function TradeCard({ markets, marketSelections, onMarketSelectionsChange, focusedMarket, targetDate, baseProbabilities, market, onTrade }: TradeCardProps) {
     // Use provided markets or fallback to COMBINED_MARKETS (Iran)
     const displayMarkets = markets || COMBINED_MARKETS;
     const [tab, setTab] = React.useState<"buy" | "sell">("buy");
     const [amount, setAmount] = React.useState("");
     const [isFocused, setIsFocused] = React.useState(false);
+
+    // Joint probability (price) calculation for the selected scenario
+    // baseProbabilities now contains Pool 0 joint probabilities keyed by "000", "001", etc.
+    const price = React.useMemo(() => {
+        if (!baseProbabilities) return 0.5; // Fallback
+
+        // All possible world states
+        const allStates = ["000", "001", "010", "011", "100", "101", "110", "111"];
+
+        // Filter states that match current market selections
+        const matchingStates = allStates.filter(state => {
+            if (!marketSelections) return true;
+
+            const s1 = marketSelections.m1;
+            const s2 = marketSelections.m2;
+            const s3 = marketSelections.m3;
+
+            // Check if state matches selection (null or "any" = wildcard)
+            if (s1 && s1 !== "any" && state[0] !== (s1 === "yes" ? "1" : "0")) return false;
+            if (s2 && s2 !== "any" && state[1] !== (s2 === "yes" ? "1" : "0")) return false;
+            if (s3 && s3 !== "any" && state[2] !== (s3 === "yes" ? "1" : "0")) return false;
+
+            return true;
+        });
+
+        // Sum probabilities of matching states (values are already in percentage, e.g. 9.63)
+        const totalProb = matchingStates.reduce((acc, state) => {
+            const prob = baseProbabilities[state] || 0;
+            return acc + prob;
+        }, 0);
+
+        console.log("TradeCard - matching states:", matchingStates, "total prob:", totalProb);
+
+        // totalProb is in percentage (0-100), convert to decimal (0-1) for price
+        return Math.max(0.01, Math.min(0.99, totalProb / 100));
+    }, [baseProbabilities, marketSelections]);
+
+    const potentialReturn = React.useMemo(() => {
+        const numAmount = parseFloat(amount || "0");
+        if (numAmount === 0 || price === 0) return "0.00";
+        return (numAmount / price).toFixed(2);
+    }, [amount, price]);
 
     // Check if using new Iran mode or old Crypto mode
     const isIranMode = marketSelections !== undefined && onMarketSelectionsChange !== undefined;
@@ -199,6 +244,22 @@ export function TradeCard({ markets, marketSelections, onMarketSelectionsChange,
                     ))}
                 </div>
             </div>
+
+            {/* ROI / Payout Display */}
+            {amount && parseFloat(amount) > 0 && (
+                <div className="flex items-center justify-between h-[40px] mt-4 mb-5">
+                    <div className="flex flex-col">
+                        <span className="text-[16px] font-bold text-black uppercase tracking-tight">To win</span>
+                        <div className="flex items-center gap-1 text-[12px] text-gray-400 font-bold uppercase tracking-wide">
+                            Avg. Price {(price * 100).toFixed(0)}¢
+                            <span className="size-3.5 rounded-full border border-gray-200 flex items-center justify-center text-[10px] text-gray-300">i</span>
+                        </div>
+                    </div>
+                    <div className="text-[36px] font-bold text-[#22c55e] leading-none">
+                        ${potentialReturn}
+                    </div>
+                </div>
+            )}
 
             {/* Trade Button */}
             {/* Trade Button */}

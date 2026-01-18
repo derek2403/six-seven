@@ -14,6 +14,9 @@ export function CombinedMarketLayout() {
     );
     const [view, setView] = React.useState("Default");
 
+    // Mock probabilities for ROI calculation (Synced with WorldTable)
+    const probabilities = { m1: 77.0, m2: 2.2, m3: 3.1 };
+
     const toggleMarket = (id: string) => {
         setSelectedMarkets(prev => ({
             ...prev,
@@ -66,13 +69,13 @@ export function CombinedMarketLayout() {
 
                     {/* Right Side: Trade Card */}
                     <div className="w-[380px] hidden md:block">
-                        <TradeCard />
+                        <TradeCard baseProbabilities={probabilities} targetDate="Jan 1, 2026" />
                     </div>
                 </div>
 
                 {/* Mobile Trade Card (shows below on small screens) */}
                 <div className="mt-10 md:hidden">
-                    <TradeCard />
+                    <TradeCard baseProbabilities={probabilities} targetDate="Jan 1, 2026" />
                 </div>
             </div>
         </div>

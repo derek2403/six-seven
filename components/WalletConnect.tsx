@@ -48,7 +48,7 @@ export function WalletConnect() {
                     <div className="flex items-center gap-2">
                         {/* Simple Icon placeholder */}
                         <div className="w-6 h-6 border-2 border-black dark:border-white skew-x-[-15deg]"></div>
-                        <span className="text-xl font-bold tracking-tight text-black dark:text-white">SixSeven</span>
+                        <span className="text-xl font-bold tracking-tight text-black dark:text-white">Phởcast</span>
                     </div>
 
                     {/* Search Bar */}
