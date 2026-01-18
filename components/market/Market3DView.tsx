@@ -30,16 +30,17 @@ const WORLDS: WorldData[] = [
 // state[1] = US (m2)
 // state[2] = Israel (m3)
 
-const COLORS = ["#60a5fa", "#2563eb", "#facc15"];
+const COLORS = ["#60a5fa", "#2563eb", "#0ea5e9"];
 
-function Cube({ position, prob, state, isHovered, isSelected, onHover, onClick }: {
+function Cube({ position, prob, state, isHovered, isSelected, onHover, onClick, color }: {
     position: [number, number, number],
     prob: number,
     state: string,
     isHovered: boolean,
     isSelected: boolean,
     onHover: (hover: boolean) => void,
-    onClick: () => void
+    onClick: () => void,
+    color: string
 }) {
     const mesh = useRef<THREE.Mesh>(null!);
     const [pulsePhase, setPulsePhase] = useState(0);
@@ -83,20 +84,19 @@ function Cube({ position, prob, state, isHovered, isSelected, onHover, onClick }
                     e.stopPropagation();
                     onClick();
                 }}
-                style={{ cursor: 'pointer' }}
             >
                 <boxGeometry args={[1, 1, 1]} />
                 <meshPhysicalMaterial
                     transparent
                     opacity={isHovered ? 0.9 : isSelected ? 0.8 : 0.3 * intensity + 0.1}
-                    color={isSelected ? "#3b82f6" : "#60a5fa"}
+                    color={isSelected ? "#06b6d4" : color}
                     roughness={0.1}
                     metalness={0.2}
                     transmission={0.5}
                     thickness={1}
                     clearcoat={1}
-                    emissive={isSelected ? "#3b82f6" : "#60a5fa"}
-                    emissiveIntensity={isSelected ? 0.5 + Math.sin(pulsePhase) * 0.3 : isHovered ? 0.6 : 0.2 * intensity}
+                    emissive={isSelected ? "#06b6d4" : color}
+                    emissiveIntensity={isSelected ? 0.8 : isHovered ? 0.6 : 0.2 * intensity}
                 />
 
                 {/* Always-visible probability on the cube */}
@@ -222,52 +222,62 @@ function Scene({ marketSelections, onMarketSelectionsChange, probabilities }: {
     probabilities: Record<string, number>;
 }) {
     const [hoveredState, setHoveredState] = useState<string | null>(null);
-    const [selectedState, setSelectedState] = useState<string | null>(null);
 
-    // Auto-select cube when all 3 markets have yes/no selections
-    React.useEffect(() => {
-        if (!marketSelections) return;
+    // Determine the selected state based on marketSelections
+    const selectedState = useMemo(() => {
+        if (!marketSelections) return null;
 
         const m1 = marketSelections.m1;
         const m2 = marketSelections.m2;
         const m3 = marketSelections.m3;
 
-        // If all 3 markets have yes or no (not null, not "any"), auto-select cube
+        // Only select if all three have yes/no (not any/null)
         if (m1 !== null && m1 !== "any" &&
             m2 !== null && m2 !== "any" &&
             m3 !== null && m3 !== "any") {
-            // Build the state string: "0" for no, "1" for yes
-            const state = (
-                (m1 === "yes" ? "1" : "0") +
-                (m2 === "yes" ? "1" : "0") +
-                (m3 === "yes" ? "1" : "0")
-            );
-            setSelectedState(state);
+            const bit1 = m1 === "yes" ? "1" : "0";
+            const bit2 = m2 === "yes" ? "1" : "0";
+            const bit3 = m3 === "yes" ? "1" : "0";
+            return `${bit1}${bit2}${bit3}`;
         }
+
+        return null;
     }, [marketSelections]);
 
     const handleCubeClick = (state: string) => {
-        // Toggle selection
-        if (selectedState === state) {
-            setSelectedState(null);
-        } else {
-            setSelectedState(state);
-        }
-
         if (!onMarketSelectionsChange) return;
 
         // Map state characters to yes/no for each market
         const newSelections: Record<string, MarketSelection> = {
-            m1: state[0] === '1' ? 'yes' : 'no',  // Khamenei
-            m2: state[1] === '1' ? 'yes' : 'no',  // US Strikes
-            m3: state[2] === '1' ? 'yes' : 'no',  // Israel Strikes
+            m1: state[0] === '1' ? 'yes' : 'no',
+            m2: state[1] === '1' ? 'yes' : 'no',
+            m3: state[2] === '1' ? 'yes' : 'no',
         };
 
         onMarketSelectionsChange(newSelections);
     };
 
+    const getHeatmapColor = (prob: number, min: number, max: number) => {
+        // Clamp normalized to 0-1 range to prevent array index errors
+        const normalized = max === min ? 0.5 : Math.max(0, Math.min(1, (prob - min) / (max - min)));
+        const colors = [
+            { r: 224, g: 242, b: 254 },  // Sky 100 (Light Blue)
+            { r: 125, g: 211, b: 252 },  // Sky 300
+            { r: 56, g: 189, b: 248 },   // Sky 400
+            { r: 14, g: 165, b: 233 },   // Sky 500 (Deep Blue)
+        ];
+        const idx = normalized * (colors.length - 1);
+        const lowerIdx = Math.min(Math.floor(idx), colors.length - 1);
+        const upperIdx = Math.min(Math.ceil(idx), colors.length - 1);
+        const t = idx - lowerIdx;
+        const r = Math.round(colors[lowerIdx].r + (colors[upperIdx].r - colors[lowerIdx].r) * t);
+        const g = Math.round(colors[lowerIdx].g + (colors[upperIdx].g - colors[lowerIdx].g) * t);
+        const b = Math.round(colors[lowerIdx].b + (colors[upperIdx].b - colors[lowerIdx].b) * t);
+        return `rgb(${r}, ${g}, ${b})`;
+    };
+
     const cubes = useMemo(() => {
-        return WORLDS.map((w) => {
+        const items = WORLDS.map((w) => {
             // state[0] = x, state[1] = y, state[2] = z
             const x = w.state[0] === "1" ? 0.55 : -0.55;
             const y = w.state[1] === "1" ? 0.55 : -0.55;
@@ -278,6 +288,15 @@ function Scene({ marketSelections, onMarketSelectionsChange, probabilities }: {
                 prob: probabilities[w.state] || 0
             };
         });
+
+        const probs = items.map(i => i.prob);
+        const min = Math.min(...probs);
+        const max = Math.max(...probs);
+
+        return items.map(item => ({
+            ...item,
+            color: getHeatmapColor(item.prob, min, max)
+        }));
     }, [probabilities]);
 
     return (
@@ -298,6 +317,7 @@ function Scene({ marketSelections, onMarketSelectionsChange, probabilities }: {
                             isSelected={selectedState === c.state}
                             onHover={(h) => setHoveredState(h ? c.state : null)}
                             onClick={() => handleCubeClick(c.state)}
+                            color={c.color}
                         />
                     ))}
 
@@ -323,6 +343,7 @@ export default function Market3DView({ marketSelections, onMarketSelectionsChang
     onMarketSelectionsChange?: (selections: Record<string, MarketSelection>) => void;
     probabilities?: Record<string, number>;
 }) {
+    console.log("Market3DView probabilities:", probabilities);
     // Default probs if not provided
     const safeProbabilities = probabilities || {
         "000": 2.0, "001": 2.0, "010": 2.0, "011": 88.0,

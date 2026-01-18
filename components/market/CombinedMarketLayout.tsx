@@ -6,13 +6,16 @@ import { MarketTimeFilter } from "@/components/market/MarketTimeFilter";
 import { MarketLegend } from "@/components/market/MarketLegend";
 import { MarketCombinedChart } from "@/components/market/MarketCombinedChart";
 import { TradeCard } from "@/components/market/TradeCard";
-import { COMBINED_MARKETS } from "@/lib/mock/combined-markets";
+import { COMBINED_MARKETS, MARKET_DATA, LEGEND_ITEMS } from "@/lib/mock/combined-markets";
 
 export function CombinedMarketLayout() {
     const [selectedMarkets, setSelectedMarkets] = React.useState<Record<string, boolean>>(
         Object.fromEntries(COMBINED_MARKETS.map(m => [m.id, true]))
     );
     const [view, setView] = React.useState("Default");
+
+    // Mock probabilities for ROI calculation (Synced with WorldTable)
+    const probabilities = { m1: 77.0, m2: 2.2, m3: 3.1 };
 
     const toggleMarket = (id: string) => {
         setSelectedMarkets(prev => ({
@@ -29,6 +32,9 @@ export function CombinedMarketLayout() {
                     <div className="min-w-0 w-full overflow-hidden">
                         {/* 1. Combined Market List (Header + List Items) */}
                         <CombinedMarketList
+                            title={MARKET_DATA.iran.title}
+                            avatar={MARKET_DATA.iran.avatar}
+                            markets={COMBINED_MARKETS}
                             selectedMarkets={selectedMarkets}
                             onToggleMarket={toggleMarket}
                         />
@@ -45,6 +51,7 @@ export function CombinedMarketLayout() {
                         {/* 3. Legend */}
                         <div className="mt-10">
                             <MarketLegend
+                                items={LEGEND_ITEMS}
                                 selectedMarkets={selectedMarkets}
                                 view={view}
                                 onViewChange={setView}
@@ -62,13 +69,13 @@ export function CombinedMarketLayout() {
 
                     {/* Right Side: Trade Card */}
                     <div className="w-[380px] hidden md:block">
-                        <TradeCard />
+                        <TradeCard baseProbabilities={probabilities} targetDate="Jan 1, 2026" />
                     </div>
                 </div>
 
                 {/* Mobile Trade Card (shows below on small screens) */}
                 <div className="mt-10 md:hidden">
-                    <TradeCard />
+                    <TradeCard baseProbabilities={probabilities} targetDate="Jan 1, 2026" />
                 </div>
             </div>
         </div>

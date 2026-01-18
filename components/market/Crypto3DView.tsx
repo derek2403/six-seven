@@ -1,0 +1,412 @@
+"use client";
+
+import React, { useRef, useState, useMemo } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { OrbitControls, PerspectiveCamera, Text, Float, ContactShadows, Environment, Billboard, Html } from "@react-three/drei";
+import * as THREE from "three";
+
+type MarketSelection = "yes" | "no" | "any" | null;
+
+interface WorldData {
+    state: string; // "000", "001", etc.
+    meaning: string;
+    prob: number;
+}
+
+// Crypto-specific world states
+// state[0] = BTC > $100k (m1)
+// state[1] = ETH > $4k (m2)
+// state[2] = SUI > $5 (m3)
+const WORLDS: WorldData[] = [
+    { state: "000", meaning: "BTC No, ETH No, SUI No", prob: 8.5 },
+    { state: "001", meaning: "BTC No, ETH No, SUI Yes", prob: 5.2 },
+    { state: "010", meaning: "BTC No, ETH Yes, SUI No", prob: 4.8 },
+    { state: "011", meaning: "BTC No, ETH Yes, SUI Yes", prob: 3.5 },
+    { state: "100", meaning: "BTC Yes, ETH No, SUI No", prob: 35.0 },
+    { state: "101", meaning: "BTC Yes, ETH No, SUI Yes", prob: 18.5 },
+    { state: "110", meaning: "BTC Yes, ETH Yes, SUI No", prob: 12.5 },
+    { state: "111", meaning: "BTC Yes, ETH Yes, SUI Yes", prob: 12.0 },
+];
+
+const COLORS = ["#60a5fa", "#2563eb", "#0ea5e9"];
+
+function Cube({ position, prob, state, isHovered, isSelected, onHover, onClick, targetDate, color }: {
+    position: [number, number, number],
+    prob: number,
+    state: string,
+    isHovered: boolean,
+    isSelected: boolean,
+    onHover: (hover: boolean) => void,
+    onClick: () => void,
+    targetDate?: string,
+    color: string
+}) {
+    const mesh = useRef<THREE.Mesh>(null!);
+    const pulseRef = useRef(0);
+
+    // Intensity based on probability
+    const intensity = 0.1 + (prob / 100) * 0.9;
+    const isMostProbable = prob > 30;
+
+    // Detailed breakdown for hover
+    const btcVal = state[0] === '1' ? 'YES' : 'NO';
+    const ethVal = state[1] === '1' ? 'YES' : 'NO';
+    const suiVal = state[2] === '1' ? 'YES' : 'NO';
+
+    // Pulsating animation for selected cube
+    useFrame((state) => {
+        if (isSelected && mesh.current) {
+            pulseRef.current += 0.05;
+            const scale = 1 + Math.sin(pulseRef.current) * 0.08;
+            mesh.current.scale.setScalar(scale);
+        } else if (mesh.current) {
+            mesh.current.scale.setScalar(1);
+        }
+    });
+
+    return (
+        <group position={position}>
+            <mesh
+                ref={mesh}
+                onPointerOver={(e) => {
+                    e.stopPropagation();
+                    onHover(true);
+                }}
+                onPointerOut={(e) => {
+                    e.stopPropagation();
+                    onHover(false);
+                }}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onClick();
+                }}
+            >
+                <boxGeometry args={[1, 1, 1]} />
+                <meshPhysicalMaterial
+                    transparent
+                    opacity={isSelected ? 0.95 : isHovered ? 0.9 : 0.3 * intensity + 0.15}
+                    color={isSelected ? "#06b6d4" : color}
+                    roughness={0.1}
+                    metalness={0.2}
+                    transmission={0.4}
+                    thickness={1.5}
+                    clearcoat={1}
+                    emissive={isSelected ? "#06b6d4" : color}
+                    emissiveIntensity={isSelected ? 0.8 : isHovered ? 0.6 : 0.3 * intensity}
+                />
+
+            </mesh>
+
+            {/* Probability label on top of the cube */}
+            {prob > 3 && !isHovered && (
+                <Billboard position={[0, 0.75, 0]}>
+                    <Text
+                        fontSize={0.24}
+                        color={isSelected ? "#06b6d4" : "black"}
+                        anchorX="center"
+                        anchorY="middle"
+                        fontWeight="black"
+                    >
+                        {prob.toFixed(1)}%
+                    </Text>
+                </Billboard>
+            )}
+
+
+            {/* Detailed Info on Hover */}
+            {isHovered && (
+                <Html
+                    position={[0, 0, 0.8]}
+                    center
+                    distanceFactor={3}
+                    style={{ pointerEvents: 'none' }}
+                >
+                    <div style={{
+                        background: 'white',
+                        border: '2px solid black',
+                        borderRadius: '8px',
+                        padding: '12px 16px',
+                        minWidth: '180px',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                    }}>
+                        {/* Probability */}
+                        <div style={{
+                            background: 'transparent',
+                            color: '#2563eb',
+                            fontWeight: 'bold',
+                            fontSize: '40px',
+                            padding: '6px 12px',
+                            borderRadius: '4px',
+                            textAlign: 'center',
+                            marginBottom: '4px',
+                        }}>
+                            {prob.toFixed(2)}%
+                        </div>
+
+                        {/* Market Results */}
+                        <div style={{ color: 'black', fontSize: '12px', lineHeight: '1.6' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: COLORS[0], display: 'inline-block' }}></span>
+                                <span>BTC &gt; $100k: <strong>{btcVal}</strong></span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: COLORS[1], display: 'inline-block' }}></span>
+                                <span>ETH &gt; $4k: <strong>{ethVal}</strong></span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: COLORS[2], display: 'inline-block' }}></span>
+                                <span>SUI &gt; $5: <strong>{suiVal}</strong></span>
+                            </div>
+                        </div>
+                    </div>
+                </Html>
+            )}
+
+        </group>
+    );
+}
+
+
+function Labels() {
+    return (
+        <group>
+            {/* Axis A: Bottom Edge (X-axis) - BTC */}
+            <group position={[0, -1.3, 1.2]}>
+                <Billboard position={[-0.55, 0, 0]}>
+                    <Text fontSize={0.14} color="#9ca3af" fontWeight="bold">No</Text>
+                </Billboard>
+                <Billboard position={[0.55, 0, 0]}>
+                    <Text fontSize={0.14} color="#9ca3af" fontWeight="bold">Yes</Text>
+                </Billboard>
+                <Billboard position={[0, -0.25, 0]}>
+                    <Text fontSize={0.2} color="#1f2937" fontWeight="black">A: BTC &gt; $100k</Text>
+                </Billboard>
+            </group>
+
+            {/* Axis B: Left Edge (Y-axis) - ETH */}
+            <group position={[-1.3, 0, 1.2]}>
+                <Billboard position={[0, -0.55, 0]}>
+                    <Text fontSize={0.14} color="#9ca3af" fontWeight="bold">No</Text>
+                </Billboard>
+                <Billboard position={[0, 0.55, 0]}>
+                    <Text fontSize={0.14} color="#9ca3af" fontWeight="bold">Yes</Text>
+                </Billboard>
+                <Billboard position={[-0.4, 0, 0]}>
+                    <Text fontSize={0.2} color="#1f2937" fontWeight="black">B: ETH &gt; $4k</Text>
+                </Billboard>
+            </group>
+
+            {/* Axis C: Depth Edge (Z-axis) - SUI */}
+            <group position={[1.2, -1.3, 0]}>
+                <Billboard position={[0, 0, -0.55]}>
+                    <Text fontSize={0.14} color="#9ca3af" fontWeight="bold">No</Text>
+                </Billboard>
+                <Billboard position={[0, 0, 0.55]}>
+                    <Text fontSize={0.14} color="#9ca3af" fontWeight="bold">Yes</Text>
+                </Billboard>
+                <Billboard position={[0.5, 0.3, 0]}>
+                    <Text fontSize={0.2} color="#1f2937" fontWeight="black">C: SUI &gt; $5</Text>
+                </Billboard>
+            </group>
+        </group>
+    );
+}
+
+
+
+function Scene({ marketSelections, onMarketSelectionsChange, targetDate, baseProbabilities, probabilities }: {
+    marketSelections?: Record<string, MarketSelection>,
+    onMarketSelectionsChange?: (selections: Record<string, MarketSelection>) => void,
+    targetDate?: string,
+    baseProbabilities: Record<string, number>,
+    probabilities?: Record<string, number> | null // Pool 1 data from blockchain
+}) {
+    const [hoveredState, setHoveredState] = useState<string | null>(null);
+
+    // Base probabilities derived from real price data
+    const p1 = (baseProbabilities.m1 || 0) / 100;
+    const p2 = (baseProbabilities.m2 || 0) / 100;
+    const p3 = (baseProbabilities.m3 || 0) / 100;
+
+    const getJitteredProb = (state: string) => {
+        // Calculate base probability from pricing data (varies by targetDate)
+        let prob = 0;
+        const bits = state.split('').map(b => b === '1');
+        prob = (bits[0] ? p1 : 1 - p1) * (bits[1] ? p2 : 1 - p2) * (bits[2] ? p3 : 1 - p3) * 100;
+
+        // Apply small jitter based on targetDate for visual variation
+        if (targetDate) {
+            const hash = targetDate.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+            prob += (hash % 6) - 3;
+        }
+
+        // If we have Pool 1 data from blockchain, blend it in as a bias
+        // This represents "market sentiment" from actual bets
+        if (probabilities && probabilities[state] !== undefined) {
+            const poolProb = probabilities[state];
+            // Blend: 70% base (varies by date) + 30% pool (bet-influenced)
+            prob = prob * 0.7 + poolProb * 0.3;
+        }
+
+        // Apply selection highlighting bias
+        if (marketSelections) {
+            const m1 = marketSelections.m1;
+            const m2 = marketSelections.m2;
+            const m3 = marketSelections.m3;
+
+            const matchCount = [
+                m1 === (state[0] === '1' ? 'yes' : 'no'),
+                m2 === (state[1] === '1' ? 'yes' : 'no'),
+                m3 === (state[2] === '1' ? 'yes' : 'no')
+            ].filter(Boolean).length;
+
+            prob += matchCount * 1.5;
+        }
+
+        return Math.max(0.1, Math.min(99.9, prob));
+    };
+
+    const handleCubeClick = (state: string) => {
+        if (!onMarketSelectionsChange) return;
+
+        // Map state characters to yes/no for each market
+        const newSelections: Record<string, MarketSelection> = {
+            m1: state[0] === '1' ? 'yes' : 'no',
+            m2: state[1] === '1' ? 'yes' : 'no',
+            m3: state[2] === '1' ? 'yes' : 'no',
+        };
+
+        onMarketSelectionsChange(newSelections);
+    };
+
+    const getHeatmapColor = (prob: number, min: number, max: number) => {
+        const normalized = max === min ? 0.5 : (prob - min) / (max - min);
+        const colors = [
+            { r: 224, g: 242, b: 254 },  // Sky 100 (Light Blue)
+            { r: 125, g: 211, b: 252 },  // Sky 300
+            { r: 56, g: 189, b: 248 },   // Sky 400
+            { r: 14, g: 165, b: 233 },   // Sky 500 (Deep Blue)
+        ];
+        const idx = normalized * (colors.length - 1);
+        const lowerIdx = Math.floor(idx);
+        const upperIdx = Math.ceil(idx);
+        const t = idx - lowerIdx;
+        const r = Math.round(colors[lowerIdx].r + (colors[upperIdx].r - colors[lowerIdx].r) * t);
+        const g = Math.round(colors[lowerIdx].g + (colors[upperIdx].g - colors[lowerIdx].g) * t);
+        const b = Math.round(colors[lowerIdx].b + (colors[upperIdx].b - colors[lowerIdx].b) * t);
+        return `rgb(${r}, ${g}, ${b})`;
+    };
+
+    // Determine the selected state based on marketSelections
+    const selectedState = useMemo(() => {
+        if (!marketSelections) return null;
+
+        const m1 = marketSelections.m1;
+        const m2 = marketSelections.m2;
+        const m3 = marketSelections.m3;
+
+        // Only select if all three have yes/no (not any/null)
+        if (m1 !== null && m1 !== "any" &&
+            m2 !== null && m2 !== "any" &&
+            m3 !== null && m3 !== "any") {
+            const bit1 = m1 === "yes" ? "1" : "0";
+            const bit2 = m2 === "yes" ? "1" : "0";
+            const bit3 = m3 === "yes" ? "1" : "0";
+            return `${bit1}${bit2}${bit3}`;
+        }
+
+        return null;
+    }, [marketSelections]);
+
+    const cubes = useMemo(() => {
+        const items = WORLDS.map((w) => {
+            const x = w.state[0] === "1" ? 0.55 : -0.55;
+            const y = w.state[1] === "1" ? 0.55 : -0.55;
+            const z = w.state[2] === "1" ? 0.55 : -0.55;
+            return {
+                ...w,
+                prob: getJitteredProb(w.state),
+                position: [x, y, z] as [number, number, number]
+            };
+        });
+
+        const probs = items.map(i => i.prob);
+        const min = Math.min(...probs);
+        const max = Math.max(...probs);
+
+        return items.map(item => ({
+            ...item,
+            color: getHeatmapColor(item.prob, min, max)
+        }));
+    }, [targetDate, marketSelections, baseProbabilities, probabilities]);
+
+    return (
+        <>
+            <ambientLight intensity={0.5} />
+            <pointLight position={[10, 10, 10]} intensity={1} />
+            <spotLight position={[-10, 10, 10]} angle={0.15} penumbra={1} intensity={1} />
+
+            <Float speed={1.5} rotationIntensity={0.5} floatIntensity={0.5}>
+                <group rotation={[Math.PI / 6, -Math.PI / 4, 0]}>
+                    {cubes.map((c) => (
+                        <Cube
+                            key={c.state}
+                            position={c.position}
+                            prob={c.prob}
+                            state={c.state}
+                            isHovered={hoveredState === c.state}
+                            isSelected={selectedState === c.state}
+                            onHover={(h) => setHoveredState(h ? c.state : null)}
+                            onClick={() => handleCubeClick(c.state)}
+                            targetDate={targetDate}
+                            color={c.color}
+                        />
+                    ))}
+
+                    {/* Wireframe container */}
+                    <mesh>
+                        <boxGeometry args={[2.2, 2.2, 2.2]} />
+                        <meshBasicMaterial color="#e5e7eb" wireframe transparent opacity={0.2} />
+                    </mesh>
+
+                    <Labels />
+                </group>
+            </Float>
+
+            <Environment preset="city" />
+            <OrbitControls enableZoom={true} minPolarAngle={Math.PI / 4} maxPolarAngle={Math.PI / 1.5} />
+        </>
+    );
+}
+
+export default function Crypto3DView({ marketSelections, onMarketSelectionsChange, targetDate, baseProbabilities, probabilities }: {
+    marketSelections?: Record<string, MarketSelection>,
+    onMarketSelectionsChange?: (selections: Record<string, MarketSelection>) => void,
+    targetDate?: string,
+    baseProbabilities: Record<string, number>,
+    probabilities?: Record<string, number> | null // Pool 1 data from blockchain
+}) {
+    return (
+        <div className="w-full h-[500px] bg-white rounded-2xl border border-gray-100 shadow-sm relative overflow-hidden">
+            <div className="absolute top-6 left-6 z-10">
+                <h2 className="text-[14px] font-black text-gray-900 uppercase tracking-[0.2em]">3D Crypto Matrix</h2>
+                <p className="text-[11px] text-gray-400 mt-1 font-medium italic">8 joint-outcome possibilities</p>
+            </div>
+
+            <Canvas shadows dpr={[1, 2]}>
+                <PerspectiveCamera makeDefault position={[0, 0, 5]} fov={50} />
+                <Scene
+                    marketSelections={marketSelections}
+                    onMarketSelectionsChange={onMarketSelectionsChange}
+                    targetDate={targetDate}
+                    baseProbabilities={baseProbabilities}
+                    probabilities={probabilities}
+                />
+            </Canvas>
+
+            <div className="absolute bottom-6 right-6 text-right z-10 pointer-events-none">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Rotate to explore</p>
+            </div>
+        </div>
+    );
+}

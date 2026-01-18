@@ -3,7 +3,7 @@
 import React from "react";
 import { Line, LineChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
 import { Trophy, Clock, Settings, SlidersHorizontal, ChevronDown, Shuffle, ArrowUpDown } from "lucide-react";
-import { COMBINED_CHART_DATA, COMBINED_MARKETS } from "@/lib/mock/combined-markets";
+import { CombinedChartPoint, CombinedMarketItem, COMBINED_CHART_DATA, COMBINED_MARKETS } from "@/lib/mock/combined-markets";
 import Market3DView from "./Market3DView";
 
 
@@ -68,8 +68,14 @@ const CustomDot = (props: any) => {
     return null;
 };
 
-const OutcomeSlider = ({ selectedMarkets, currentValues }: { selectedMarkets: Record<string, boolean>; currentValues: Record<string, number> }) => {
-    const activeMarkets = COMBINED_MARKETS.filter(m => selectedMarkets[m.id]);
+const OutcomeSlider = ({ selectedMarkets, currentValues, markets, marketSelections, onMarketSelectionsChange }: {
+    selectedMarkets: Record<string, boolean>;
+    currentValues: Record<string, number>;
+    markets: CombinedMarketItem[];
+    marketSelections?: Record<string, MarketSelection>;
+    onMarketSelectionsChange?: (selections: Record<string, MarketSelection>) => void;
+}) => {
+    const activeMarkets = markets.filter(m => selectedMarkets[m.id]);
 
     // Sort markets by value to determine clumping
     const sortedMarkets = [...activeMarkets].sort((a, b) => currentValues[a.id] - currentValues[b.id]);
@@ -100,8 +106,47 @@ const OutcomeSlider = ({ selectedMarkets, currentValues }: { selectedMarkets: Re
         }
     }
 
+    // Check if a market is selected (has yes or no, not any/null)
+    const isMarketSelected = (marketId: string) => {
+        if (!marketSelections) return false;
+        const sel = marketSelections[marketId];
+        return sel === "yes" || sel === "no";
+    };
+
     return (
         <div className="w-full py-20 px-4 select-none max-w-[800px] mx-auto">
+            <style jsx>{`
+                @keyframes pulse-glow-blue {
+                    0%, 100% {
+                        box-shadow: 0 0 0 0 rgba(96, 165, 250, 0.7);
+                        transform: scale(1);
+                    }
+                    50% {
+                        box-shadow: 0 0 0 8px rgba(96, 165, 250, 0);
+                        transform: scale(1.15);
+                    }
+                }
+                @keyframes pulse-glow-darkblue {
+                    0%, 100% {
+                        box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.7);
+                        transform: scale(1);
+                    }
+                    50% {
+                        box-shadow: 0 0 0 8px rgba(37, 99, 235, 0);
+                        transform: scale(1.15);
+                    }
+                }
+                @keyframes pulse-glow-yellow {
+                    0%, 100% {
+                        box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.7);
+                        transform: scale(1);
+                    }
+                    50% {
+                        box-shadow: 0 0 0 8px rgba(250, 204, 21, 0);
+                        transform: scale(1.15);
+                    }
+                }
+            `}</style>
             <div className="flex items-center justify-between w-full mb-12">
                 <span className="text-[14px] font-bold text-gray-400 uppercase tracking-widest leading-none">Outcome</span>
             </div>
@@ -120,22 +165,30 @@ const OutcomeSlider = ({ selectedMarkets, currentValues }: { selectedMarkets: Re
                     const value = currentValues[m.id];
                     const visualValue = visualPositions[m.id] ?? value;
                     const color = m.id === "m1" ? "#60a5fa" : m.id === "m2" ? "#2563eb" : "#facc15";
+                    const animationName = m.id === "m1" ? "pulse-glow-blue" : m.id === "m2" ? "pulse-glow-darkblue" : "pulse-glow-yellow";
                     const shortTitle = MARKET_NAMES[`value${m.id.slice(1)}`];
+                    const isPulsing = isMarketSelected(m.id);
+
+                    const handleDotClick = (e: React.MouseEvent) => {
+                        e.stopPropagation();
+                        if (!onMarketSelectionsChange) return;
+
+                        const current = marketSelections?.[m.id];
+                        const next = current === "yes" ? "any" : "yes";
+
+                        onMarketSelectionsChange({
+                            ...marketSelections,
+                            [m.id]: next
+                        });
+                    };
 
                     return (
                         <div
                             key={m.id}
                             className="absolute top-1/2 -translate-y-1/2 transition-all duration-500 ease-out flex flex-col items-center group/marker"
                             style={{ left: `${visualValue}%` }}
+                            onClick={handleDotClick}
                         >
-                            {/* Connector line to actual value if offset is significant */}
-                            {Math.abs(visualValue - value) > 0.1 && (
-                                <div
-                                    className="absolute top-0 w-px bg-gray-200 h-4 -translate-y-full"
-                                    style={{ left: `${(value - visualValue) * (800 / 100)}px` }}
-                                />
-                            )}
-
                             <div
                                 className="absolute bottom-6 opacity-0 group-hover/marker:opacity-100 transition-all duration-300 translate-y-2 group-hover/marker:translate-y-0 pointer-events-none z-10"
                             >
@@ -148,8 +201,11 @@ const OutcomeSlider = ({ selectedMarkets, currentValues }: { selectedMarkets: Re
                             </div>
 
                             <div
-                                className="size-4 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform relative z-0"
-                                style={{ backgroundColor: color }}
+                                className={`size-4 rounded-full border-2 border-white shadow-md cursor-pointer transition-transform relative z-0 ${isPulsing ? '' : 'hover:scale-110'}`}
+                                style={{
+                                    backgroundColor: color,
+                                    animation: isPulsing ? `${animationName} 1.5s ease-in-out infinite` : 'none'
+                                }}
                             />
 
                             {/* REAL numeric value below it. */}
@@ -164,7 +220,13 @@ const OutcomeSlider = ({ selectedMarkets, currentValues }: { selectedMarkets: Re
     );
 };
 
-const WorldTable = ({ probabilities }: { probabilities: Record<string, number> }) => {
+const WorldTable = ({ probabilities, marketSelections }: {
+    probabilities?: Record<string, number>,
+    marketSelections?: Record<string, MarketSelection>
+}) => {
+    // Default probabilities if not provided
+    const probs: Record<string, number> = probabilities || DEFAULT_PROBS;
+
     // Derive worlds from probabilities prop
     const worlds = [
         { state: "000", meaning: "Khamenei No, US No, Israel No" },
@@ -177,10 +239,40 @@ const WorldTable = ({ probabilities }: { probabilities: Record<string, number> }
         { state: "111", meaning: "Khamenei Yes, US Yes, Israel Yes" },
     ].map(w => ({
         ...w,
-        prob: probabilities[w.state] || 0
+        prob: probs[w.state] || 0
     }));
 
     const colors = ["#60a5fa", "#2563eb", "#facc15"];
+
+    // Convert marketSelections to expected state pattern for matching
+    const getExpectedPattern = () => {
+        if (!marketSelections) return null;
+        const m1 = marketSelections.m1;
+        const m2 = marketSelections.m2;
+        const m3 = marketSelections.m3;
+
+        // Build pattern: 1 = yes, 0 = no, null/any = wildcard
+        return [
+            m1 === "yes" ? "1" : m1 === "no" ? "0" : null,
+            m2 === "yes" ? "1" : m2 === "no" ? "0" : null,
+            m3 === "yes" ? "1" : m3 === "no" ? "0" : null,
+        ];
+    };
+
+    const expectedPattern = getExpectedPattern();
+
+    const isRowHighlighted = (state: string) => {
+        if (!expectedPattern) return false;
+
+        // If all are null (no selections/wild cards), do not highlight anything
+        const hasSelection = expectedPattern.some(char => char !== null);
+        if (!hasSelection) return false;
+
+        // Check if all non-null pattern positions match the state
+        return expectedPattern.every((char, idx) =>
+            char === null || char === state[idx]
+        );
+    };
 
     return (
         <div className="w-full max-w-[800px] mx-auto mt-4 px-4 mb-20">
@@ -195,7 +287,12 @@ const WorldTable = ({ probabilities }: { probabilities: Record<string, number> }
                     </thead>
                     <tbody className="divide-y divide-gray-50 bg-white">
                         {worlds.map((w) => (
-                            <WorldTableRow key={w.state} world={w} colors={colors} />
+                            <WorldTableRow
+                                key={w.state}
+                                world={w}
+                                colors={colors}
+                                isHighlighted={isRowHighlighted(w.state)}
+                            />
                         ))}
                     </tbody>
                 </table>
@@ -216,31 +313,35 @@ const WorldTable = ({ probabilities }: { probabilities: Record<string, number> }
     );
 };
 
-const WorldTableRow = ({ world, colors }: { world: any, colors: string[] }) => {
+const WorldTableRow = ({ world, colors, isHighlighted }: { world: any, colors: string[], isHighlighted?: boolean }) => {
     return (
-        <tr className="hover:bg-blue-50/10 transition-colors group">
+        <tr className={`transition-colors group ${isHighlighted
+            ? 'bg-blue-100/60 ring-2 ring-blue-400/50 ring-inset'
+            : 'hover:bg-blue-50/10'
+            }`}>
             <td className="px-6 py-4 w-[100px]">
                 <div className="flex items-center gap-2">
                     {world.state.split('').map((char: string, idx: number) => (
                         <div
                             key={idx}
-                            className="size-2.5 rounded-full border border-current"
+                            className={`size-2.5 rounded-full border border-current ${isHighlighted ? 'scale-125' : ''}`}
                             style={{
                                 backgroundColor: char === '1' ? colors[idx] : 'transparent',
                                 color: colors[idx],
-                                opacity: char === '1' ? 1 : 0.4
+                                opacity: char === '1' ? 1 : 0.4,
+                                transition: 'transform 0.2s'
                             }}
                         />
                     ))}
                 </div>
             </td>
             <td className="px-4 py-4">
-                <span className="text-[13px] font-medium text-gray-600">
+                <span className={`text-[13px] font-medium ${isHighlighted ? 'text-blue-800 font-semibold' : 'text-gray-600'}`}>
                     {world.meaning}
                 </span>
             </td>
             <td className="px-6 py-4 text-right w-[120px]">
-                <span className="font-black text-gray-900 text-[14px]">{world.prob}%</span>
+                <span className={`font-black text-[14px] ${isHighlighted ? 'text-blue-700' : 'text-gray-900'}`}>{world.prob}%</span>
             </td>
         </tr>
     );
@@ -276,6 +377,7 @@ const ConfusionMatrix = ({ selectedMarkets, marketSelections, onMarketSelections
     onMarketSelectionsChange: (selections: Record<string, MarketSelection>) => void;
     probabilities: Record<string, number>;
 }) => {
+    console.log("ConfusionMatrix probabilities:", probabilities);
     const activeMarkets = COMBINED_MARKETS.filter(m => selectedMarkets[m.id]);
 
     // State for tracking which market is where
@@ -325,8 +427,8 @@ const ConfusionMatrix = ({ selectedMarkets, marketSelections, onMarketSelections
 
     if (!topMarketId || !leftMarketId) return null;
 
-    const mTop = COMBINED_MARKETS.find(m => m.id === topMarketId)!;
-    const mLeft = COMBINED_MARKETS.find(m => m.id === leftMarketId)!;
+    const mTop = activeMarkets.find(m => m.id === topMarketId)!;
+    const mLeft = activeMarkets.find(m => m.id === leftMarketId)!;
 
     const mTopName = MARKET_NAMES[`value${mTop.id.slice(1)}`];
     const mLeftName = MARKET_NAMES[`value${mLeft.id.slice(1)}`];
@@ -408,11 +510,11 @@ const ConfusionMatrix = ({ selectedMarkets, marketSelections, onMarketSelections
                     newSelections[leftMarketId] = leftLabel.toLowerCase() as MarketSelection;
                 }
 
-                // Set the third market (not displayed) to null (no selection)
+                // Set the third market (not displayed) to "any" (no selection)
                 const allMarketIds = ["m1", "m2", "m3"];
                 const thirdMarketId = allMarketIds.find(id => id !== topMarketId && id !== leftMarketId);
                 if (thirdMarketId) {
-                    newSelections[thirdMarketId] = null;
+                    newSelections[thirdMarketId] = "any";
                 }
 
                 onMarketSelectionsChange(newSelections);
@@ -603,19 +705,25 @@ const ConfusionMatrix = ({ selectedMarkets, marketSelections, onMarketSelections
 type MarketSelection = "yes" | "no" | "any" | null;
 
 interface MarketCombinedChartProps {
+    // Optional for backward compatibility (crypto passes these, Iran doesn't)
+    data?: CombinedChartPoint[];
+    markets?: CombinedMarketItem[];
     selectedMarkets: Record<string, boolean>;
     view: string;
-    marketSelections: Record<string, MarketSelection>;
-    onMarketSelectionsChange: (selections: Record<string, MarketSelection>) => void;
-    focusedMarket: string | null;
-    onFocusedMarketChange: (marketId: string | null) => void;
+    // New props for Iran (optional for crypto backward compatibility)
+    marketSelections?: Record<string, MarketSelection>;
+    onMarketSelectionsChange?: (selections: Record<string, MarketSelection>) => void;
+    focusedMarket?: string | null;
+    onFocusedMarketChange?: (marketId: string | null) => void;
 }
 
-export function MarketCombinedChart({ selectedMarkets, view, marketSelections, onMarketSelectionsChange, focusedMarket, onFocusedMarketChange, probabilities }: MarketCombinedChartProps & { probabilities?: Record<string, number> }) {
+export function MarketCombinedChart({ data, selectedMarkets, view, marketSelections, onMarketSelectionsChange, focusedMarket, onFocusedMarketChange, probabilities, markets = COMBINED_MARKETS }: MarketCombinedChartProps & { probabilities?: Record<string, number> }) {
+    console.log("MarketCombinedChart probabilities prop:", probabilities);
     const selectedCount = Object.values(selectedMarkets).filter(Boolean).length;
 
     // Handle line click to focus/unfocus a market
     const handleLineClick = (marketId: string) => {
+        if (!onFocusedMarketChange) return;
         if (focusedMarket === marketId) {
             // Clicking same line unfocuses
             onFocusedMarketChange(null);
@@ -625,12 +733,22 @@ export function MarketCombinedChart({ selectedMarkets, view, marketSelections, o
         }
     };
 
-    // Default percentages based on your prompt (or mock)
-    const currentValues: Record<string, number> = {
-        m1: 77,
-        m2: 2.3,
-        m3: 1.7
-    };
+    // Calculate marginal probabilities from joint probabilities (Pool 0 data)
+    // m1 (Khamenei out, bit 0): states where bit[0] = 1 → "100", "101", "110", "111"
+    // m2 (US strikes, bit 1): states where bit[1] = 1 → "010", "011", "110", "111"
+    // m3 (Israel strikes, bit 2): states where bit[2] = 1 → "001", "011", "101", "111"
+    const currentValues: Record<string, number> = React.useMemo(() => {
+        const probs = probabilities || DEFAULT_PROBS;
+        console.log("MarketCombinedChart - probabilities:", probabilities);
+        console.log("MarketCombinedChart - using probs:", probs);
+
+        const m1 = (probs["100"] || 0) + (probs["101"] || 0) + (probs["110"] || 0) + (probs["111"] || 0);
+        const m2 = (probs["010"] || 0) + (probs["011"] || 0) + (probs["110"] || 0) + (probs["111"] || 0);
+        const m3 = (probs["001"] || 0) + (probs["011"] || 0) + (probs["101"] || 0) + (probs["111"] || 0);
+
+        console.log("MarketCombinedChart - currentValues:", { m1, m2, m3 });
+        return { m1, m2, m3 };
+    }, [probabilities]);
 
     const availableFilters = ["1H", "6H", "1D"];
     if (selectedCount >= 2) availableFilters.push("2D");
@@ -641,209 +759,24 @@ export function MarketCombinedChart({ selectedMarkets, view, marketSelections, o
     return (
         <div className="w-full flex flex-col">
             <div className="w-full relative min-h-[400px]">
-                {view === "Default" && (
-                    <div className="h-[400px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={COMBINED_CHART_DATA} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
-                                <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#e5e7eb" />
-                                <XAxis
-                                    dataKey="date"
-                                    tickLine={false}
-                                    axisLine={false}
-                                    tick={{ fill: "#9ca3af", fontSize: 12 }}
-                                    minTickGap={60}
-                                    tickFormatter={(val) => {
-                                        const [month] = val.split(' ');
-                                        return month;
-                                    }}
-                                />
-                                <YAxis
-                                    orientation="right"
-                                    axisLine={false}
-                                    tickLine={false}
-                                    tick={{ fill: "#9ca3af", fontSize: 12 }}
-                                    tickFormatter={(val) => `${val}%`}
-                                    domain={[0, 100]}
-                                    ticks={[0, 25, 50, 75, 100]}
-                                />
-                                <Tooltip
-                                    content={<CustomTooltip />}
-                                    cursor={{ stroke: '#e5e7eb', strokeWidth: 1 }}
-                                    coordinate={{ y: 0 }}
-                                    position={{ y: 20 }}
-                                />
-                                {selectedMarkets.m1 && (
-                                    <Line
-                                        type="linear"
-                                        dataKey="value1"
-                                        stroke="#60a5fa"
-                                        strokeWidth={2}
-                                        dot={(props: any) => {
-                                            const { key, ...rest } = props;
-                                            return <CustomDot key={key} {...rest} color="#60a5fa" lastIndex={COMBINED_CHART_DATA.length - 1} />;
-                                        }}
-                                        activeDot={<CustomActiveDot />}
-                                        isAnimationActive={false}
-                                    />
-                                )}
-                                {selectedMarkets.m2 && (
-                                    <Line
-                                        type="linear"
-                                        dataKey="value2"
-                                        stroke="#2563eb"
-                                        strokeWidth={2}
-                                        dot={(props: any) => {
-                                            const { key, ...rest } = props;
-                                            return <CustomDot key={key} {...rest} color="#2563eb" lastIndex={COMBINED_CHART_DATA.length - 1} />;
-                                        }}
-                                        activeDot={<CustomActiveDot />}
-                                        isAnimationActive={false}
-                                    />
-                                )}
-                                {selectedMarkets.m3 && (
-                                    <Line
-                                        type="linear"
-                                        dataKey="value3"
-                                        stroke="#facc15"
-                                        strokeWidth={2}
-                                        dot={(props: any) => {
-                                            const { key, ...rest } = props;
-                                            return <CustomDot key={key} {...rest} color="#facc15" lastIndex={COMBINED_CHART_DATA.length - 1} />;
-                                        }}
-                                        activeDot={<CustomActiveDot />}
-                                        isAnimationActive={false}
-                                    />
-                                )}
-                            </LineChart>
-                        </ResponsiveContainer>
-                    </div>
-                )}
-
-                {view === "Table" && <WorldTable probabilities={probabilities || DEFAULT_PROBS} />}
+                {view === "Table" && <WorldTable probabilities={probabilities} marketSelections={marketSelections} />}
 
                 {view === "1D" && (
-                    <div className="h-[400px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <LineChart
-                                data={COMBINED_CHART_DATA}
-                                margin={{ top: 20, right: 30, left: 0, bottom: 0 }}
-                                onClick={(data) => {
-                                    // Handle clicks on the chart - detect which line segment was clicked
-                                    if (data && data.activeLabel) {
-                                        // Determine which line was closest to the click
-                                        const dataPoint = COMBINED_CHART_DATA.find(d => d.date === data.activeLabel);
-                                        if (dataPoint && data.activeTooltipIndex !== undefined) {
-                                            // Get the active payload to see which line was interacted with
-                                            const activePayload = data.activePayload;
-                                            if (activePayload && activePayload.length > 0) {
-                                                const dataKey = activePayload[0].dataKey;
-                                                if (dataKey === 'value1') handleLineClick('m1');
-                                                else if (dataKey === 'value2') handleLineClick('m2');
-                                                else if (dataKey === 'value3') handleLineClick('m3');
-                                            }
-                                        }
-                                    }
-                                }}
-                            >
-                                <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#e5e7eb" />
-                                <XAxis
-                                    dataKey="date"
-                                    tickLine={false}
-                                    axisLine={false}
-                                    tick={{ fill: "#9ca3af", fontSize: 12 }}
-                                    minTickGap={60}
-                                    tickFormatter={(val) => {
-                                        const [month] = val.split(' ');
-                                        return month;
-                                    }}
-                                />
-                                <YAxis
-                                    orientation="right"
-                                    axisLine={false}
-                                    tickLine={false}
-                                    tick={{ fill: "#9ca3af", fontSize: 12 }}
-                                    tickFormatter={(val) => `${val}%`}
-                                    domain={[0, 100]}
-                                    ticks={[0, 25, 50, 75, 100]}
-                                />
-                                <Tooltip
-                                    content={<CustomTooltip />}
-                                    cursor={{ stroke: '#e5e7eb', strokeWidth: 1 }}
-                                    coordinate={{ y: 0 }}
-                                    position={{ y: 20 }}
-                                />
-                                {selectedMarkets.m1 && (
-                                    <Line
-                                        type="linear"
-                                        dataKey="value1"
-                                        stroke={focusedMarket === null || focusedMarket === "m1" ? "#60a5fa" : "#d1d5db"}
-                                        strokeWidth={focusedMarket === "m1" ? 3 : 2}
-                                        dot={(props: any) => {
-                                            const { key, onClick, ...rest } = props;
-                                            return (
-                                                <g onClick={(e) => { e.stopPropagation(); handleLineClick("m1"); }} style={{ cursor: 'pointer' }}>
-                                                    <CustomDot key={key} {...rest} color={focusedMarket === null || focusedMarket === "m1" ? "#60a5fa" : "#d1d5db"} lastIndex={COMBINED_CHART_DATA.length - 1} />
-                                                </g>
-                                            );
-                                        }}
-                                        activeDot={(props: any) => (
-                                            <g onClick={(e) => { e.stopPropagation(); handleLineClick("m1"); }} style={{ cursor: 'pointer' }}>
-                                                <CustomActiveDot {...props} />
-                                            </g>
-                                        )}
-                                        isAnimationActive={false}
-                                    />
-                                )}
-                                {selectedMarkets.m2 && (
-                                    <Line
-                                        type="linear"
-                                        dataKey="value2"
-                                        stroke={focusedMarket === null || focusedMarket === "m2" ? "#2563eb" : "#d1d5db"}
-                                        strokeWidth={focusedMarket === "m2" ? 3 : 2}
-                                        dot={(props: any) => {
-                                            const { key, onClick, ...rest } = props;
-                                            return (
-                                                <g onClick={(e) => { e.stopPropagation(); handleLineClick("m2"); }} style={{ cursor: 'pointer' }}>
-                                                    <CustomDot key={key} {...rest} color={focusedMarket === null || focusedMarket === "m2" ? "#2563eb" : "#d1d5db"} lastIndex={COMBINED_CHART_DATA.length - 1} />
-                                                </g>
-                                            );
-                                        }}
-                                        activeDot={(props: any) => (
-                                            <g onClick={(e) => { e.stopPropagation(); handleLineClick("m2"); }} style={{ cursor: 'pointer' }}>
-                                                <CustomActiveDot {...props} />
-                                            </g>
-                                        )}
-                                        isAnimationActive={false}
-                                    />
-                                )}
-                                {selectedMarkets.m3 && (
-                                    <Line
-                                        type="linear"
-                                        dataKey="value3"
-                                        stroke={focusedMarket === null || focusedMarket === "m3" ? "#facc15" : "#d1d5db"}
-                                        strokeWidth={focusedMarket === "m3" ? 3 : 2}
-                                        dot={(props: any) => {
-                                            const { key, onClick, ...rest } = props;
-                                            return (
-                                                <g onClick={(e) => { e.stopPropagation(); handleLineClick("m3"); }} style={{ cursor: 'pointer' }}>
-                                                    <CustomDot key={key} {...rest} color={focusedMarket === null || focusedMarket === "m3" ? "#facc15" : "#d1d5db"} lastIndex={COMBINED_CHART_DATA.length - 1} />
-                                                </g>
-                                            );
-                                        }}
-                                        activeDot={(props: any) => (
-                                            <g onClick={(e) => { e.stopPropagation(); handleLineClick("m3"); }} style={{ cursor: 'pointer' }}>
-                                                <CustomActiveDot {...props} />
-                                            </g>
-                                        )}
-                                        isAnimationActive={false}
-                                    />
-                                )}
-                            </LineChart>
-                        </ResponsiveContainer>
+                    <div className="flex flex-col py-10">
+                        <OutcomeSlider
+                            selectedMarkets={selectedMarkets}
+                            currentValues={currentValues}
+                            markets={COMBINED_MARKETS}
+                            marketSelections={marketSelections}
+                            onMarketSelectionsChange={onMarketSelectionsChange}
+                        />
+                        <p className="text-[11px] text-gray-400 mt-12 text-center italic font-medium px-4">
+                            Probabilities derived from the joint-outcome AMM world table.
+                        </p>
                     </div>
                 )}
 
-                {view === "2D" && (
+                {view === "2D" && marketSelections && onMarketSelectionsChange && (
                     <ConfusionMatrix
                         selectedMarkets={selectedMarkets}
                         marketSelections={marketSelections}
@@ -852,11 +785,12 @@ export function MarketCombinedChart({ selectedMarkets, view, marketSelections, o
                     />
                 )}
 
-                {view === "3D" && (
+                {view === "3D" && marketSelections && onMarketSelectionsChange && (
                     <div className="flex flex-col py-4">
                         <Market3DView
                             marketSelections={marketSelections}
                             onMarketSelectionsChange={onMarketSelectionsChange}
+                            probabilities={probabilities || undefined}
                         />
                         <p className="text-[11px] text-gray-400 mt-12 text-center italic font-medium px-4">
                             Probabilities derived from the joint-outcome AMM world table.

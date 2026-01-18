@@ -4,15 +4,19 @@ import * as React from "react";
 import Image from "next/image";
 import { Link2, Bookmark, ChevronDown, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { COMBINED_MARKETS } from "@/lib/mock/combined-markets";
+import { CombinedMarketItem } from "@/lib/mock/combined-markets";
 import { cn } from "@/lib/utils";
+import { CryptoPriceStrip } from "./CryptoPriceStrip";
 
 interface CombinedMarketListProps {
+    title: string;
+    avatar: string;
+    markets: CombinedMarketItem[];
     selectedMarkets: Record<string, boolean>;
     onToggleMarket: (id: string) => void;
 }
 
-export function CombinedMarketList({ selectedMarkets, onToggleMarket }: CombinedMarketListProps) {
+export function CombinedMarketList({ title, avatar, markets, selectedMarkets, onToggleMarket }: CombinedMarketListProps) {
     const [isExpanded, setIsExpanded] = React.useState(false);
 
     const toggleMarket = (id: string, e: React.MouseEvent) => {
@@ -30,8 +34,8 @@ export function CombinedMarketList({ selectedMarkets, onToggleMarket }: Combined
                 {/* Unified Avatar */}
                 <div className="relative h-12 w-12 flex-shrink-0">
                     <Image
-                        src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTcHjuJwQinnq7yrEdYTZNb6xYpuKE2zdRCXg&s"
-                        alt="Iran War"
+                        src={avatar}
+                        alt={title}
                         fill
                         unoptimized
                         className="rounded-lg object-cover border border-gray-100"
@@ -42,7 +46,7 @@ export function CombinedMarketList({ selectedMarkets, onToggleMarket }: Combined
                     {/* Title and Collapse Trigger */}
                     <div className="flex items-center gap-2 min-w-0">
                         <h1 className="text-[24px] font-bold leading-tight tracking-tight text-black truncate">
-                            Iran War
+                            {title}
                         </h1>
                         <div className={cn(
                             "transition-transform duration-200 text-gray-400",
@@ -70,12 +74,13 @@ export function CombinedMarketList({ selectedMarkets, onToggleMarket }: Combined
                 isExpanded ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
             )}>
                 <div className="p-1 pb-2">
-                    {COMBINED_MARKETS.map((market) => (
+                    {markets.map((market) => (
                         <div
                             key={market.id}
                             className="flex items-center justify-between p-3 px-4 hover:bg-blue-50/50 rounded-lg cursor-pointer transition-colors group"
                             onClick={(e) => toggleMarket(market.id, e)}
                         >
+                            {/* Left: Avatar + Title (flexible width to avoid truncation) */}
                             <div className="flex items-center gap-3 flex-1 min-w-0">
                                 <div className="relative h-7 w-7 flex-shrink-0">
                                     <Image
@@ -86,14 +91,31 @@ export function CombinedMarketList({ selectedMarkets, onToggleMarket }: Combined
                                         className="rounded-full object-cover border border-gray-100"
                                     />
                                 </div>
-                                <span className="text-[15px] font-medium text-gray-700 truncate group-hover:text-gray-900 transition-colors">
+                                <span className="text-[15px] font-medium text-gray-700 group-hover:text-gray-900 transition-colors whitespace-nowrap">
                                     {market.title}
                                 </span>
                             </div>
 
-                            {/* Blue Tick Checkbox on the Right */}
+                            {/* Middle: Price Strip (takes remaining space, right-aligned content) */}
+                            <div className="flex-1 flex justify-end">
+                                {market.livePrice && market.targetPrice && (
+                                    <CryptoPriceStrip
+                                        currentPrice={market.livePrice}
+                                        targetPrice={market.targetPrice}
+                                        priceChange24h={market.priceChange24h}
+                                    />
+                                )}
+
+                                {market.livePrice && !market.targetPrice && (
+                                    <span className="text-[13px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
+                                        ${market.livePrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Right: Checkbox */}
                             <div className={cn(
-                                "flex items-center justify-center h-5 w-5 rounded border transition-all duration-200",
+                                "flex items-center justify-center h-5 w-5 rounded border transition-all duration-200 ml-4",
                                 selectedMarkets[market.id]
                                     ? "bg-blue-600 border-blue-600 shadow-sm"
                                     : "bg-white border-gray-300"
