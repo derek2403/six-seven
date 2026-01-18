@@ -43,7 +43,7 @@ export function getMockMarketData(slug: string) {
         currentValue: 7,
         change24h: -2,
         volume: "$33,277,441",
-        endDate: "Jan 31, 2026",
+        endDate: "Jan 31, 2028",
         chartData,
         defaultSelected: "jan-31",
         pills: [

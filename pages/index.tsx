@@ -13,12 +13,12 @@ const MARKETS = {
     { name: "US Tech Regulation Bill?", description: "Senate vote expected soon.", time: "5m ago", icon: "⚖️", color: "#468BE6" }
   ],
   Portugal: [
-    { name: "Portugal WC 2026 winner?", description: "Ronaldo's last dance bets.", time: "1m ago", icon: "🇵🇹", color: "#468BE6" },
+    { name: "Portugal WC 2028 winner?", description: "Ronaldo's last dance bets.", time: "1m ago", icon: "🇵🇹", color: "#468BE6" },
     { name: "Lisbon Tech Exit > $1B?", description: "Unicorn hunting season.", time: "12m ago", icon: "🚀", color: "#468BE6" },
     { name: "Renewable Energy > 90%?", description: "Green grid targets.", time: "1h ago", icon: "🌿", color: "#468BE6" }
   ],
   Iran: [
-    { name: "Oil Export Ceiling 2026?", description: "Global supply impact.", time: "8m ago", icon: "🛢️", color: "#468BE6" },
+    { name: "Oil Export Ceiling 2028?", description: "Global supply impact.", time: "8m ago", icon: "🛢️", color: "#468BE6" },
     { name: "Tehran Stock Index > 2M?", description: "Local currency hedge.", time: "4m ago", icon: "💹", color: "#468BE6" },
     { name: "Persian Gulf Trade Pack?", description: "New regional alliance.", time: "30m ago", icon: "🤝", color: "#468BE6" }
   ],
@@ -34,7 +34,7 @@ const MARKETS = {
   ],
   Greenland: [
     { name: "New Nuuk Airport Open?", description: "Tourism expansion.", time: "20m ago", icon: "✈️", color: "#468BE6" },
-    { name: "Ice Shelf Stability 2026?", description: "Arctic research data.", time: "1h ago", icon: "❄️", color: "#468BE6" },
+    { name: "Ice Shelf Stability 2028?", description: "Arctic research data.", time: "1h ago", icon: "❄️", color: "#468BE6" },
     { name: "Mineral Export License?", description: "Northern mining rights.", time: "2h ago", icon: "⛏️", color: "#468BE6" }
   ]
 };

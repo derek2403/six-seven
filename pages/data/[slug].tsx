@@ -96,7 +96,7 @@ export default function MarketPage() {
                         {/* Context Description */}
                         <div className="mt-4 px-1">
                             <p className="text-[13px] text-gray-500 leading-relaxed text-justify">
-                                As of January 2026, Iran is in a state of severe internal upheaval and, to a lesser extent, external conflict following a rapid deterioration of its security and economic situation in the latter half of 2025. The context is defined by a brutal, large-scale crackdown on internal protests, economic collapse, and the aftermath of a direct, 12-day war with Israel in June 2025.
+                                As of January 2028, Iran is in a state of severe internal upheaval and, to a lesser extent, external conflict following a rapid deterioration of its security and economic situation in the latter half of 2027. The context is defined by a brutal, large-scale crackdown on internal protests, economic collapse, and the aftermath of a direct, 12-day war with Israel in June 2027.
                             </p>
                         </div>
 

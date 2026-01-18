@@ -38,7 +38,7 @@ export const LEGEND_ITEMS = [
 // Generate complex mock data for the 3 lines with fluctuations over 6 months
 const generatePoints = () => {
     const points: CombinedChartPoint[] = [];
-    const endDate = new Date("2026-01-18T00:00:00");
+    const endDate = new Date("2028-01-18T00:00:00");
     const startDate = new Date(endDate);
     startDate.setMonth(startDate.getMonth() - 6);
 

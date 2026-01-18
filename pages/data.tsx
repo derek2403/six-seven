@@ -91,46 +91,46 @@ const politicsFeaturedData = [
         items: [
             { title: "Will Trump end the Ukraine war in 90 days?", image: "/market/ukraine_war.png" },
             { title: "Will Trump impose 60% tariffs on China?", image: "/market/china_tariffs.png" },
-            { title: "Will Trump deport 1M+ people in 2026?", image: "/market/deportation.png" }
+            { title: "Will Trump deport 1M+ people in 2028?", image: "/market/deportation.png" }
         ]
     },
     {
-        title: "US Elections 2026",
+        title: "US Elections 2028",
         icon: "/market/pre-winner.png",
         items: [
-            { title: "Will Republicans keep the House in 2026?", image: "/market/house.png" },
-            { title: "Will Democrats win the Senate in 2026?", image: "/market/senate.png" },
-            { title: "Will JD Vance run for President in 2028?", image: "/market/vance.png" }
+            { title: "Will Republicans keep the House in 2028?", image: "/market/republic.png" },
+            { title: "Will Democrats win the Senate in 2028?", image: "/market/democratic.png" },
+            { title: "Will JD Vance run for President in 2028?", image: "/market/jdvance.png" }
         ]
     }
 ];
 
 const cryptoFeaturedData = [
     {
-        title: "Crypto Majors (15m)",
-        icon: "/market/eth_featured.png",
+        title: "15 Min Crypto",
+        icon: "/market/btc_logo.png",
         items: [
-            { title: "Will Bitcoin hit $150k by March 31?", image: "/market/btc.png" },
-            { title: "Will Ethereum hit $5k by March 31?", image: "/market/eth_featured.png" },
-            { title: "Will Solana hit $500 by March 31?", image: "/market/sol_featured.png" }
+            { title: "Bitcoin Up or Down - 15 minute", image: "/market/btc_logo.png" },
+            { title: "Ethereum Up or Down - 15 minute", image: "/market/eth_logo.png" },
+            { title: "Sui Up or Down - 15 minute", image: "/market/sui-logo1.png" }
         ]
     },
     {
-        title: "AI & Innovation",
-        icon: "/market/sol_featured.png",
+        title: "January Price Targets",
+        icon: "/market/jan.png",
         items: [
-            { title: "Will OpenAI release GPT-5 by June?", image: "/market/openai.png" },
-            { title: "Will Tesla achieve Level 5 FSD in 2026?", image: "/market/tesla.png" },
-            { title: "Will NVIDIA hit $5T market cap?", image: "/market/nvidia.png" }
+            { title: "What price will Sui hit in January?", image: "/market/sui-logo1.png" },
+            { title: "What price will Bitcoin hit in January?", image: "/market/btc_logo.png" },
+            { title: "What price will Ethereum hit in January?", image: "/market/eth_logo.png" }
         ]
     },
     {
-        title: "Global Markets",
-        icon: "/market/china_tariffs.png",
+        title: "Sui Ecosystem",
+        icon: "/market/sui-coin.png",
         items: [
-            { title: "Will S&P 500 hit 7000 by year end?", image: "/market/sp500.png" },
-            { title: "Will Gold hit $3500 by December?", image: "/market/gold.png" },
-            { title: "Will Oil drop below $50 in 2026?", image: "/market/oil.png" }
+            { title: "Will Sui price hit $5 in January?", image: "/market/sui-logo1.png" },
+            { title: "Will Sui TVL exceed $1B in January?", image: "/market/sui-logo1.png" },
+            { title: "Will Sui daily active users hit 1M?", image: "/market/sui-logo1.png" }
         ]
     }
 ];
@@ -246,27 +246,14 @@ export default function DataPage() {
 
 
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {/* Politics Section */}
+                {/* Trending Markets Section */}
                 <div className="mb-16">
                     <div className="mb-8">
-                        <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">Politics</h2>
-                        <p className="mt-2 text-lg text-gray-600">Stay updated on global political shifts and upcoming elections.</p>
+                        <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">Trending Markets</h2>
+                        <p className="mt-2 text-lg text-gray-600">Explore the most active and high-impact prediction markets across politics, crypto, and global events.</p>
                     </div>
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        {politicsFeaturedData.map((event, idx) => (
-                            <FeaturedEventCard key={idx} {...event} />
-                        ))}
-                    </div>
-                </div>
-
-                {/* Crypto Section */}
-                <div className="mb-16">
-                    <div className="mb-8">
-                        <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">Crypto</h2>
-                        <p className="mt-2 text-lg text-gray-600">Track the latest trends and price predictions in the crypto space.</p>
-                    </div>
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        {cryptoFeaturedData.map((event, idx) => (
+                        {[...politicsFeaturedData, ...cryptoFeaturedData].map((event, idx) => (
                             <FeaturedEventCard key={idx} {...event} />
                         ))}
                     </div>
