@@ -3,7 +3,6 @@ import Head from 'next/head';
 import Link from 'next/link';
 import politicsEvents from '../data/metadata/politics_events.json';
 import sportsEvents from '../data/metadata/sports.json';
-import { Header } from '../components/header';
 import { WalletConnect } from '../components/WalletConnect';
 import { Search, SlidersHorizontal, Bookmark, ChevronRight, ChevronDown, Repeat, Gift } from 'lucide-react';
 import { useSuiClient } from '@mysten/dapp-kit';
@@ -530,9 +529,6 @@ export default function DataPage() {
                     .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
                 `}</style>
             </Head>
-
-            {/* Header */}
-            <Header />
 
             {/* Category Tabs Bar (Top - white background) */}
             <div className="bg-white border-b border-gray-100">
